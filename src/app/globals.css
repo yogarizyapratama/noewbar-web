@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 248, 250, 252;
+  --background-start-rgb: 9, 13, 22;
+  --background-end-rgb: 13, 17, 28;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: #090D16;
+}
+
+/* Accessible focus ring across all interactive elements */
+:focus-visible {
+  outline: 2px solid #F59E0B;
+  outline-offset: 2px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0D111C;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E2638;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
