@@ -1,0 +1,28 @@
+services:
+  noewbar-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: noewbar-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3001"
+    networks:
+      - app-network
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgres://secoadmin:secopostgres123@postgres-server:5432/noewbar_db
+      - TELEGRAM_BOT_TOKEN=8942993930:AAHWLNcDn1TyJfn3tvKIt3redxfqDkQBxl4
+      - TELEGRAM_ADMIN_CHAT_ID=992928836
+      - TELEGRAM_CHAT_ID=992928836
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  app-network:
+    external: true

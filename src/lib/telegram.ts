@@ -5,8 +5,8 @@ export async function sendTelegramLeadNotification(data: {
   serviceInterest: string;
   notes?: string;
 }) {
-  const token = process.env.TELEGRAM_BOT_TOKEN || '8808140091:AAE01z0PiYtidKHL_UxDLik_qulC9ICbibY';
-  const chatId = process.env.TELEGRAM_CHAT_ID || '992928836';
+  const token = process.env.TELEGRAM_BOT_TOKEN || '8942993930:AAHWLNcDn1TyJfn3tvKIt3redxfqDkQBxl4';
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID || process.env.TELEGRAM_CHAT_ID || '992928836';
 
   const message = `🚨 <b>KONSULTASI BARU DARI WEBSITE NOEWBAR!</b>
 

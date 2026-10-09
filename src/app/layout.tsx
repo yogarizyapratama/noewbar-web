@@ -14,6 +14,11 @@ export const metadata: Metadata = {
     locale: 'id_ID',
     type: 'website',
   },
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.ico',
+    apple: '/icon.png',
+  },
 };
 
 export const viewport: Viewport = {

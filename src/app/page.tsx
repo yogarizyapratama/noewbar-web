@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import {
   ShieldCheck,
   Radar,
@@ -155,11 +156,18 @@ export default function HomePage() {
       <header className="sticky top-0 z-50 bg-[#090D16]/90 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold font-mono">
-              ☤
-            </div>
-            <a href="#" className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              Noewbar <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-mono font-medium border border-slate-700">SOLUSI JADI</span>
+            <a href="#" className="flex items-center gap-3 group">
+              <Image
+                src="/logo.png"
+                alt="Noewbar"
+                width={132}
+                height={34}
+                className="h-8 w-auto object-contain"
+                priority
+              />
+              <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-400 font-mono font-medium border border-slate-700 hidden sm:inline-block">
+                SOLUSI JADI
+              </span>
             </a>
           </div>
 
@@ -581,10 +589,14 @@ export default function HomePage() {
       <footer className="mt-auto border-t border-slate-800 bg-[#090D16] py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold font-mono text-sm">
-              ☤
-            </div>
-            <div>
+            <Image
+              src="/logo.png"
+              alt="Noewbar"
+              width={112}
+              height={28}
+              className="h-7 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity"
+            />
+            <div className="border-l border-slate-800 pl-3">
               <div className="text-white font-bold text-sm">Noewbar Platform</div>
               <div className="text-xs text-slate-500">Productized AI Automation Service</div>
             </div>
