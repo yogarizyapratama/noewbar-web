@@ -4,18 +4,18 @@
 
 :root {
   --foreground-rgb: 248, 250, 252;
-  --background-start-rgb: 9, 13, 22;
-  --background-end-rgb: 13, 17, 28;
+  --background-start-rgb: 7, 10, 18;
+  --background-end-rgb: 11, 15, 25;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: #090D16;
+  background: #070A12;
 }
 
-/* Accessible focus ring across all interactive elements */
+/* Accessible focus ring in brand electric blue */
 :focus-visible {
-  outline: 2px solid #F59E0B;
+  outline: 2px solid #0284C7;
   outline-offset: 2px;
 }
 
@@ -24,10 +24,10 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0D111C;
+  background: #0B0F19;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1E2638;
+  background: #1E293B;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {

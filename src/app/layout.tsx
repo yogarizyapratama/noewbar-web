@@ -3,12 +3,20 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Noewbar — Jasa Otomasi Bisnis & AI Terstandarisasi',
-  description: 'Solusi otomasi alur operasional siap pakai untuk toko grosir, kontraktor tender LPSE, dan administrasi gudang. Sekali pasang, aktif dalam 24 jam.',
-  keywords: ['jasa otomasi bisnis', 'ai automation agency indonesia', 'lpse tender bot', 'cek mutasi otomatis', 'ocr nota excel'],
+  description: 'Solusi otomasi alur operasional siap pakai untuk toko grosir, retail, kontraktor lelang LPSE, dan gudang. Sekali pasang, aktif dalam 24–48 jam bergaransi.',
+  keywords: [
+    'jasa otomasi bisnis',
+    'bot whatsapp bisnis',
+    'cek mutasi otomatis',
+    'anti struk palsu',
+    'lpse tender bot',
+    'ocr nota excel',
+    'sync stok marketplace',
+  ],
   authors: [{ name: 'Noewbar Team' }],
   openGraph: {
     title: 'Noewbar — Jasa Otomasi Bisnis & AI Terstandarisasi',
-    description: 'Solusi otomasi alur operasional siap pakai untuk toko grosir, kontraktor tender, dan gudang.',
+    description: 'Solusi otomasi alur operasional siap pakai untuk toko grosir, retail, kontraktor tender, dan gudang.',
     url: 'https://seco.dpdns.org',
     siteName: 'Noewbar',
     locale: 'id_ID',
@@ -22,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#090D16',
+  themeColor: '#070A12',
   width: 'device-width',
   initialScale: 1,
 };
@@ -34,7 +42,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id" className="scroll-smooth">
-      <body className="bg-[#090D16] text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950 min-h-screen flex flex-col font-sans">
+      <body className="bg-[#070A12] text-slate-100 antialiased selection:bg-sky-600 selection:text-white min-h-screen flex flex-col font-sans">
         {children}
       </body>
     </html>
