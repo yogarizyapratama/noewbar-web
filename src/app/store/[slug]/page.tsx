@@ -17,7 +17,7 @@ import {
   getSectionTheme,
   getStorefrontPadding,
 } from "@/lib/website/types";
-import { cn } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 

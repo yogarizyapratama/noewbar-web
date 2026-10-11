@@ -15,9 +15,8 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { AlertTriangle, Inbox, Loader2, SearchX } from "lucide-react";
 
-export function cn(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(" ");
-}
+export { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ button */
 
@@ -558,16 +557,4 @@ export function InlineLoading({ label }: { label: string }) {
   );
 }
 
-/** Relative time, shared by every surface that shows freshness. */
-export function timeAgo(iso: string): string {
-  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 0) return "baru saja";
-  if (s < 60) return `${s} detik lalu`;
-  if (s < 3600) return `${Math.floor(s / 60)} menit lalu`;
-  if (s < 86400) return `${Math.floor(s / 3600)} jam lalu`;
-  return `${Math.floor(s / 86400)} hari lalu`;
-}
-
-export function rupiah(n: number): string {
-  return new Intl.NumberFormat("id-ID").format(Math.round(n));
-}
+export { timeAgo, rupiah } from "@/lib/utils";
