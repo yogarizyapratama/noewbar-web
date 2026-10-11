@@ -15,6 +15,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/run-all-tests.ts",
+    "admin:hash": "tsx scripts/admin-hash.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "gates": "tsx scripts/gates.ts",

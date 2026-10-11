@@ -79,7 +79,10 @@ const envSchema = z.object({
   // Superadmin. Neutral default so no real operator address is baked in; the
   // password hash is empty-by-default and must be a real Argon2id PHC string.
   SUPERADMIN_EMAIL: z.string().default("superadmin@localhost"),
-  SUPERADMIN_PASSWORD_HASH: z.string().default(""),
+  SUPERADMIN_PASSWORD_HASH: z
+    .string()
+    .default("")
+    .transform((val) => val.replace(/\\+(\$)/g, "$1")),
 
   // Playground (public landing-page simulator) catalog source.
   // Empty means the playground reports an honest "not configured" state instead

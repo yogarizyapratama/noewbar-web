@@ -160,8 +160,9 @@ export async function registerTenant(
  * misconfigured deployment fails closed instead of accepting a guessable password.
  */
 export function superadminHashConfigured(): boolean {
+  const hash = (env.SUPERADMIN_PASSWORD_HASH || "").replace(/\\+(\$)/g, "$1");
   return /^\$argon2(id|i|d)\$v=\d+\$m=\d+,t=\d+,p=\d+\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/.test(
-    env.SUPERADMIN_PASSWORD_HASH
+    hash
   );
 }
 
@@ -183,7 +184,8 @@ export async function loginSuperadmin(
     };
   }
 
-  const valid = await verifyPassword(password, env.SUPERADMIN_PASSWORD_HASH);
+  const hash = (env.SUPERADMIN_PASSWORD_HASH || "").replace(/\\+(\$)/g, "$1");
+  const valid = await verifyPassword(password, hash);
   if (!valid) return { ok: false, error: genericError };
 
   const token = createToken<AdminPayload>(
