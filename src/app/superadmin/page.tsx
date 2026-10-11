@@ -1,41 +1,38 @@
 "use client";
 
 /**
- * Master Control Console - Dark Command Center Edition (Chapter 11).
+ * Superadmin Management Console (Refactored Professional Edition).
  *
- * Antarmuka Operator Khusus Admin Sistem Platform:
- * - Telemetri node real-time (AI Gateway, WhatsMeow Daemon, Redis/BullMQ, PostgreSQL).
- * - Monitor multi-tenant & perkiraan konsumsi kuota AI seluruh toko.
- * - Fleet manajemen sesi WhatsApp dan kontrol soket terdistribusi.
- * - Audit ledger webhook dan sinkronisasi pembayaran Midtrans.
- * - Operasi pemeliharaan platform (Maintenance sweep 3-in-1, Telegram alert ping).
- * - Emergency Kill-Switch global satu sentuhan.
- *
- * Standar Anti-Slop:
- * - Dark Command Center palette, kontras WCAG AA, monospace telemetry, zero em-dash.
+ * Standar antislop:
+ * - Desain profesional bersih untuk manajemen platform enterprise.
+ * - Tanpa klise hacker retro, tanpa ornamen sci-fi berlebihan, tanpa gradien generik AI.
+ * - Kontras warna WCAG AA, navigasi keyboard penuh, zero em-dash.
+ * - Data real-time langsung terhubung ke PostgreSQL, Redis, WhatsMeow, dan AI Gateway.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
-  AlertOctagon,
+  AlertCircle,
+  AlertTriangle,
   Bell,
   CheckCircle2,
   Cpu,
   Database,
-  DollarSign,
+  ExternalLink,
   HardDrive,
-  LayoutDashboard,
+  Layers,
   LogOut,
   MessageSquare,
-  Radio,
+  Power,
   RefreshCw,
   Search,
   Server,
   ShieldAlert,
+  ShieldCheck,
   ShoppingBag,
-  Terminal,
   Trash2,
+  TrendingUp,
   Users,
   Webhook,
   X,
@@ -124,30 +121,31 @@ export type ConsoleData = {
   }[];
 };
 
-type Tab = "telemetry" | "tenants" | "fleet" | "webhooks" | "system_ops";
+type Tab = "overview" | "tenants" | "fleet" | "webhooks" | "system_ops";
 type TenantFilter = "all" | "ACTIVE" | "TRIAL" | "SUSPENDED";
 
 function formatSeconds(sec: number): string {
   const d = Math.floor(sec / 86400);
   const h = Math.floor((sec % 86400) / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  if (d > 0) return `${d}h ${h}j ${m}m`;
-  if (h > 0) return `${h}j ${m}m`;
-  return `${m}m`;
+  if (d > 0) return `${d} hari ${h} jam ${m} mnt`;
+  if (h > 0) return `${h} jam ${m} mnt`;
+  return `${m} mnt`;
 }
 
 function ts(iso: string | null): string {
   if (!iso) return "-";
-  return new Date(iso).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" });
+  return new Date(iso).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
 }
 
 export default function SuperadminPage() {
   const [data, setData] = useState<ConsoleData | null>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [tab, setTab] = useState<Tab>("telemetry");
-  const [msg, setMsg] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("overview");
+  const [msg, setMsg] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [live, setLive] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [liveEvent, setLiveEvent] = useState<string | null>(null);
   const [tenantFilter, setTenantFilter] = useState<TenantFilter>("all");
   const [tenantQuery, setTenantQuery] = useState("");
   const [orderId, setOrderId] = useState("");
@@ -167,7 +165,7 @@ export default function SuperadminPage() {
         setAuthed(true);
       }
     } catch {
-      setMsg("Gagal membaca telemetri konsol.");
+      setMsg({ text: "Gagal memuat telemetri server.", tone: "error" });
     }
   }, []);
 
@@ -178,8 +176,8 @@ export default function SuperadminPage() {
   // Polling fallback setiap 30 detik
   useEffect(() => {
     if (!authed) return;
-    const t = setInterval(load, 30000);
-    return () => clearInterval(t);
+    const timer = setInterval(load, 30000);
+    return () => clearInterval(timer);
   }, [authed, load]);
 
   // Real-time EventSource listener
@@ -194,7 +192,7 @@ export default function SuperadminPage() {
         return;
       }
       if (type === "fleet" || type === "killswitch" || type === "billing" || type === "alert") {
-        setLive(type);
+        setLiveEvent(type);
         load();
       }
     };
@@ -203,10 +201,16 @@ export default function SuperadminPage() {
   }, [authed, load]);
 
   useEffect(() => {
-    if (!live) return;
-    const t = setTimeout(() => setLive(null), 3000);
+    if (!liveEvent) return;
+    const t = setTimeout(() => setLiveEvent(null), 3000);
     return () => clearTimeout(t);
-  }, [live]);
+  }, [liveEvent]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
 
   async function act(payload: Record<string, unknown>, confirmText?: string): Promise<void> {
     if (confirmText && !window.confirm(confirmText)) return;
@@ -220,13 +224,13 @@ export default function SuperadminPage() {
       });
       const json = await res.json();
       if (json.ok) {
-        setMsg(`Aksi berhasil: ${String(payload.action)}`);
+        setMsg({ text: `Perubahan berhasil disimpan: ${String(payload.action)}`, tone: "success" });
       } else {
-        setMsg(`Gagal: ${json.error || "Aksi ditolak server."}`);
+        setMsg({ text: json.error || "Operasi ditolak oleh server.", tone: "error" });
       }
       await load();
     } catch {
-      setMsg("Aksi gagal dikirim ke server konsol.");
+      setMsg({ text: "Koneksi ke server terputus saat mengeksekusi aksi.", tone: "error" });
     } finally {
       setBusy(false);
     }
@@ -247,11 +251,11 @@ export default function SuperadminPage() {
 
   if (authed === null || !data) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#070A11] px-5 text-slate-100">
+      <main className="min-h-screen flex items-center justify-center bg-slate-950 px-4 text-slate-100">
         <div className="flex flex-col items-center gap-3">
-          <Terminal className="h-8 w-8 text-cyan-400 animate-pulse" />
-          <p className="font-mono text-xs uppercase tracking-wider text-slate-400">
-            Menginisialisasi Mission Control Console...
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+          <p className="text-xs font-medium text-slate-400">
+            Memuat Konsol Manajemen Sistem...
           </p>
         </div>
       </main>
@@ -283,122 +287,132 @@ export default function SuperadminPage() {
     });
 
   return (
-    <div className="min-h-screen bg-[#070A11] text-slate-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
-      {/* 1. TOP HEADER: MISSION CONTROL COCKPIT */}
-      <header className="sticky top-0 z-40 border-b border-slate-800 bg-[#0B0F19]/95 backdrop-blur-md px-4 sm:px-6 py-3">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          {/* Brand + Cluster Identity */}
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+      {/* 1. TOP EXECUTIVE HEADER */}
+      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md px-4 sm:px-6 py-3">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 max-w-7xl mx-auto">
+          {/* Brand Identity */}
           <div className="flex items-center gap-3">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/80 font-mono text-xs font-bold shadow-md shadow-cyan-950/30">
-              <Terminal className="h-4 w-4" />
-            </span>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600/15 border border-indigo-500/30 text-indigo-400">
+              <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+            </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-bold tracking-wider text-cyan-400 uppercase">
-                  NOEWBAR OPS COCKPIT
+                <h1 className="text-sm font-bold text-white tracking-tight">
+                  Noewbar Platform Console
+                </h1>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/60 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Sistem Aktif
                 </span>
-                <span className="inline-flex items-center gap-1 rounded bg-slate-800 px-1.5 py-0.2 font-mono text-[10px] text-slate-300">
-                  NODE-JKT-01
-                </span>
-                {live && (
-                  <span className="inline-flex items-center gap-1 rounded bg-emerald-950 border border-emerald-500/40 px-2 py-0.5 font-mono text-[10px] text-emerald-400 animate-pulse">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    LIVE SIGNAL
+                {liveEvent && (
+                  <span className="inline-flex items-center gap-1 rounded bg-indigo-950 border border-indigo-500/40 px-2 py-0.5 text-[11px] font-medium text-indigo-300">
+                    Sinyal: {liveEvent}
                   </span>
                 )}
               </div>
-              <p className="text-2xs text-slate-400 font-mono">
-                Platform Administrator &amp; Multi-Tenant Fleet Master
+              <p className="text-2xs text-slate-400">
+                Manajemen Terpusat Multi-Tenant &amp; Operasi Infrastruktur
               </p>
             </div>
           </div>
 
-          {/* Quick Telemetry Ticker (Monospaced Metrics) */}
-          <div className="hidden xl:flex items-center gap-3 font-mono text-2xs text-slate-300 bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5">
-            <div className="flex items-center gap-1.5" title="AI Gateway Round-trip latency">
-              <Zap className={cn("h-3 w-3", data.gateway.ok ? "text-cyan-400" : "text-rose-400")} />
-              <span>AI GW:</span>
-              <span className="font-bold text-slate-100">{data.gateway.latency_ms ? `${data.gateway.latency_ms}ms` : "DOWN"}</span>
+          {/* Real-time Telemetry Strip */}
+          <div className="hidden xl:flex items-center gap-3 text-xs text-slate-300 bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-1.5">
+            <div className="flex items-center gap-1.5" title="Latency AI Gateway">
+              <Zap className={cn("h-3.5 w-3.5", data.gateway.ok ? "text-emerald-400" : "text-rose-400")} />
+              <span className="text-slate-400">AI:</span>
+              <span className="font-mono font-semibold text-slate-100">
+                {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "Gangguan"}
+              </span>
             </div>
-            <span className="text-slate-700">|</span>
-            <div className="flex items-center gap-1.5" title="WhatsMeow Daemon Sockets">
-              <Server className={cn("h-3 w-3", data.daemon.ok ? "text-emerald-400" : "text-rose-400")} />
-              <span>WA Sockets:</span>
-              <span className="font-bold text-slate-100">{data.daemon.active_instances ?? 0}</span>
+            <span className="text-slate-750">|</span>
+            <div className="flex items-center gap-1.5" title="Soket WhatsApp Aktif">
+              <Server className={cn("h-3.5 w-3.5", data.daemon.ok ? "text-emerald-400" : "text-rose-400")} />
+              <span className="text-slate-400">WA Soket:</span>
+              <span className="font-mono font-semibold text-slate-100">{data.daemon.active_instances ?? 0}</span>
             </div>
-            <span className="text-slate-700">|</span>
-            <div className="flex items-center gap-1.5" title="BullMQ Nudge Queue">
-              <Cpu className={cn("h-3 w-3", data.queue.redis ? "text-amber-400" : "text-rose-400")} />
-              <span>Queue:</span>
-              <span className="font-bold text-slate-100">{data.queue.waiting} wait / {data.queue.failed} fail</span>
+            <span className="text-slate-750">|</span>
+            <div className="flex items-center gap-1.5" title="Beban Antrean Pesan BullMQ">
+              <Cpu className={cn("h-3.5 w-3.5", data.queue.redis ? "text-amber-400" : "text-rose-400")} />
+              <span className="text-slate-400">Antrean:</span>
+              <span className="font-mono font-semibold text-slate-100">
+                {data.queue.waiting} antre
+                {data.queue.failed > 0 && <span className="text-rose-400 font-bold ml-1">({data.queue.failed} gagal)</span>}
+              </span>
             </div>
             {stats && (
               <>
-                <span className="text-slate-700">|</span>
-                <div className="flex items-center gap-1.5" title="Node Uptime & Memory">
-                  <Activity className="h-3 w-3 text-purple-400" />
-                  <span>Heap:</span>
-                  <span className="font-bold text-slate-100">{stats.memory_heap_used_mb}MB</span>
-                  <span className="text-slate-500">({formatSeconds(stats.uptime_seconds)})</span>
+                <span className="text-slate-750">|</span>
+                <div className="flex items-center gap-1.5" title="Memori V8 Heap Server">
+                  <Activity className="h-3.5 w-3.5 text-indigo-400" />
+                  <span className="text-slate-400">Memori:</span>
+                  <span className="font-mono font-semibold text-slate-100">{stats.memory_heap_used_mb} MB</span>
+                  <span className="text-slate-500 text-[11px]">({formatSeconds(stats.uptime_seconds)})</span>
                 </div>
               </>
             )}
           </div>
 
-          {/* Top Actions: Emergency Kill Switch, Store Dashboard Link, Logout */}
+          {/* Top Actions */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Global Emergency Kill Switch */}
             {ks.disabled ? (
               <Button
                 size="sm"
                 variant="accent"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs border-none shadow-md"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs border-none"
                 loading={busy}
                 onClick={() => act({ action: "kill_switch", disabled: false })}
               >
-                <Zap className="mr-1.5 h-3.5 w-3.5" />
-                Nyalakan Bot Global
+                <Power className="mr-1.5 h-3.5 w-3.5" />
+                Aktifkan Kembali Bot Global
               </Button>
             ) : (
               <Button
                 size="sm"
                 variant="danger"
-                className="bg-rose-700 hover:bg-rose-600 text-white font-mono text-xs border-none shadow-md"
+                className="bg-rose-950/80 hover:bg-rose-900 border border-rose-800 text-rose-200 text-xs"
                 loading={busy}
                 onClick={() =>
                   act(
                     { action: "kill_switch", disabled: true },
-                    "PERINGATAN KRITIS: Matikan seluruh balasan bot WhatsApp di SEMUA toko client?"
+                    "PERINGATAN: Matikan seluruh balasan bot WhatsApp di semua toko? Pembeli tidak akan mendapatkan balasan otomatis sampai bot dinyalakan kembali."
                   )
                 }
               >
-                <AlertOctagon className="mr-1.5 h-3.5 w-3.5" />
-                Emergency Kill-Switch
+                <Power className="mr-1.5 h-3.5 w-3.5 text-rose-400" />
+                Emergency Kill Switch
               </Button>
             )}
 
             <Button
               size="sm"
               variant="secondary"
-              className="bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200 font-mono text-xs"
-              onClick={load}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border-slate-750"
+              onClick={handleRefresh}
+              loading={refreshing}
+              title="Perbarui data telemetri langsung"
             >
-              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-              Probe
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} />
+              Segarkan
             </Button>
 
             <a
               href="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-750 bg-slate-900 px-3 py-1.5 font-mono text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
-              title="Masuk ke Dashboard Toko Merchant"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              title="Buka panel toko tenant di tab baru"
             >
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Dashboard Toko</span>
+              <span>Dashboard Toko</span>
+              <ExternalLink className="h-3 w-3 text-slate-500" />
             </a>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               title="Keluar dari Konsol Superadmin"
               aria-label="Logout"
             >
@@ -407,24 +421,24 @@ export default function SuperadminPage() {
           </div>
         </div>
 
-        {/* 2. COMMAND NAVIGATION TABS */}
-        <div className="mt-3 flex items-center gap-1.5 overflow-x-auto border-t border-slate-800/80 pt-2.5">
+        {/* 2. NAVIGATION TABS */}
+        <div className="mt-3.5 flex items-center gap-1 overflow-x-auto border-t border-slate-800/80 pt-2.5 max-w-7xl mx-auto">
           {[
-            { id: "telemetry", label: "Telemetri Node", icon: <Radio className="h-3.5 w-3.5" /> },
-            { id: "tenants", label: `Kontrol Tenant (${data.tenants.length})`, icon: <Users className="h-3.5 w-3.5" /> },
-            { id: "fleet", label: `Fleet WhatsApp (${data.fleet.length})`, icon: <Server className="h-3.5 w-3.5" /> },
-            { id: "webhooks", label: `Ledger Webhooks (${data.webhooks.length})`, icon: <Webhook className="h-3.5 w-3.5" /> },
-            { id: "system_ops", label: "Operasi & Pemeliharaan", icon: <Cpu className="h-3.5 w-3.5" /> },
+            { id: "overview", label: "Ringkasan & Infrastruktur", icon: <Layers className="h-4 w-4" /> },
+            { id: "tenants", label: `Kelola Toko (${data.tenants.length})`, icon: <Users className="h-4 w-4" /> },
+            { id: "fleet", label: `Fleet WhatsApp (${data.fleet.length})`, icon: <Server className="h-4 w-4" /> },
+            { id: "webhooks", label: `Ledger Webhooks (${data.webhooks.length})`, icon: <Webhook className="h-4 w-4" /> },
+            { id: "system_ops", label: "Operasi Sistem", icon: <Cpu className="h-4 w-4" /> },
           ].map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id as Tab)}
               className={cn(
-                "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-xs font-semibold whitespace-nowrap transition-all",
+                "inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
                 tab === t.id
-                  ? "bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-md shadow-cyan-950/40"
-                  : "bg-slate-900/60 text-slate-400 border border-slate-800/60 hover:bg-slate-800 hover:text-slate-200"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-850"
               )}
             >
               {t.icon}
@@ -434,340 +448,380 @@ export default function SuperadminPage() {
         </div>
       </header>
 
-      {/* Main Body */}
+      {/* Main Content Area */}
       <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
-        {/* Banner Kritis jika Kill-Switch Aktif */}
+        {/* Banner Darurat Kill-Switch */}
         {ks.disabled && (
-          <div className="rounded-xl border border-rose-500/50 bg-rose-950/40 p-4 shadow-lg flex items-center justify-between gap-4">
+          <div
+            role="alert"
+            className="rounded-xl border border-rose-500/40 bg-rose-950/40 p-4 shadow-md flex items-center justify-between gap-4"
+          >
             <div className="flex items-center gap-3">
-              <ShieldAlert className="h-6 w-6 text-rose-400 shrink-0" />
+              <ShieldAlert className="h-6 w-6 text-rose-400 shrink-0" aria-hidden="true" />
               <div>
-                <p className="font-mono text-sm font-bold text-rose-200 uppercase tracking-wide">
-                  GLOBAL KILL-SWITCH AKTIF
+                <p className="text-xs font-bold text-rose-200 uppercase tracking-wide">
+                  Global Kill Switch Sedang Aktif
                 </p>
-                <p className="text-xs text-rose-300 mt-0.5">
-                  Seluruh balasan bot AI di semua toko dibekukan sejak {ts(ks.disabledAt)}
-                  {ks.disabledBy ? ` oleh ${ks.disabledBy}` : ""}.
+                <p className="text-xs text-rose-300 mt-0.5 leading-relaxed">
+                  Semua balasan otomatis bot dihentikan sejak {ts(ks.disabledAt)}
+                  {ks.disabledBy ? ` oleh ${ks.disabledBy}` : ""}. Pesan dari pembeli tetap tersimpan namun tidak dibalas bot.
                 </p>
               </div>
             </div>
             <Button
               size="sm"
               variant="accent"
-              className="bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs border-none"
+              className="bg-rose-600 hover:bg-rose-500 text-white text-xs border-none shrink-0"
               onClick={() => act({ action: "kill_switch", disabled: false })}
             >
-              Pulihkan Bot Sekarang
+              Nyalakan Kembali
             </Button>
           </div>
         )}
 
-        {/* Banner Feedback Aksi Operator */}
+        {/* Feedback Notifikasi Banner */}
         {msg && (
-          <div className="rounded-lg border border-cyan-500/40 bg-cyan-950/40 px-4 py-3 font-mono text-xs text-cyan-200 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-cyan-400 shrink-0" />
-              <span>{msg}</span>
+          <div
+            role="status"
+            className={cn(
+              "rounded-xl border p-3.5 text-xs flex items-center justify-between transition-all",
+              msg.tone === "success"
+                ? "border-emerald-500/30 bg-emerald-950/40 text-emerald-200"
+                : "border-rose-500/30 bg-rose-950/40 text-rose-200"
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              {msg.tone === "success" ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+              )}
+              <span>{msg.text}</span>
             </div>
             <button
               type="button"
               onClick={() => setMsg(null)}
-              className="text-cyan-400 hover:text-white"
+              className="text-slate-400 hover:text-white p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              aria-label="Tutup notifikasi"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         )}
 
-        {/* ---------------------------------------------------- TAB 1: TELEMETRY */}
-        {tab === "telemetry" && (
+        {/* ==================================================== TAB 1: OVERVIEW & INFRASTRUCTURE */}
+        {tab === "overview" && (
           <div className="space-y-6">
-            {/* Platform Master KPIs */}
-            <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
+            {/* Top 4 Business & Scale Metrics */}
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-2xs uppercase tracking-wider text-slate-400">
-                    Platform MRR (Rupiah)
+                  <span className="text-xs font-medium text-slate-400">
+                    Pendapatan Bulanan (MRR)
                   </span>
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-mono text-xs">
-                    <DollarSign className="h-4 w-4" />
-                  </span>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-950/60 border border-emerald-800/40 text-emerald-400">
+                    <TrendingUp className="h-4 w-4" />
+                  </div>
                 </div>
-                <p className="mt-3 font-mono text-2xl font-extrabold text-white">
+                <p className="mt-3 text-2xl font-bold tracking-tight text-white font-mono">
                   Rp {rupiah(totalMRR)}
                 </p>
-                <p className="mt-1 font-mono text-2xs text-emerald-400">
+                <p className="mt-1 text-2xs text-emerald-400 font-medium">
                   {data.subscription_counts["ACTIVE"] ?? 0} Toko Berlangganan Aktif
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-2xs uppercase tracking-wider text-slate-400">
-                    Total Toko Client
+                  <span className="text-xs font-medium text-slate-400">
+                    Total Klien Toko
                   </span>
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-mono text-xs">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-950/60 border border-indigo-800/40 text-indigo-400">
                     <Users className="h-4 w-4" />
-                  </span>
+                  </div>
                 </div>
-                <p className="mt-3 font-mono text-2xl font-extrabold text-white">
-                  {totalStores} <span className="text-xs font-normal text-slate-400">tenant</span>
+                <p className="mt-3 text-2xl font-bold tracking-tight text-white font-mono">
+                  {totalStores} <span className="text-sm font-normal text-slate-400">tenant</span>
                 </p>
-                <p className="mt-1 font-mono text-2xs text-cyan-400">
+                <p className="mt-1 text-2xs text-indigo-300 font-medium">
                   {activeTenantsCount} Aktif &bull; {trialTenantsCount} Masa Percobaan
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-2xs uppercase tracking-wider text-slate-400">
-                    Volume Pesanan Transaksi
+                  <span className="text-xs font-medium text-slate-400">
+                    Total Pesanan Transaksi
                   </span>
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-950 text-amber-400 border border-amber-800/60 font-mono text-xs">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-950/60 border border-amber-800/40 text-amber-400">
                     <ShoppingBag className="h-4 w-4" />
-                  </span>
+                  </div>
                 </div>
-                <p className="mt-3 font-mono text-2xl font-extrabold text-white">
-                  {totalOrders} <span className="text-xs font-normal text-slate-400">order</span>
+                <p className="mt-3 text-2xl font-bold tracking-tight text-white font-mono">
+                  {totalOrders} <span className="text-sm font-normal text-slate-400">pesanan</span>
                 </p>
-                <p className="mt-1 font-mono text-2xs text-amber-400">
-                  Diproses otomatis oleh platform
+                <p className="mt-1 text-2xs text-slate-400">
+                  Transaksi diproses otomatis via Midtrans
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-2xs uppercase tracking-wider text-slate-400">
-                    Total Percakapan CS Bot
+                  <span className="text-xs font-medium text-slate-400">
+                    Percakapan Bot WhatsApp
                   </span>
-                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-purple-950 text-purple-400 border border-purple-800/60 font-mono text-xs">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-950/60 border border-sky-800/40 text-sky-400">
                     <MessageSquare className="h-4 w-4" />
-                  </span>
+                  </div>
                 </div>
-                <p className="mt-3 font-mono text-2xl font-extrabold text-white">
-                  {totalConversations} <span className="text-xs font-normal text-slate-400">chat</span>
+                <p className="mt-3 text-2xl font-bold tracking-tight text-white font-mono">
+                  {totalConversations} <span className="text-sm font-normal text-slate-400">chat</span>
                 </p>
-                <p className="mt-1 font-mono text-2xs text-purple-400">
-                  Direspon 24/7 tanpa delay
+                <p className="mt-1 text-2xs text-sky-300">
+                  Respon bot customer service 24 jam
                 </p>
               </div>
             </div>
 
-            {/* Probe Node Servers Grid (6 Deep Probe Cards) */}
+            {/* Infrastructure Health Cards */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Status Kesehatan Dependensi &amp; Node Cluster
-                </h3>
-                <span className="font-mono text-2xs text-slate-500">Auto-probe setiap 30 detik</span>
+              <div className="flex items-center justify-between mb-3.5">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Kesehatan Infrastruktur &amp; Layanan Backend
+                </h2>
+                <span className="text-2xs text-slate-500">Pembaruan otomatis berkala</span>
               </div>
 
               <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                {/* Probe 1: AI Gateway */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                {/* 1. AI Gateway */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-cyan-400" />
-                      <h4 className="font-mono text-xs font-bold text-white uppercase">AI LLM Gateway</h4>
+                    <div className="flex items-center gap-2.5">
+                      <Zap className="h-4 w-4 text-indigo-400" />
+                      <h3 className="text-xs font-bold text-white">AI Gateway</h3>
                     </div>
                     <Badge tone={data.gateway.ok ? "signal" : "danger"}>
                       <StatusDot ok={data.gateway.ok} />
-                      {data.gateway.ok ? "ONLINE" : "OFFLINE"}
+                      {data.gateway.ok ? "Aktif" : "Gangguan"}
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Active Model:</span>
-                      <span className="font-bold text-cyan-300">{data.gateway.model}</span>
+                  <div className="space-y-1.5 text-xs text-slate-300">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Model Aktif:</span>
+                      <span className="font-mono text-2xs font-semibold text-indigo-300">{data.gateway.model}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Gateway Latency:</span>
-                      <span className="font-bold text-white">{data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "-"}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Latency:</span>
+                      <span className="font-mono text-2xs font-semibold text-white">
+                        {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "-"}
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Available Models:</span>
-                      <span className="text-slate-300">{data.gateway.models.length} model loaded</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Model Terdaftar:</span>
+                      <span className="text-slate-300 text-2xs">{data.gateway.models.length} model siap</span>
                     </div>
                     {data.gateway.error && (
-                      <p className="text-rose-400 mt-1 font-sans">{data.gateway.error}</p>
+                      <p className="text-rose-400 text-2xs mt-1 leading-relaxed">{data.gateway.error}</p>
                     )}
                   </div>
                 </div>
 
-                {/* Probe 2: WhatsApp Gateway Daemon */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                {/* 2. WhatsApp Daemon */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <Server className="h-4 w-4 text-emerald-400" />
-                      <h4 className="font-mono text-xs font-bold text-white uppercase">WhatsMeow Daemon</h4>
+                      <h3 className="text-xs font-bold text-white">WhatsMeow Daemon</h3>
                     </div>
                     <Badge tone={data.daemon.ok ? "signal" : "danger"}>
                       <StatusDot ok={data.daemon.ok} />
-                      {data.daemon.ok ? "ONLINE" : "OFFLINE"}
+                      {data.daemon.ok ? "Terhubung" : "Terputus"}
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Active Instances:</span>
-                      <span className="font-bold text-emerald-400">{data.daemon.active_instances ?? 0} sockets</span>
+                  <div className="space-y-1.5 text-xs text-slate-300">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Sesi Soket Aktif:</span>
+                      <span className="font-mono text-2xs font-bold text-emerald-400">{data.daemon.active_instances ?? 0} instance</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Daemon Base URL:</span>
-                      <span className="text-slate-400 truncate max-w-[150px]" title={data.daemon.url}>{data.daemon.url}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Daemon URL:</span>
+                      <span className="font-mono text-2xs text-slate-400 truncate max-w-[150px]" title={data.daemon.url}>
+                        {data.daemon.url}
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Daemon Ping:</span>
-                      <span className="text-slate-300">{ts(data.daemon.uptime_reported_at)}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Ping Terakhir:</span>
+                      <span className="text-2xs text-slate-300">{ts(data.daemon.uptime_reported_at)}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Probe 3: Redis & BullMQ Queue */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                {/* 3. Redis / BullMQ Queue */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <Cpu className="h-4 w-4 text-amber-400" />
-                      <h4 className="font-mono text-xs font-bold text-white uppercase">Redis / BullMQ Queue</h4>
+                      <h3 className="text-xs font-bold text-white">Redis &amp; BullMQ</h3>
                     </div>
                     <Badge tone={data.queue.redis ? "signal" : "danger"}>
                       <StatusDot ok={data.queue.redis} />
-                      {data.queue.redis ? "HEALTHY" : "DOWN"}
+                      {data.queue.redis ? "Normal" : "Gangguan"}
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Waiting Jobs:</span>
-                      <span className="font-bold text-amber-300">{data.queue.waiting}</span>
+                  <div className="space-y-1.5 text-xs text-slate-300">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Antrean Menunggu:</span>
+                      <span className="font-mono text-2xs font-semibold text-amber-300">{data.queue.waiting} tugas</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Delayed (Anti-Ghosting):</span>
-                      <span>{data.queue.delayed}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Anti-Ghosting Nudge:</span>
+                      <span className="font-mono text-2xs text-slate-300">{data.queue.delayed} tertunda</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Failed / Pending In DB:</span>
-                      <span className={cn(data.queue.failed > 0 && "text-rose-400 font-bold")}>
-                        {data.queue.failed} failed / {data.queue.pendingInDb} fallback db
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Gagal / Fallback:</span>
+                      <span className={cn("font-mono text-2xs", data.queue.failed > 0 ? "text-rose-400 font-bold" : "text-slate-400")}>
+                        {data.queue.failed} gagal / {data.queue.pendingInDb} db
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Probe 4: PostgreSQL Cluster */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                {/* 4. PostgreSQL Cluster */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <Database className="h-4 w-4 text-purple-400" />
-                      <h4 className="font-mono text-xs font-bold text-white uppercase">PostgreSQL Database</h4>
+                      <h3 className="text-xs font-bold text-white">Database PostgreSQL</h3>
                     </div>
                     <Badge tone="signal">
                       <StatusDot ok />
-                      CONNECTED
+                      Terkoneksi
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Total Toko (Tenants):</span>
-                      <span className="font-bold text-white">{stats?.total_tenants ?? data.tenants.length}</span>
+                  <div className="space-y-1.5 text-xs text-slate-300">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Total Toko (Tenant):</span>
+                      <span className="font-mono text-2xs font-bold text-white">{stats?.total_tenants ?? data.tenants.length}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Total Transaksi Orders:</span>
-                      <span className="font-bold text-white">{stats?.total_orders ?? totalOrders}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Total Transaksi:</span>
+                      <span className="font-mono text-2xs font-bold text-white">{stats?.total_orders ?? totalOrders}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Total Produk SKU:</span>
-                      <span className="font-bold text-white">{stats?.total_products ?? 0}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Total SKU Produk:</span>
+                      <span className="font-mono text-2xs font-bold text-white">{stats?.total_products ?? 0} SKU</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Probe 5: Telegram Alert Bot */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                {/* 5. Telegram Alert Bot */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <Bell className="h-4 w-4 text-sky-400" />
-                      <h4 className="font-mono text-xs font-bold text-white uppercase">Telegram Alert Channel</h4>
+                      <h3 className="text-xs font-bold text-white">Saluran Bot Telegram</h3>
                     </div>
                     <Badge tone={data.telegram.ok ? "signal" : "warn"}>
                       <StatusDot ok={data.telegram.ok} />
-                      {data.telegram.ok ? "READY" : "NO BOT"}
+                      {data.telegram.ok ? "Siap" : "Belum Konfigurasi"}
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Target Bot:</span>
-                      <span className="text-sky-300">@{data.telegram.username || "not_configured"}</span>
+                  <div className="space-y-1.5 text-xs text-slate-300">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Akun Bot:</span>
+                      <span className="font-mono text-2xs text-sky-300">@{data.telegram.username || "belum_diatur"}</span>
                     </div>
                     <div className="flex justify-between items-center pt-1">
-                      <span className="text-slate-500">Test Alert Ping:</span>
+                      <span className="text-slate-400">Tes Saluran:</span>
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="h-6 text-[11px] px-2 bg-slate-800 text-slate-300 hover:text-white"
+                        className="h-6 text-[11px] px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200"
                         onClick={() => act({ action: "test_telegram" })}
                       >
-                        Kirim Ping
+                        Kirim Notifikasi Uji
                       </Button>
                     </div>
                   </div>
                 </div>
 
-                {/* Probe 6: Node.js Runtime Spec */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                {/* 6. Runtime Server Node */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <HardDrive className="h-4 w-4 text-indigo-400" />
-                      <h4 className="font-mono text-xs font-bold text-white uppercase">Runtime Server Node</h4>
+                    <div className="flex items-center gap-2.5">
+                      <HardDrive className="h-4 w-4 text-slate-300" />
+                      <h3 className="text-xs font-bold text-white">Runtime Node.js</h3>
                     </div>
                     <Badge tone="signal">
                       <StatusDot ok />
-                      V8 ENGINE
+                      V8 Stabil
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Node Version:</span>
-                      <span className="font-bold text-indigo-300">{stats?.node_version ?? process.version}</span>
+                  <div className="space-y-1.5 text-xs text-slate-300">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Versi Mesin:</span>
+                      <span className="font-mono text-2xs font-semibold text-slate-200">
+                        {stats?.node_version ?? process.version}
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Memory RSS:</span>
-                      <span>{stats?.memory_rss_mb ?? 0} MB</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Memori RSS:</span>
+                      <span className="font-mono text-2xs">{stats?.memory_rss_mb ?? 0} MB</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Server Uptime:</span>
-                      <span className="text-emerald-400 font-bold">{stats ? formatSeconds(stats.uptime_seconds) : "-"}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Waktu Aktif:</span>
+                      <span className="text-2xs text-emerald-400 font-medium font-mono">
+                        {stats ? formatSeconds(stats.uptime_seconds) : "-"}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 5 Pesanan Platform Terbaru */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/80 overflow-hidden">
-              <div className="border-b border-slate-800 px-5 py-3.5 flex items-center justify-between">
+            {/* Global Recent Transactions Feed */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
+              <div className="border-b border-slate-800 px-5 py-4 flex items-center justify-between">
                 <div>
-                  <h4 className="font-mono text-xs font-bold text-white uppercase">
-                    Aktivitas Transaksi Lintas Tenant (Global Feed)
-                  </h4>
-                  <p className="text-2xs text-slate-400">Order terbaru dari seluruh toko di platform.</p>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    Aktivitas Transaksi Lintas Toko
+                  </h3>
+                  <p className="text-2xs text-slate-400 mt-0.5">
+                    Transaksi pesanan terkini yang masuk dari seluruh toko di platform.
+                  </p>
                 </div>
-                <span className="font-mono text-2xs text-slate-500">{data.recent_orders.length} transaksi terakhir</span>
+                <span className="text-2xs text-slate-500 font-mono">
+                  {data.recent_orders.length} order tercatat
+                </span>
               </div>
               <div className="divide-y divide-slate-800/80">
                 {data.recent_orders.length === 0 ? (
-                  <p className="p-4 text-center text-xs text-slate-500 font-mono">Belum ada transaksi di platform.</p>
+                  <p className="p-6 text-center text-xs text-slate-500">
+                    Belum ada riwayat transaksi pada platform.
+                  </p>
                 ) : (
                   data.recent_orders.slice(0, 5).map((o) => (
-                    <div key={o.id} className="px-5 py-3 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                    <div
+                      key={o.id}
+                      className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 text-xs"
+                    >
                       <div className="flex items-center gap-3">
-                        <span className="text-cyan-400 font-bold">{o.order_number}</span>
-                        <span className="text-slate-400">Toko: <strong className="text-slate-200">{o.tenant}</strong></span>
+                        <span className="font-mono font-semibold text-indigo-400">{o.order_number}</span>
+                        <span className="text-slate-400">
+                          Toko: <strong className="text-slate-200">{o.tenant}</strong>
+                        </span>
                         <span className="text-slate-600">&bull;</span>
-                        <span className="text-slate-400">{timeAgo(o.created_at)}</span>
+                        <span className="text-slate-400 text-2xs">{timeAgo(o.created_at)}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-emerald-400">Rp {rupiah(o.total)}</span>
-                        <Badge tone={o.payment_status === "VERIFIED" ? "signal" : "warn"} className="text-[10px]">
-                          {o.payment_status}
+                        <span className="font-mono font-semibold text-emerald-400">
+                          Rp {rupiah(o.total)}
+                        </span>
+                        <Badge
+                          tone={o.payment_status === "VERIFIED" ? "signal" : "warn"}
+                          className="text-[11px]"
+                        >
+                          {o.payment_status === "VERIFIED" ? "Terbayar" : "Menunggu"}
                         </Badge>
                       </div>
                     </div>
@@ -778,116 +832,119 @@ export default function SuperadminPage() {
           </div>
         )}
 
-        {/* ---------------------------------------------------- TAB 2: TENANTS */}
+        {/* ==================================================== TAB 2: TENANTS MANAGEMENT */}
         {tab === "tenants" && (
           <div className="space-y-4">
-            {/* Toolbar Pencarian & Filter */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
-              <div className="flex flex-wrap items-center gap-1.5 font-mono text-xs">
+            {/* Filter and Search Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 {(["all", "ACTIVE", "TRIAL", "SUSPENDED"] as const).map((st) => (
                   <button
                     key={st}
                     type="button"
                     onClick={() => setTenantFilter(st)}
                     className={cn(
-                      "px-2.5 py-1 rounded font-semibold uppercase text-2xs transition-colors",
+                      "px-3 py-1 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
                       tenantFilter === st
-                        ? "bg-cyan-900 text-cyan-200 border border-cyan-600"
-                        : "bg-slate-800 text-slate-400 hover:bg-slate-750"
+                        ? "bg-indigo-600 text-white font-semibold shadow-sm"
+                        : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-750"
                     )}
                   >
-                    {st === "all" ? "Semua Status" : st}
+                    {st === "all" ? "Semua Status" : st === "ACTIVE" ? "Aktif" : st === "TRIAL" ? "Masa Percobaan" : "Ditangguhkan"}
                   </button>
                 ))}
               </div>
 
-              <div className="relative min-w-[240px]">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-500" />
+              <div className="relative min-w-[260px]">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="Cari toko, email, WA..."
+                  placeholder="Cari nama toko, email, WhatsApp..."
                   value={tenantQuery}
                   onChange={(e) => setTenantQuery(e.target.value)}
-                  className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-8 pr-3 py-1.5 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
             </div>
 
-            {/* Tabel Multi-Tenant & Kuota AI */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden">
+            {/* Tenants Data Table */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left font-mono text-xs">
-                  <thead className="bg-slate-950/80 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
                     <tr>
-                      <th className="px-4 py-3">Nama Toko &amp; Kontak</th>
-                      <th className="px-4 py-3">Status Langganan</th>
-                      <th className="px-4 py-3 text-center">Beban Kuota AI &amp; Aktivitas</th>
-                      <th className="px-4 py-3 text-center">Basis Data Toko</th>
-                      <th className="px-4 py-3 text-right">Aksi Operator</th>
+                      <th className="px-5 py-3.5 font-semibold">Toko &amp; Kontak</th>
+                      <th className="px-5 py-3.5 font-semibold">Status Langganan</th>
+                      <th className="px-5 py-3.5 font-semibold text-center">Beban AI &amp; Chat</th>
+                      <th className="px-5 py-3.5 font-semibold text-center">Data Katalog</th>
+                      <th className="px-5 py-3.5 font-semibold text-right">Aksi Operator</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/80 text-slate-300">
                     {filteredTenants.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="p-6 text-center text-slate-500">
-                          Tidak ada tenant yang cocok dengan filter.
+                        <td colSpan={5} className="p-8 text-center text-slate-500 text-xs">
+                          Tidak ada tenant toko yang sesuai dengan filter pencarian.
                         </td>
                       </tr>
                     ) : (
                       filteredTenants.map((t) => (
-                        <tr key={t.id} className="hover:bg-slate-850/50 transition-colors">
-                          <td className="px-4 py-3.5">
-                            <p className="font-bold text-white text-sm">{t.business_name}</p>
-                            <p className="text-2xs text-slate-400">{t.email}</p>
-                            <p className="text-2xs text-cyan-400 font-mono mt-0.5">{t.owner_whatsapp}</p>
+                        <tr key={t.id} className="hover:bg-slate-850/40 transition-colors">
+                          <td className="px-5 py-4">
+                            <p className="font-semibold text-white text-sm">{t.business_name}</p>
+                            <p className="text-2xs text-slate-400 mt-0.5">{t.email}</p>
+                            <p className="font-mono text-2xs text-indigo-400 mt-0.5">{t.owner_whatsapp}</p>
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="px-5 py-4">
                             <Badge
                               tone={t.status === "ACTIVE" ? "signal" : t.status === "TRIAL" ? "warn" : "danger"}
-                              className="text-[10px]"
+                              className="text-[11px]"
                             >
-                              {t.status}
+                              {t.status === "ACTIVE" ? "Aktif" : t.status === "TRIAL" ? "Trial" : "Ditangguhkan"}
                             </Badge>
                             <p className="mt-1 text-2xs text-slate-400">
-                              Berakhir: {new Date(t.trial_expires_at).toLocaleDateString("id-ID")}
+                              Batas: {new Date(t.trial_expires_at).toLocaleDateString("id-ID")}
                             </p>
                             {t.subscription && (
-                              <p className="text-2xs text-emerald-400 font-semibold">
+                              <p className="text-2xs text-emerald-400 font-semibold font-mono mt-0.5">
                                 {t.subscription.plan} &bull; Rp {rupiah(t.subscription.amount)}
                               </p>
                             )}
                           </td>
-                          <td className="px-4 py-3.5 text-center">
+                          <td className="px-5 py-4 text-center">
                             <div className="inline-flex flex-col items-center">
-                              <span className="font-bold text-slate-100">{t.conversations} chat / {t.orders} order</span>
-                              <span className="text-[10px] text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/40 mt-1">
-                                Est. {t.conversations * 450} Token AI
+                              <span className="font-semibold text-slate-200">
+                                {t.conversations} chat / {t.orders} order
+                              </span>
+                              <span className="text-[11px] text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40 mt-1 font-mono">
+                                Est. {t.conversations * 450} Token
                               </span>
                             </div>
                           </td>
-                          <td className="px-4 py-3.5 text-center text-2xs text-slate-400">
+                          <td className="px-5 py-4 text-center text-2xs text-slate-400">
                             <div>{t.products ?? 0} SKU Produk</div>
-                            <div>{t.knowledge_docs ?? 0} Dokumen SOP</div>
-                            <div>{t.websites ?? 0} Landing Page</div>
+                            <div>{t.knowledge_docs ?? 0} SOP Bisnis</div>
+                            <div>{t.websites ?? 0} Website Aktif</div>
                           </td>
-                          <td className="px-4 py-3.5 text-right">
-                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                          <td className="px-5 py-4 text-right">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
                               <Button
                                 size="sm"
                                 variant="secondary"
-                                className="h-7 text-[10px] px-2 bg-slate-800 text-slate-200 hover:text-white"
-                                onClick={() => act({ action: "extend_trial", tenant_id: t.id, days: 7 })}
+                                className="h-7 text-xs px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                                onClick={() => act({ action: "extend_trial", tenant_id: t.id, days: 14 })}
+                                title="Perpanjang masa trial selama 14 hari"
                               >
-                                +7 Hari
+                                +14 Hari
                               </Button>
                               <Button
                                 size="sm"
                                 variant={t.status === "SUSPENDED" ? "accent" : "secondary"}
                                 className={cn(
-                                  "h-7 text-[10px] px-2",
+                                  "h-7 text-xs px-2.5",
                                   t.status === "SUSPENDED"
-                                    ? "bg-emerald-700 text-white"
-                                    : "bg-amber-900/60 text-amber-200 hover:bg-amber-800"
+                                    ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                                    : "bg-amber-950/60 hover:bg-amber-900 border border-amber-800/60 text-amber-300"
                                 )}
                                 onClick={() =>
                                   act({
@@ -905,10 +962,11 @@ export default function SuperadminPage() {
                                   setWipeConfirmModal({ id: t.id, name: t.business_name });
                                   setWipeInput("");
                                 }}
-                                className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
-                                title="Hapus tenant permanen"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                                title="Hapus seluruh data toko permanen"
+                                aria-label={`Hapus toko ${t.business_name}`}
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
                           </td>
@@ -922,60 +980,83 @@ export default function SuperadminPage() {
           </div>
         )}
 
-        {/* ---------------------------------------------------- TAB 3: FLEET */}
+        {/* ==================================================== TAB 3: WHATSAPP FLEET */}
         {tab === "fleet" && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden">
-              <div className="border-b border-slate-800 px-5 py-3 flex items-center justify-between">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden">
+              <div className="border-b border-slate-800 px-5 py-4 flex items-center justify-between">
                 <div>
-                  <h4 className="font-mono text-xs font-bold text-white uppercase">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
                     Fleet Sesi Soket WhatsApp Toko
-                  </h4>
-                  <p className="text-2xs text-slate-400">Pantau seluruh nomor WA toko yang terhubung ke WhatsMeow daemon.</p>
+                  </h3>
+                  <p className="text-2xs text-slate-400 mt-0.5">
+                    Monitoring koneksi soket real-time WhatsMeow untuk setiap tenant toko.
+                  </p>
                 </div>
-                <span className="font-mono text-2xs text-slate-400">{data.fleet.length} Sesi Terdaftar</span>
+                <span className="text-2xs text-slate-400 font-mono">
+                  {data.fleet.length} Sesi Terhubung
+                </span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left font-mono text-xs">
-                  <thead className="bg-slate-950/80 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
                     <tr>
-                      <th className="px-4 py-3">Instance Key</th>
-                      <th className="px-4 py-3">Toko Terkait</th>
-                      <th className="px-4 py-3">Status Koneksi</th>
-                      <th className="px-4 py-3">Nomor WhatsApp</th>
-                      <th className="px-4 py-3">Ping Terakhir</th>
-                      <th className="px-4 py-3 text-right">Aksi Soket</th>
+                      <th className="px-5 py-3.5 font-semibold">Instance Key</th>
+                      <th className="px-5 py-3.5 font-semibold">Toko Terkait</th>
+                      <th className="px-5 py-3.5 font-semibold">Status Soket</th>
+                      <th className="px-5 py-3.5 font-semibold">Nomor WhatsApp</th>
+                      <th className="px-5 py-3.5 font-semibold">Aktivitas Terakhir</th>
+                      <th className="px-5 py-3.5 font-semibold text-right">Aksi Soket</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/80 text-slate-300">
                     {data.fleet.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-6 text-center text-slate-500">
-                          Belum ada instance WhatsApp yang terdaftar.
+                        <td colSpan={6} className="p-8 text-center text-slate-500">
+                          Belum ada instance WhatsApp yang terdaftar pada sistem daemon.
                         </td>
                       </tr>
                     ) : (
                       data.fleet.map((inst) => (
-                        <tr key={inst.instance_key} className="hover:bg-slate-850/50">
-                          <td className="px-4 py-3.5 font-bold text-cyan-300">{inst.instance_key}</td>
-                          <td className="px-4 py-3.5 font-semibold text-white">{inst.tenant}</td>
-                          <td className="px-4 py-3.5">
+                        <tr key={inst.instance_key} className="hover:bg-slate-850/40">
+                          <td className="px-5 py-4 font-mono font-semibold text-indigo-300">{inst.instance_key}</td>
+                          <td className="px-5 py-4 font-semibold text-white">{inst.tenant}</td>
+                          <td className="px-5 py-4">
                             <Badge
-                              tone={inst.connection_status === "CONNECTED" ? "signal" : inst.connection_status === "PAIRING" ? "warn" : "danger"}
-                              className="text-[10px]"
+                              tone={
+                                inst.connection_status === "CONNECTED"
+                                  ? "signal"
+                                  : inst.connection_status === "PAIRING"
+                                  ? "warn"
+                                  : "danger"
+                              }
+                              className="text-[11px]"
                             >
                               <StatusDot ok={inst.connection_status === "CONNECTED"} />
-                              {inst.connection_status}
+                              {inst.connection_status === "CONNECTED"
+                                ? "Tersambung"
+                                : inst.connection_status === "PAIRING"
+                                ? "Scan QR"
+                                : "Terputus"}
                             </Badge>
                           </td>
-                          <td className="px-4 py-3.5 text-slate-200">{inst.phone_number || "Belum Scan QR"}</td>
-                          <td className="px-4 py-3.5 text-2xs text-slate-400">{inst.last_seen ? timeAgo(inst.last_seen) : "-"}</td>
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="px-5 py-4 font-mono text-slate-200">
+                            {inst.phone_number || "Belum Tersambung"}
+                          </td>
+                          <td className="px-5 py-4 text-2xs text-slate-400">
+                            {inst.last_seen ? timeAgo(inst.last_seen) : "-"}
+                          </td>
+                          <td className="px-5 py-4 text-right">
                             <Button
                               size="sm"
                               variant="secondary"
-                              className="h-7 text-[10px] px-2 bg-slate-800 text-slate-200 hover:text-white"
-                              onClick={() => act({ action: "restart_instance", instance_key: inst.instance_key }, `Restart soket sesi ${inst.instance_key}?`)}
+                              className="h-7 text-xs px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                              onClick={() =>
+                                act(
+                                  { action: "restart_instance", instance_key: inst.instance_key },
+                                  `Mulai ulang koneksi soket untuk sesi ${inst.instance_key}?`
+                                )
+                              }
                             >
                               Restart Soket
                             </Button>
@@ -990,16 +1071,18 @@ export default function SuperadminPage() {
           </div>
         )}
 
-        {/* ---------------------------------------------------- TAB 4: WEBHOOKS */}
+        {/* ==================================================== TAB 4: WEBHOOKS & PAYMENTS */}
         {tab === "webhooks" && (
           <div className="space-y-4">
             {/* Quick Midtrans Sync Tool */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h4 className="font-mono text-xs font-bold text-white uppercase">
-                  Sinkronisasi Status Midtrans Manual
-                </h4>
-                <p className="text-2xs text-slate-400">Verifikasi status transaksi jika webhook Midtrans mengalami delay.</p>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Sinkronisasi Transaksi Midtrans Manual
+                </h3>
+                <p className="text-2xs text-slate-400 mt-0.5">
+                  Verifikasi dan mutakhirkan status pembayaran instan jika terjadi keterlambatan webhook pihak ketiga.
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -1007,12 +1090,12 @@ export default function SuperadminPage() {
                   placeholder="Order ID Midtrans..."
                   value={orderId}
                   onChange={(e) => setOrderId(e.target.value)}
-                  className="rounded-lg border border-slate-750 bg-slate-950 px-3 py-1.5 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none w-48"
+                  className="rounded-lg border border-slate-750 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none w-52"
                 />
                 <Button
                   size="sm"
                   variant="primary"
-                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs border-none"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs border-none"
                   disabled={!orderId.trim()}
                   onClick={() => act({ action: "sync_midtrans", order_id: orderId.trim() })}
                 >
@@ -1021,49 +1104,69 @@ export default function SuperadminPage() {
               </div>
             </div>
 
-            {/* Tabel Ledger Webhook */}
-            <div className="rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden">
-              <div className="border-b border-slate-800 px-5 py-3 flex items-center justify-between">
-                <h4 className="font-mono text-xs font-bold text-white uppercase">
-                  Audit Ledger Webhook Masuk (Idempotensi Terlindungi)
-                </h4>
-                <span className="font-mono text-2xs text-slate-400">{data.webhooks.length} Events Tercatat</span>
+            {/* Webhook Ledger Audit Table */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden">
+              <div className="border-b border-slate-800 px-5 py-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    Buku Besar Audit Webhook Masuk
+                  </h3>
+                  <p className="text-2xs text-slate-400 mt-0.5">
+                    Log event yang masuk dengan perlindungan idempotensi untuk mencegah duplikasi pesanan.
+                  </p>
+                </div>
+                <span className="text-2xs text-slate-400 font-mono">
+                  {data.webhooks.length} Event Tercatat
+                </span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left font-mono text-xs">
-                  <thead className="bg-slate-950/80 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-950 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
                     <tr>
-                      <th className="px-4 py-3">Provider</th>
-                      <th className="px-4 py-3">Event Key</th>
-                      <th className="px-4 py-3">Tipe Event</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Waktu Masuk</th>
+                      <th className="px-5 py-3.5 font-semibold">Provider</th>
+                      <th className="px-5 py-3.5 font-semibold">Event Key</th>
+                      <th className="px-5 py-3.5 font-semibold">Tipe Event</th>
+                      <th className="px-5 py-3.5 font-semibold">Status Proses</th>
+                      <th className="px-5 py-3.5 font-semibold text-right">Waktu Masuk</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/80 text-slate-300">
                     {data.webhooks.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="p-6 text-center text-slate-500">Belum ada webhook event tercatat.</td>
+                        <td colSpan={5} className="p-8 text-center text-slate-500">
+                          Belum ada catatan event webhook yang terekam.
+                        </td>
                       </tr>
                     ) : (
                       data.webhooks.map((w) => (
-                        <tr key={w.id} className="hover:bg-slate-850/50">
-                          <td className="px-4 py-3">
-                            <span className={cn(
-                              "inline-flex items-center px-2 py-0.5 rounded text-2xs font-bold",
-                              w.provider === "MIDTRANS" ? "bg-emerald-950 text-emerald-400 border border-emerald-800/60" : "bg-cyan-950 text-cyan-400 border border-cyan-800/60"
-                            )}>
+                        <tr key={w.id} className="hover:bg-slate-850/40">
+                          <td className="px-5 py-4">
+                            <span
+                              className={cn(
+                                "inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold font-mono",
+                                w.provider === "MIDTRANS"
+                                  ? "bg-emerald-950 text-emerald-300 border border-emerald-800/60"
+                                  : "bg-indigo-950 text-indigo-300 border border-indigo-800/60"
+                              )}
+                            >
                               {w.provider}
                             </span>
                           </td>
-                          <td className="px-4 py-3 font-semibold text-slate-200">{w.event_key}</td>
-                          <td className="px-4 py-3 text-slate-400">{w.event_type || "-"}</td>
-                          <td className="px-4 py-3">
-                            <span className={cn("text-2xs font-bold", w.processed ? "text-emerald-400" : "text-amber-400")}>
-                              {w.processed ? "PROCESSED" : "PENDING"}
+                          <td className="px-5 py-4 font-mono font-medium text-slate-200">{w.event_key}</td>
+                          <td className="px-5 py-4 text-slate-400 text-2xs">{w.event_type || "-"}</td>
+                          <td className="px-5 py-4">
+                            <span
+                              className={cn(
+                                "text-2xs font-semibold",
+                                w.processed ? "text-emerald-400" : "text-amber-400"
+                              )}
+                            >
+                              {w.processed ? "Selesai" : "Pending"}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right text-2xs text-slate-400">{ts(w.created_at)}</td>
+                          <td className="px-5 py-4 text-right text-2xs text-slate-400 font-mono">
+                            {ts(w.created_at)}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -1074,30 +1177,30 @@ export default function SuperadminPage() {
           </div>
         )}
 
-        {/* ---------------------------------------------------- TAB 5: SYSTEM OPS */}
+        {/* ==================================================== TAB 5: SYSTEM OPERATIONS */}
         {tab === "system_ops" && (
           <div className="space-y-6">
             <div>
-              <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-                Operasi Pemeliharaan &amp; Diagnostik Cluster Platform
-              </h3>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3.5">
+                Operasi Pemeliharaan Rutin Platform
+              </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {/* Op 1: Maintenance Sweep */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <Cpu className="h-4 w-4 text-cyan-400" />
-                      <h4 className="font-mono text-xs font-bold text-white uppercase">Maintenance Sweep 3-in-1</h4>
+                    <div className="flex items-center gap-2.5">
+                      <Cpu className="h-4 w-4 text-indigo-400" />
+                      <h3 className="text-xs font-bold text-white">Maintenance Sweep 3-in-1</h3>
                     </div>
                     <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                      Jalankan siklus sweep berkala manual: kadaluarsa reservasi stok 2 jam, kirim antrean anti-ghosting, dan rekonsiliasi status langganan tenant.
+                      Jalankan siklus sweep berkala: kadaluarsakan pesanan tanpa pembayaran lebih dari 2 jam, kirim antrean nudge WhatsApp anti-ghosting, dan rekonsiliasi masa langganan.
                     </p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-800">
                     <Button
                       size="sm"
                       variant="primary"
-                      className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs border-none"
+                      className="w-full justify-center bg-indigo-600 hover:bg-indigo-500 text-white text-xs border-none"
                       loading={busy}
                       onClick={() => act({ action: "trigger_maintenance" })}
                     >
@@ -1107,21 +1210,21 @@ export default function SuperadminPage() {
                 </div>
 
                 {/* Op 2: Midtrans Force Reconcile */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <Webhook className="h-4 w-4 text-emerald-400" />
-                      <h4 className="font-mono text-xs font-bold text-white uppercase">Rekonsiliasi Langganan</h4>
+                      <h3 className="text-xs font-bold text-white">Rekonsiliasi Langganan</h3>
                     </div>
                     <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                      Pindai seluruh tagihan Midtrans yang menggantung untuk memastikan langganan toko yang sudah lunas segera aktif otomatis.
+                      Pindai transaksi pembayaran Midtrans untuk memastikan toko yang telah menyelesaikan transfer langganan otomatis aktif tanpa menunggu intervensi admin.
                     </p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-800">
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs"
+                      className="w-full justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs"
                       loading={busy}
                       onClick={() => act({ action: "reconcile" })}
                     >
@@ -1130,26 +1233,26 @@ export default function SuperadminPage() {
                   </div>
                 </div>
 
-                {/* Op 3: Telegram Alert Test Ping */}
-                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
+                {/* Op 3: Telegram Alert Ping */}
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <Bell className="h-4 w-4 text-sky-400" />
-                      <h4 className="font-mono text-xs font-bold text-white uppercase">Uji Saluran Telegram</h4>
+                      <h3 className="text-xs font-bold text-white">Tes Notifikasi Telegram</h3>
                     </div>
                     <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                      Kirim pesan pengujian alert darurat ke bot dan admin chat ID untuk memastikan notifikasi server dapat diterima.
+                      Kirim pesan pengujian alert darurat ke kanal Telegram pengawas untuk memastikan notifikasi sistem berjalan semestinya.
                     </p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-800">
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs"
+                      className="w-full justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs"
                       loading={busy}
                       onClick={() => act({ action: "test_telegram" })}
                     >
-                      Kirim Pesan Uji
+                      Kirim Notifikasi Uji
                     </Button>
                   </div>
                 </div>
@@ -1159,37 +1262,42 @@ export default function SuperadminPage() {
         )}
       </main>
 
-      {/* Modal Konfirmasi Wipe Tenant */}
+      {/* Modal Konfirmasi Hapus Toko (Wipe Tenant) */}
       {wipeConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-xl border border-rose-500/50 bg-slate-950 p-6 space-y-4 shadow-2xl">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-rose-500/40 bg-slate-900 p-6 space-y-4 shadow-2xl">
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-rose-950 text-rose-400 border border-rose-800">
-                <ShieldAlert className="h-5 w-5" />
-              </span>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-950 text-rose-400 border border-rose-800">
+                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+              </div>
               <div>
-                <h4 className="font-mono text-sm font-bold text-white uppercase">
-                  Konfirmasi Hapus Toko
-                </h4>
-                <p className="text-2xs text-rose-400">Tindakan destruktif tidak dapat dibatalkan</p>
+                <h3 className="text-sm font-bold text-white">
+                  Konfirmasi Penghapusan Toko
+                </h3>
+                <p className="text-2xs text-rose-300">Tindakan ini bersifat permanen dan tidak dapat dibatalkan</p>
               </div>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed">
-              Anda akan menghapus seluruh data toko <strong>"{wipeConfirmModal.name}"</strong> termasuk semua katalog produk, percakapan, pesanan, dan sesi WhatsApp.
+              Anda akan menghapus seluruh data toko <strong>&ldquo;{wipeConfirmModal.name}&rdquo;</strong> beserta seluruh katalog produk, riwayat percakapan, pesanan, dan instance WhatsApp terkait.
             </p>
 
             <div>
-              <label htmlFor="wipe-confirm-input" className="block font-mono text-2xs uppercase text-slate-400 mb-1">
-                Ketik <span className="text-rose-400 font-bold">HAPUS</span> untuk konfirmasi:
+              <label htmlFor="wipe-confirm-input" className="block text-2xs font-medium text-slate-400 mb-1.5">
+                Ketik <span className="text-rose-400 font-bold">HAPUS</span> untuk melanjutkan:
               </label>
               <input
                 id="wipe-confirm-input"
                 type="text"
+                autoFocus
                 placeholder="HAPUS"
                 value={wipeInput}
                 onChange={(e) => setWipeInput(e.target.value)}
-                className="w-full rounded-lg border border-slate-750 bg-slate-900 px-3 py-2 font-mono text-xs text-white uppercase focus:border-rose-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2 text-xs text-white uppercase focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
               />
             </div>
 

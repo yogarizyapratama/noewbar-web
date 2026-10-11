@@ -1,17 +1,30 @@
 "use client";
 
 /**
- * Operator console sign-in (Dark Command Center Edition).
- * Kredensial dibaca dari environment, bukan database tenant.
+ * Superadmin Authentication Console (Refactored Professional Edition).
+ *
+ * Mengikuti standar antislop:
+ * - Desain profesional bersih untuk manajemen platform enterprise.
+ * - Tanpa ornamen klise hacker atau gradien generik AI.
+ * - Kontras warna WCAG AA, navigasi keyboard penuh, zero em-dash.
  */
 
 import { useState } from "react";
-import { ArrowLeft, KeyRound, ShieldAlert, Terminal } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui";
 
 export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,124 +36,144 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
       const res = await fetch("/api/superadmin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "login", email, password }),
+        body: JSON.stringify({ action: "login", email: email.trim(), password }),
       });
       const json = await res.json();
       if (!json.ok) {
-        setError(json.error ?? "Login ditolak. Periksa email atau password.");
+        setError(json.error ?? "Kredensial salah. Periksa kembali email dan kata sandi Anda.");
         return;
       }
       onSuccess();
     } catch {
-      setError("Gagal menghubungi server konsol.");
+      setError("Gagal menghubungi server konsol. Periksa koneksi jaringan Anda.");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#070A11] px-5 py-12 text-slate-100 selection:bg-cyan-500/30">
-      <div className="w-full max-w-md">
-        <a
-          href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 transition-colors hover:text-cyan-400"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
-          Kembali ke landing page
-        </a>
+    <main className="min-h-screen flex flex-col justify-center items-center bg-slate-950 px-4 py-12 text-slate-100 sm:px-6">
+      <div className="w-full max-w-md space-y-6">
+        {/* Navigation Back */}
+        <div>
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded px-1.5 py-1"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+            Kembali ke Beranda Utama
+          </a>
+        </div>
 
-        {/* Brand Beacon */}
-        <div className="mt-6 flex items-center justify-between border-b border-slate-800/80 pb-4">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-700/60 font-mono text-sm font-bold shadow-lg shadow-cyan-950/40">
-              <Terminal className="h-4 w-4" />
-            </span>
+        {/* Card Shell */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-8 shadow-xl">
+          {/* Header Brand */}
+          <div className="flex items-center gap-3 border-b border-slate-800 pb-6">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-600/15 border border-indigo-500/30 text-indigo-400">
+              <ShieldCheck className="h-6 w-6" aria-hidden="true" />
+            </div>
             <div>
-              <span className="font-mono text-xs font-bold tracking-wider text-cyan-400 uppercase">
-                NOEWBAR CLUSTER
-              </span>
-              <p className="font-mono text-sm font-extrabold text-white tracking-tight">
-                MISSION CONTROL
+              <p className="text-2xs font-semibold uppercase tracking-wider text-indigo-400">
+                Noewbar Platform
               </p>
+              <h1 className="text-lg font-bold text-white tracking-tight">
+                Konsol Manajemen Sistem
+              </h1>
             </div>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/60 px-2.5 py-0.5 font-mono text-[10px] text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            NODE ONLINE
-          </span>
-        </div>
 
-        <div className="mt-6">
-          <h1 className="text-xl font-bold tracking-tight text-white">
-            Autentikasi Master Operator
-          </h1>
-          <p className="mt-1 text-xs text-slate-400 leading-relaxed">
-            Akses sistem tingkat tinggi khusus administrator platform. Memiliki kewenangan penuh atas seluruh node tenant.
-          </p>
-        </div>
+          <div className="pt-6">
+            <p className="text-xs text-slate-400 leading-relaxed mb-6">
+              Gerbang otentikasi administrator infrastruktur. Akses ini mengontrol seluruh node tenant, gateway bot, dan operasi server.
+            </p>
 
-        {/* Card Form */}
-        <div className="mt-6 rounded-xl border border-slate-800 bg-slate-900/90 p-6 shadow-2xl backdrop-blur-sm">
-          <form onSubmit={submit} className="space-y-4">
-            <div>
-              <label
-                htmlFor="aemail"
-                className="block font-mono text-2xs uppercase tracking-wider text-slate-400 mb-1.5"
-              >
-                Operator Email
-              </label>
-              <input
-                id="aemail"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="username"
-                placeholder="operator@noewbar.id"
-                className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2.5 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-colors"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="apass"
-                className="block font-mono text-2xs uppercase tracking-wider text-slate-400 mb-1.5"
-              >
-                Master Password Key
-              </label>
-              <input
-                id="apass"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                placeholder="••••••••••••"
-                className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2.5 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-colors"
-              />
-            </div>
-
-            {error && (
-              <div className="rounded-lg border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300 flex items-start gap-2">
-                <ShieldAlert className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
-                <span>{error}</span>
+            <form onSubmit={submit} className="space-y-4.5">
+              <div>
+                <label
+                  htmlFor="admin-email"
+                  className="block text-xs font-medium text-slate-300 mb-1.5"
+                >
+                  Email Administrator
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                    <Mail className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <input
+                    id="admin-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="username"
+                    autoFocus
+                    placeholder="superadmin@noewbar.id"
+                    className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-9 pr-3.5 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  />
+                </div>
               </div>
-            )}
 
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs uppercase tracking-wider py-2.5 mt-2 shadow-lg shadow-cyan-900/30 border-none"
-              loading={busy}
-            >
-              {!busy && <KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />}
-              Masuk Mission Control
-            </Button>
-          </form>
+              <div>
+                <label
+                  htmlFor="admin-password"
+                  className="block text-xs font-medium text-slate-300 mb-1.5"
+                >
+                  Kata Sandi
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                    <Lock className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <input
+                    id="admin-password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    placeholder="Masukkan kata sandi administrator"
+                    className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-9 pr-10 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500 hover:text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                    aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Eye className="h-4 w-4" aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-rose-500/30 bg-rose-950/40 p-3.5 text-xs text-rose-300 flex items-start gap-2.5"
+                >
+                  <AlertCircle className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" aria-hidden="true" />
+                  <span className="leading-relaxed">{error}</span>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                variant="primary"
+                loading={busy}
+                className="w-full justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs py-2.5 mt-2 rounded-lg transition-colors border-none shadow-md shadow-indigo-950/40"
+              >
+                Masuk ke Konsol Sistem
+              </Button>
+            </form>
+          </div>
         </div>
 
-        <div className="mt-4 rounded-lg border border-slate-850 bg-slate-950/60 p-3 text-2xs text-slate-500 font-mono leading-relaxed">
-          Kredensial diverifikasi dengan Argon2id hash pada environment terisolasi. Seluruh sesi diaudit dalam ledger webhook platform.
+        {/* Security Assurance Note */}
+        <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-3.5 text-center text-2xs text-slate-400 leading-relaxed">
+          Kredensial diamankan dengan enkripsi Argon2id berstandar OWASP. Seluruh aktivitas sesi dicatat dalam ledger audit sistem.
         </div>
       </div>
     </main>
