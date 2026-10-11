@@ -36,6 +36,7 @@ import { PanelSimulator } from "./panel-simulator";
 import { PanelPesanan } from "./panel-pesanan";
 import { PanelChat } from "./panel-chat";
 import { PanelBilling } from "./panel-billing";
+import { NotificationBell } from "@/components/notification-bell";
 import type { Billing, ConversationRow, Health, MessageRow, OrderRow } from "./types";
 
 type TabId =
@@ -394,12 +395,19 @@ export default function DashboardPage() {
         label: waOk ? (health?.ai?.gateway_ok ? "Sistem siap" : "AI gangguan") : "WA belum tertaut",
       }}
       headerActions={
-        live ? (
-          <Badge tone="signal" aria-live="polite">
-            <StatusDot ok />
-            Diperbarui
-          </Badge>
-        ) : undefined
+        <div className="flex items-center gap-2">
+          {live && (
+            <Badge tone="signal" aria-live="polite">
+              <StatusDot ok />
+              Diperbarui
+            </Badge>
+          )}
+          <NotificationBell
+            scope="tenant"
+            theme="light"
+            onNavigate={(targetTab) => setTab(targetTab as TabId)}
+          />
+        </div>
       }
       sidebarFooter={
         <Button

@@ -51,6 +51,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Badge, Button, StatusDot, cn, rupiah, timeAgo } from "@/components/ui";
+import { NotificationBell } from "@/components/notification-bell";
 import { AdminLogin } from "./admin-login";
 
 export type ConsoleData = {
@@ -648,6 +649,12 @@ export default function SuperadminPage() {
             >
               <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
             </Button>
+
+            <NotificationBell
+              scope="admin"
+              theme="dark"
+              onNavigate={(targetTab) => setActiveSection(targetTab as NavigationSection)}
+            />
 
             <a
               href="/dashboard"
