@@ -98,6 +98,7 @@ export function PanelWebsiteBuilder() {
   // Per-block AI editing state
   const [blockAiBusy, setBlockAiBusy] = useState(false);
   const [blockAiMsg, setBlockAiMsg] = useState<string | null>(null);
+  const [blockAiError, setBlockAiError] = useState<string | null>(null);
 
   // Editor saving state
   const [savingDraft, setSavingDraft] = useState(false);
@@ -369,6 +370,7 @@ export function PanelWebsiteBuilder() {
 
     setBlockAiBusy(true);
     setBlockAiMsg(null);
+    setBlockAiError(null);
     try {
       const res = await fetch("/api/websites", {
         method: "POST",
@@ -386,11 +388,14 @@ export function PanelWebsiteBuilder() {
           prev.map((s) => (s.id === selectedSecId ? json.updatedSection : s))
         );
         setBlockAiMsg("Section berhasil diperbarui oleh AI!");
+        setBlockAiError(null);
       } else {
-        setBlockAiMsg(json.error || "Gagal mengubah section dengan AI.");
+        setBlockAiError(json.error || "Gagal mengubah section dengan AI.");
+        setBlockAiMsg(null);
       }
     } catch {
-      setBlockAiMsg("Gagal menghubungi AI editor.");
+      setBlockAiError("Gagal menghubungi AI editor.");
+      setBlockAiMsg(null);
     } finally {
       setBlockAiBusy(false);
     }
@@ -1279,6 +1284,7 @@ export function PanelWebsiteBuilder() {
                   onRunAi={handleRunSectionAi}
                   aiBusy={blockAiBusy}
                   aiMsg={blockAiMsg}
+                  aiError={blockAiError}
                 />
               )}
             </div>

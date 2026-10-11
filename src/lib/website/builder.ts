@@ -1,4 +1,4 @@
-import { chatWithFallback } from "@/lib/ai/gateway";
+import { chatWithFallback, formatAiGatewayError } from "@/lib/ai/gateway";
 import { TEMPLATES, type WebsiteSection } from "./types";
 
 export * from "./types";
@@ -86,7 +86,7 @@ Berikan JSON hasil pembaruan untuk content dan style:`;
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Gagal memproses perubahan AI pada section.",
+      error: formatAiGatewayError(err),
     };
   }
 }

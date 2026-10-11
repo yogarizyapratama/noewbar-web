@@ -81,3 +81,40 @@ export async function chatWithFallback(
 }
 
 export type { ChatCompletionMessageParam };
+
+/**
+ * Transforms upstream AI gateway errors (e.g. 429 quota exhaustion or network timeouts)
+ * into polite, human-readable Indonesian messages instead of raw JSON dumps.
+ */
+export function formatAiGatewayError(err: unknown): string {
+  if (!err) return "Layanan AI tidak memberikan respons.";
+  const raw = err instanceof Error ? err.message : String(err);
+
+  if (raw.includes("Rate limit") || raw.includes("429") || raw.includes("rate_limit")) {
+    return "Layanan AI sedang mencapai batas kuota harian. Sistem beralih ke model cadangan, silakan coba kirim ulang dalam beberapa saat.";
+  }
+  if (raw.includes("timeout") || raw.includes("ETIMEDOUT") || raw.includes("AbortError")) {
+    return "Koneksi gateway AI mengalami timeout. Silakan coba kembali dengan instruksi yang lebih ringkas.";
+  }
+  if (raw.includes("503") || raw.includes("Service Unavailable")) {
+    return "Gateway AI upstream sedang dalam pemeliharaan. Silakan coba sesaat lagi.";
+  }
+
+  const match = raw.match(/\[429\]:\s*(\{.*\})/);
+  if (match) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed?.error?.message) {
+        return `Pemberitahuan AI: ${parsed.error.message}`;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const cleaned = raw
+    .replace(/\{"error":.*\}$/, "")
+    .replace(/^\d+\s*\[[^\]]+\]\s*\[\d+\]:\s*/, "")
+    .trim();
+  return cleaned || "Gagal memproses permintaan dengan AI.";
+}

@@ -2,8 +2,10 @@
 
 import { useRef, useState } from "react";
 import {
+  AlertCircle,
   ArrowDown,
   ArrowUp,
+  CheckCircle2,
   Copy,
   Eye,
   EyeOff,
@@ -34,6 +36,7 @@ interface WebsiteInspectorProps {
   onRunAi: (prompt: string) => Promise<void>;
   aiBusy: boolean;
   aiMsg: string | null;
+  aiError?: string | null;
 }
 
 const BG_PRESETS = [
@@ -75,6 +78,7 @@ export function WebsiteInspector({
   onRunAi,
   aiBusy,
   aiMsg,
+  aiError,
 }: WebsiteInspectorProps) {
   const [activeTab, setActiveTab] = useState<"content" | "style" | "ai">("content");
   const [customAiPrompt, setCustomAiPrompt] = useState("");
@@ -1223,10 +1227,18 @@ export function WebsiteInspector({
               />
             </div>
 
-            {aiMsg && (
-              <p className="rounded bg-emerald-50 border border-emerald-200 p-2 text-2xs font-semibold text-emerald-800">
-                {aiMsg}
-              </p>
+            {aiError && (
+              <div className="rounded-lg bg-red-50 border border-red-200 p-2.5 text-2xs font-semibold text-red-700 flex items-start gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5 text-red-600" />
+                <span className="leading-relaxed">{aiError}</span>
+              </div>
+            )}
+
+            {aiMsg && !aiError && (
+              <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-2xs font-semibold text-emerald-800 flex items-start gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5 text-emerald-600" />
+                <span>{aiMsg}</span>
+              </div>
             )}
 
             <Button
