@@ -359,10 +359,14 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
           role: "assistant",
           content: rawContent,
         });
+        const wantsCheckout = /(?:ongkir|kirim|tujuan|kecamatan|kabupaten|kota|total|rekening|checkout|bungkus|bayar)/i.test(
+          input.incomingText
+        );
         messages.push({
           role: "user",
-          content:
-            "Jangan menunda atau membalas menggantung. Tolong langsung panggil tool_cek_ongkir dan/atau tool_cari_produk sekarang juga dan berikan rincian harga, ongkir, serta total yang harus dibayar kepada pembeli.",
+          content: wantsCheckout
+            ? "Jangan menunda atau membalas menggantung. Tolong langsung panggil tool_cek_ongkir dan/atau tool_cari_produk sekarang juga dan berikan rincian harga, ongkir, serta total yang harus dibayar kepada pembeli."
+            : "Jangan menunda atau membalas menggantung. Jawab langsung pertanyaan pembeli secara ramah dan to the point tanpa kalimat penundaan.",
         });
         continue;
       }

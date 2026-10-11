@@ -20,6 +20,7 @@ import {
   Segmented,
   TextField,
 } from "@/components/ui";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 
 type Mode = "login" | "register";
 
@@ -222,6 +223,10 @@ export function AuthPanel({
             </form>
           </CardBody>
         </Card>
+
+        <div className="mt-4">
+          <PwaInstallPrompt variant="banner" />
+        </div>
 
         <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-ink-500">
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />

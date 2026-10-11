@@ -9,8 +9,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { RotateCcw, Send, Sparkles } from "lucide-react";
 import { Badge, Button, cn } from "@/components/ui";
+
+const PLAYGROUND_STORAGE_KEY = "noewbar_playground_session";
 
 type ChatTurn = {
   role: "user" | "assistant";
@@ -51,6 +53,7 @@ export function PlaygroundPanel() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
   const [status, setStatus] = useState<{
     configured: boolean;
     catalogAvailable: boolean;
@@ -59,6 +62,52 @@ export function PlaygroundPanel() {
   }>({ configured: false, catalogAvailable: false, note: null, catalogSize: null });
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Load temporary session on mount (ephemeral per browser session)
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const saved = window.sessionStorage.getItem(PLAYGROUND_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTurns(parsed);
+          }
+        }
+      }
+    } catch {
+      // Ignore sessionStorage errors
+    } finally {
+      setSessionLoaded(true);
+    }
+  }, []);
+
+  // Sync turns with temporary sessionStorage
+  useEffect(() => {
+    if (!sessionLoaded) return;
+    try {
+      if (typeof window !== "undefined") {
+        if (turns.length > 0) {
+          window.sessionStorage.setItem(PLAYGROUND_STORAGE_KEY, JSON.stringify(turns));
+        } else {
+          window.sessionStorage.removeItem(PLAYGROUND_STORAGE_KEY);
+        }
+      }
+    } catch {
+      // Ignore sessionStorage errors
+    }
+  }, [turns, sessionLoaded]);
+
+  const resetChat = useCallback(() => {
+    setTurns([]);
+    try {
+      if (typeof window !== "undefined") {
+        window.sessionStorage.removeItem(PLAYGROUND_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
 
   // First paint: ask the API whether a real catalog is wired up.
   useEffect(() => {
@@ -177,6 +226,17 @@ export function PlaygroundPanel() {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {turns.length > 0 && (
+            <button
+              type="button"
+              onClick={resetChat}
+              className="inline-flex items-center gap-1 rounded-md border border-ink-200 bg-white px-2 py-1 text-2xs font-medium text-ink-600 shadow-flat transition-colors hover:bg-ink-50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-signal"
+              title="Bersihkan percakapan sementara"
+            >
+              <RotateCcw className="h-3 w-3" aria-hidden="true" />
+              <span>Mulai ulang</span>
+            </button>
+          )}
           {status.catalogSize !== null && (
             <span className="meta hidden sm:inline">{status.catalogSize} baris</span>
           )}

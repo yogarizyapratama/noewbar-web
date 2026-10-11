@@ -34,7 +34,6 @@ import {
 import { Badge, StatusDot, cn } from "@/components/ui";
 import { PlaygroundPanel } from "@/components/landing/playground";
 import { RoiCalculator } from "@/components/landing/roi-calculator";
-import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 
 const FAQ = [
   {
@@ -107,7 +106,6 @@ const FEATURES = [
 ];
 
 const NAV_LINKS = [
-  { href: "/dashboard", label: "Dashboard" },
   { href: "#cara-kerja", label: "Cara Kerja" },
   { href: "#fitur", label: "Fitur" },
   { href: "#simulasi", label: "Simulasi WA" },
@@ -157,32 +155,26 @@ export default function LandingPage() {
               <a
                 key={l.href}
                 href={l.href}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  l.href === "/dashboard"
-                    ? "font-semibold text-ink bg-ink-100/60 hover:bg-ink-100"
-                    : "text-ink-600 hover:bg-ink-50 hover:text-ink"
-                )}
+                className="rounded-lg px-3 py-2 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink"
               >
                 {l.label}
               </a>
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
-            <PwaInstallPrompt variant="compact" className="hidden lg:flex" />
+          <div className="flex items-center gap-2.5">
             <a
               href="/dashboard"
               className="btn-secondary btn-sm flex items-center gap-1.5 font-medium text-ink transition-colors"
             >
               <LayoutDashboard className="h-3.5 w-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Dashboard</span>
+              <span>Dashboard</span>
             </a>
             <a
               href="/dashboard?intent=register"
               className="btn-primary btn-sm sm:min-h-[44px] sm:px-5 sm:text-sm"
             >
-              Mulai trial
+              Mulai trial 7 hari
             </a>
           </div>
         </div>
@@ -201,9 +193,16 @@ export default function LandingPage() {
                   {l.label}
                 </a>
               ))}
+              <a
+                href="/dashboard"
+                onClick={() => setMobileNavOpen(false)}
+                className="rounded-lg px-3 py-2.5 text-sm font-medium text-ink-700 hover:bg-ink-50 hover:text-ink min-h-[44px] flex items-center border-t border-ink-100 mt-1 pt-3"
+              >
+                <LayoutDashboard className="h-4 w-4 mr-2" />
+                Masuk Dashboard Toko
+              </a>
             </nav>
-            <div className="mt-4 pt-4 border-t border-ink-100 flex flex-col gap-2.5">
-              <PwaInstallPrompt variant="banner" />
+            <div className="mt-4 pt-3 border-t border-ink-100">
               <a
                 href="/dashboard?intent=register"
                 onClick={() => setMobileNavOpen(false)}
@@ -548,7 +547,6 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-600">
-            <PwaInstallPrompt variant="compact" />
             <a href="/dashboard" className="font-medium text-ink transition-colors hover:underline">
               Dashboard Toko
             </a>
