@@ -6,7 +6,7 @@ import { ok, fail, rateLimit } from "@/lib/http";
 import { requireTenant } from "@/lib/auth";
 import { readCatalog } from "@/lib/catalog/sheets";
 import { runAgent } from "@/lib/ai/orchestrator";
-import type { ProductRow, ToolContext } from "@/lib/ai/types";
+import type { ProductRow, TenantPromoTier, TenantShippingSchedule, TenantVoucher, ToolContext } from "@/lib/ai/types";
 import { publicUrlFor } from "@/lib/storage/minio";
 import { isBotDisabled } from "@/lib/system/killswitch";
 
@@ -86,6 +86,18 @@ export async function POST(req: NextRequest) {
     qrisUrl: settings?.qris_object_key ? publicUrlFor(settings.qris_object_key) : null,
   };
 
+  const promoRules = Array.isArray(settings?.promo_rules)
+    ? (settings.promo_rules as unknown as TenantPromoTier[])
+    : undefined;
+  const voucherRules = Array.isArray(settings?.voucher_rules)
+    ? (settings.voucher_rules as unknown as TenantVoucher[])
+    : undefined;
+  const shippingSchedule: TenantShippingSchedule = {
+    cut_off_hour: settings?.shipping_cut_off_hour ?? 15,
+    open_hour: settings?.shipping_open_hour ?? 8,
+    close_hour: settings?.shipping_close_hour ?? 21,
+  };
+
   const simConvId = crypto.randomUUID();
   const ctx: ToolContext = {
     tenantId: tenant.id,
@@ -98,6 +110,9 @@ export async function POST(req: NextRequest) {
     catalog: catalogRows,
     catalogSource,
     payment,
+    promoRules,
+    voucherRules,
+    shippingSchedule,
   };
 
   const botName = body.persona_override?.bot_name ?? settings?.bot_name ?? "Admin CS";

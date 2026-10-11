@@ -63,6 +63,20 @@ const mockContext: ToolContext = {
     bankAccountHolder: "Noewbar Store",
     qrisUrl: "https://example.com/qris.png",
   },
+  promoRules: [
+    { min_qty: 2, discount_percent: 5, promo_name: "Diskon Hemat 5% (Beli 2 pcs)" },
+    { min_qty: 3, discount_percent: 10, promo_name: "Diskon Bundling 10% (Beli 3+ pcs)" },
+    { min_qty: 5, discount_percent: 15, promo_name: "Diskon Grosir 15% (Beli 5+ pcs)" },
+  ],
+  voucherRules: [
+    { code: "HEMAT10", discount_amount: 10000 },
+    { code: "NOEWBAR10", discount_amount: 10000 },
+  ],
+  shippingSchedule: {
+    cut_off_hour: 15,
+    open_hour: 8,
+    close_hour: 21,
+  },
 };
 
 export async function runUnitTests(): Promise<{ total: number; passed: number; failed: number }> {
@@ -211,22 +225,69 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.ok(res.dimensions.chest_cm > 0);
   });
 
-  await test("toolHitungPromoBundling: calculates multi-buy volume discounts", async () => {
+  await test("toolHitungPromoBundling: calculates multi-buy volume discounts and vouchers per tenant", async () => {
     const res = await toolHitungPromoBundling(mockContext, {
       items: [{ sku: "TSH-OVR-BLK", qty: 3, price: 95000 }],
+      voucher_code: "HEMAT10",
     });
     assert.strictEqual(res.total_qty, 3);
     assert.strictEqual(res.subtotal_before_discount, 285000);
     assert.strictEqual(res.discount_percent, 10);
-    assert.strictEqual(res.discount_amount, 28500);
-    assert.strictEqual(res.final_subtotal, 256500);
+    // 10% of 285000 = 28500 + voucher 10000 = 38500
+    assert.strictEqual(res.discount_amount, 38500);
+    assert.strictEqual(res.final_subtotal, 246500);
+    assert.strictEqual(res.applied_voucher, "HEMAT10");
   });
 
-  await test("toolCekJadwalPengiriman: returns store cut-off time and courier schedules", async () => {
-    const res = await toolCekJadwalPengiriman(mockContext);
+  await test("toolHitungPromoBundling: returns zero discount when tenant has no active promo rules", async () => {
+    const ctxNoPromo: ToolContext = {
+      ...mockContext,
+      promoRules: [],
+      voucherRules: [],
+    };
+    const res = await toolHitungPromoBundling(ctxNoPromo, {
+      items: [{ sku: "TSH-OVR-BLK", qty: 5, price: 95000 }],
+    });
+    assert.strictEqual(res.total_qty, 5);
+    assert.strictEqual(res.discount_percent, 0);
+    assert.strictEqual(res.discount_amount, 0);
+    assert.strictEqual(res.final_subtotal, 475000);
+    assert.strictEqual(res.promo_name, "Tidak Ada Promo Bundling");
+    assert.ok(res.savings_note.includes("belum mengaktifkan promo bundling"));
+  });
+
+  await test("toolHitungPromoBundling: accurately applies custom tenant promo tiers", async () => {
+    const ctxCustomPromo: ToolContext = {
+      ...mockContext,
+      promoRules: [
+        { min_qty: 2, discount_percent: 25, promo_name: "Super Bundling 25% Tenant X" },
+      ],
+    };
+    const res = await toolHitungPromoBundling(ctxCustomPromo, {
+      items: [{ sku: "TSH-OVR-BLK", qty: 2, price: 95000 }],
+    });
+    assert.strictEqual(res.total_qty, 2);
+    assert.strictEqual(res.subtotal_before_discount, 190000);
+    assert.strictEqual(res.discount_percent, 25);
+    assert.strictEqual(res.discount_amount, 47500);
+    assert.strictEqual(res.final_subtotal, 142500);
+    assert.strictEqual(res.promo_name, "Super Bundling 25% Tenant X");
+  });
+
+  await test("toolCekJadwalPengiriman: reflects dynamic tenant shipping cut-off schedule", async () => {
+    const ctxCustomSchedule: ToolContext = {
+      ...mockContext,
+      shippingSchedule: {
+        cut_off_hour: 17,
+        open_hour: 9,
+        close_hour: 22,
+      },
+    };
+    const res = await toolCekJadwalPengiriman(ctxCustomSchedule);
     assert.ok(res.current_time_wib.includes("WIB"));
-    assert.ok(res.cut_off_time.includes("15.00"));
+    assert.ok(res.cut_off_time.includes("17.00"));
     assert.ok(res.courier_schedules.length >= 3);
+    assert.ok(res.courier_schedules.some((c) => c.pickup_hours.includes("18.00")));
   });
 
   await test("toolRekomendasiAlternatif: provides in-stock cross-sell and alternatives", async () => {

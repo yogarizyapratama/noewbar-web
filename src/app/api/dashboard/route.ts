@@ -53,6 +53,33 @@ const actionSchema = z.discriminatedUnion("action", [
     custom_persona_prompt: z.string().trim().max(3000).optional(),
     greeting_message: z.string().trim().max(1000).optional(),
   }),
+  z.object({
+    action: z.literal("save_promos"),
+    promo_rules: z
+      .array(
+        z.object({
+          min_qty: z.number().int().min(1),
+          discount_percent: z.number().min(0).max(100),
+          promo_name: z.string().trim().min(1).max(100),
+        })
+      )
+      .optional(),
+    voucher_rules: z
+      .array(
+        z.object({
+          code: z.string().trim().min(1).max(50),
+          discount_amount: z.number().int().min(0).optional(),
+          discount_percent: z.number().min(0).max(100).optional(),
+        })
+      )
+      .optional(),
+  }),
+  z.object({
+    action: z.literal("save_shipping_schedule"),
+    shipping_cut_off_hour: z.number().int().min(0).max(23).optional(),
+    shipping_open_hour: z.number().int().min(0).max(23).optional(),
+    shipping_close_hour: z.number().int().min(0).max(23).optional(),
+  }),
 ]);
 
 /**
@@ -100,6 +127,15 @@ export async function GET() {
       bot_tone: settings?.bot_tone ?? "RAMAH",
       custom_persona_prompt: settings?.custom_persona_prompt ?? "",
       greeting_message: settings?.greeting_message ?? "",
+    },
+    promos: {
+      promo_rules: (settings?.promo_rules as unknown as unknown[]) ?? [],
+      voucher_rules: (settings?.voucher_rules as unknown as unknown[]) ?? [],
+    },
+    shipping: {
+      cut_off_hour: settings?.shipping_cut_off_hour ?? 15,
+      open_hour: settings?.shipping_open_hour ?? 8,
+      close_hour: settings?.shipping_close_hour ?? 21,
     },
     storage: {
       used_bytes: used,
@@ -286,6 +322,63 @@ export async function POST(req: NextRequest) {
         bot_tone: updated.bot_tone,
         custom_persona_prompt: updated.custom_persona_prompt,
         greeting_message: updated.greeting_message,
+      },
+    });
+  }
+
+  if (body.action === "save_promos") {
+    const data: Prisma.CatalogSettingUpdateInput = {};
+    if (body.promo_rules !== undefined) {
+      data.promo_rules = body.promo_rules as Prisma.InputJsonValue;
+    }
+    if (body.voucher_rules !== undefined) {
+      data.voucher_rules = body.voucher_rules as Prisma.InputJsonValue;
+    }
+
+    const updated = await prisma.catalogSetting.upsert({
+      where: { tenant_id: session.sub },
+      create: {
+        tenant_id: session.sub,
+        sheets_url: "",
+        origin_subdistrict: "Jakarta Selatan",
+        promo_rules: (body.promo_rules ?? []) as Prisma.InputJsonValue,
+        voucher_rules: (body.voucher_rules ?? []) as Prisma.InputJsonValue,
+      },
+      update: data,
+    });
+
+    return ok({
+      action: "save_promos",
+      promo_rules: updated.promo_rules ?? [],
+      voucher_rules: updated.voucher_rules ?? [],
+    });
+  }
+
+  if (body.action === "save_shipping_schedule") {
+    const data: Prisma.CatalogSettingUpdateInput = {};
+    if (body.shipping_cut_off_hour !== undefined) data.shipping_cut_off_hour = body.shipping_cut_off_hour;
+    if (body.shipping_open_hour !== undefined) data.shipping_open_hour = body.shipping_open_hour;
+    if (body.shipping_close_hour !== undefined) data.shipping_close_hour = body.shipping_close_hour;
+
+    const updated = await prisma.catalogSetting.upsert({
+      where: { tenant_id: session.sub },
+      create: {
+        tenant_id: session.sub,
+        sheets_url: "",
+        origin_subdistrict: "Jakarta Selatan",
+        shipping_cut_off_hour: body.shipping_cut_off_hour ?? 15,
+        shipping_open_hour: body.shipping_open_hour ?? 8,
+        shipping_close_hour: body.shipping_close_hour ?? 21,
+      },
+      update: data,
+    });
+
+    return ok({
+      action: "save_shipping_schedule",
+      shipping_schedule: {
+        cut_off_hour: updated.shipping_cut_off_hour,
+        open_hour: updated.shipping_open_hour,
+        close_hour: updated.shipping_close_hour,
       },
     });
   }

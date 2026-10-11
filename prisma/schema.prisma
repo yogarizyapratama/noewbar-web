@@ -80,6 +80,14 @@ model CatalogSetting {
   bot_tone               String    @default("RAMAH")
   custom_persona_prompt  String    @default("")
   greeting_message       String    @default("")
+  /// Aturan Promo Bundling per tenant: [{ min_qty: 2, discount_percent: 5, promo_name: "Promo Hemat 2 pcs" }]
+  promo_rules            Json?
+  /// Aturan Voucher per tenant: [{ code: "HEMAT10", discount_amount: 10000 }]
+  voucher_rules          Json?
+  /// Jam batas transfer (cut-off) pengiriman hari yang sama
+  shipping_cut_off_hour  Int       @default(15)
+  shipping_open_hour     Int       @default(8)
+  shipping_close_hour    Int       @default(21)
   last_synced_at         DateTime?
   created_at             DateTime  @default(now())
   updated_at             DateTime  @updatedAt

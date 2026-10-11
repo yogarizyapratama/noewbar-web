@@ -65,6 +65,27 @@ export type CartLine = {
   line_total: number;
 };
 
+/** Aturan Promo Bundling per tenant: [{ min_qty: 2, discount_percent: 5, promo_name: "Diskon 2 pcs" }] */
+export type TenantPromoTier = {
+  min_qty: number;
+  discount_percent: number;
+  promo_name: string;
+};
+
+/** Aturan Voucher per tenant */
+export type TenantVoucher = {
+  code: string;
+  discount_amount?: number;
+  discount_percent?: number;
+};
+
+/** Jadwal Pengiriman dan Cut-off per tenant */
+export type TenantShippingSchedule = {
+  cut_off_hour: number;
+  open_hour: number;
+  close_hour: number;
+};
+
 /**
  * Everything a tool needs. Assembled once per inbound message so a tool never
  * re-reads the catalog or re-resolves the tenant mid-conversation.
@@ -89,6 +110,12 @@ export type ToolContext = {
     bankAccountHolder: string;
     qrisUrl: string | null;
   };
+  /** Dynamic per-tenant promo bundling rules */
+  promoRules?: TenantPromoTier[];
+  /** Dynamic per-tenant voucher rules */
+  voucherRules?: TenantVoucher[];
+  /** Dynamic per-tenant shipping schedule & cut-off */
+  shippingSchedule?: TenantShippingSchedule;
 };
 
 /** Structurally identical to the OpenAI function-calling tool schema. */

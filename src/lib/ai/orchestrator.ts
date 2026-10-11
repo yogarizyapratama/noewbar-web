@@ -7,6 +7,9 @@ import { recordToolTraces } from "@/lib/ai/micro-tools";
 import type {
   OutboundMedia,
   ProductRow,
+  TenantPromoTier,
+  TenantShippingSchedule,
+  TenantVoucher,
   ToolContext,
   ToolExecutionResult,
   ToolName,
@@ -258,6 +261,9 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
         botTone: input.botTone,
         customPersonaPrompt: input.customPersonaPrompt,
         buyerJid: input.ctx.buyerJid,
+        promoRules: input.ctx.promoRules,
+        voucherRules: input.ctx.voucherRules,
+        shippingSchedule: input.ctx.shippingSchedule,
       }),
     },
     // History is already windowed by the query in handleInboundMessage
@@ -560,6 +566,18 @@ export async function handleInboundMessage(params: InboundParams): Promise<Handl
     },
   });
 
+  const promoRules = Array.isArray(settings?.promo_rules)
+    ? (settings.promo_rules as unknown as TenantPromoTier[])
+    : undefined;
+  const voucherRules = Array.isArray(settings?.voucher_rules)
+    ? (settings.voucher_rules as unknown as TenantVoucher[])
+    : undefined;
+  const shippingSchedule: TenantShippingSchedule = {
+    cut_off_hour: settings?.shipping_cut_off_hour ?? 15,
+    open_hour: settings?.shipping_open_hour ?? 8,
+    close_hour: settings?.shipping_close_hour ?? 21,
+  };
+
   const ctx: ToolContext = {
     tenantId: params.tenantId,
     conversationId: conversation.id,
@@ -576,6 +594,9 @@ export async function handleInboundMessage(params: InboundParams): Promise<Handl
       bankAccountHolder: settings?.bank_account_holder ?? "",
       qrisUrl: settings?.qris_object_key ? publicUrlFor(settings.qris_object_key) : null,
     },
+    promoRules,
+    voucherRules,
+    shippingSchedule,
   };
 
   const persist = params.persist ?? true;

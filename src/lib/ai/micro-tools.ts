@@ -8,6 +8,7 @@ import { escalateToOwner } from "@/lib/alerts/dispatcher";
 import type {
   CartLine,
   ProductRow,
+  TenantPromoTier,
   ToolContext,
   ToolExecutionResult,
   ToolName,
@@ -725,27 +726,55 @@ export async function toolHitungPromoBundling(
   let discPercent = 0;
   let promoName = "Harga Reguler";
 
-  if (totalQty >= 5) {
-    discPercent = 15;
-    promoName = "Diskon Grosir 15% (Beli 5+ pcs)";
-  } else if (totalQty >= 3) {
-    discPercent = 10;
-    promoName = "Diskon Bundling 10% (Beli 3+ pcs)";
-  } else if (totalQty >= 2) {
-    discPercent = 5;
-    promoName = "Diskon Hemat 5% (Beli 2 pcs)";
+  const configuredRules: TenantPromoTier[] = ctx.promoRules ?? [];
+
+  if (configuredRules.length > 0) {
+    const sortedRules = [...configuredRules].sort((a, b) => b.min_qty - a.min_qty);
+    const matched = sortedRules.find((r) => totalQty >= r.min_qty);
+    if (matched) {
+      discPercent = matched.discount_percent;
+      promoName = matched.promo_name;
+    } else {
+      discPercent = 0;
+      promoName = "Harga Reguler";
+    }
+  } else {
+    discPercent = 0;
+    promoName = "Tidak Ada Promo Bundling";
   }
 
   let discAmount = Math.round((rawSubtotal * discPercent) / 100);
 
   let voucherApplied: string | null = null;
   const v = (args.voucher_code || "").trim().toUpperCase();
-  if (v === "HEMAT10" || v === "NOEWBAR10") {
-    discAmount += 10000;
-    voucherApplied = v;
+  if (v && ctx.voucherRules && ctx.voucherRules.length > 0) {
+    const matchedVoucher = ctx.voucherRules.find((vr) => vr.code.trim().toUpperCase() === v);
+    if (matchedVoucher) {
+      voucherApplied = matchedVoucher.code;
+      if (matchedVoucher.discount_amount && matchedVoucher.discount_amount > 0) {
+        discAmount += matchedVoucher.discount_amount;
+      } else if (matchedVoucher.discount_percent && matchedVoucher.discount_percent > 0) {
+        discAmount += Math.round((rawSubtotal * matchedVoucher.discount_percent) / 100);
+      }
+    }
   }
 
   const finalSubtotal = Math.max(0, rawSubtotal - discAmount);
+
+  let savingsNote = "";
+  if (discAmount > 0) {
+    savingsNote = `Hemat Rp${discAmount.toLocaleString("id-ID")} dengan ${promoName}! Subtotal akhir menjadi Rp${finalSubtotal.toLocaleString("id-ID")}.`;
+  } else if (configuredRules.length > 0) {
+    const nextTier = [...configuredRules].sort((a, b) => a.min_qty - b.min_qty).find((r) => r.min_qty > totalQty);
+    if (nextTier) {
+      const diff = nextTier.min_qty - totalQty;
+      savingsNote = `Belum memenuhi kuota promo. Tambah ${diff} pcs lagi untuk mendapatkan ${nextTier.promo_name} (${nextTier.discount_percent}%).`;
+    } else {
+      savingsNote = "Belum memenuhi kuota promo.";
+    }
+  } else {
+    savingsNote = "Toko ini belum mengaktifkan promo bundling khusus saat ini.";
+  }
 
   return {
     total_qty: totalQty,
@@ -755,10 +784,7 @@ export async function toolHitungPromoBundling(
     final_subtotal: finalSubtotal,
     promo_name: promoName,
     applied_voucher: voucherApplied,
-    savings_note:
-      discAmount > 0
-        ? `Hemat Rp${discAmount.toLocaleString("id-ID")} dengan ${promoName}! Subtotal akhir menjadi Rp${finalSubtotal.toLocaleString("id-ID")}.`
-        : "Belum memenuhi kuota promo. Tambah 1 pcs lagi untuk mendapatkan potongan diskon bertingkat!",
+    savings_note: savingsNote,
   };
 }
 
@@ -777,40 +803,45 @@ export type ShippingScheduleResult = {
 };
 
 export async function toolCekJadwalPengiriman(
-  _ctx: ToolContext,
+  ctx: ToolContext,
   _args?: { courier?: CourierCode }
 ): Promise<ShippingScheduleResult> {
+  const cutOffHour = ctx.shippingSchedule?.cut_off_hour ?? 15;
+  const openHour = ctx.shippingSchedule?.open_hour ?? 8;
+  const closeHour = ctx.shippingSchedule?.close_hour ?? 21;
+
   const now = new Date();
   const wibHour = (now.getUTCHours() + 7) % 24;
   const wibMinute = now.getUTCMinutes();
   const dayOfWeek = now.getUTCDay();
 
   const isSunday = dayOfWeek === 0;
-  const beforeCutoff = wibHour < 15;
+  const beforeCutoff = wibHour < cutOffHour;
   const sameDayEligible = !isSunday && beforeCutoff;
 
   const currentFormatted = `${String(wibHour).padStart(2, "0")}:${String(wibMinute).padStart(2, "0")} WIB`;
+  const cutOffFormatted = `${String(cutOffHour).padStart(2, "0")}.00 WIB`;
 
-  let estimate = "Paket diserahkan ke kurir hari ini pukul 16.00 WIB";
+  let estimate = `Paket diserahkan ke kurir hari ini pukul ${String(cutOffHour + 1).padStart(2, "0")}.00 WIB`;
   if (!sameDayEligible) {
     estimate = isSunday
-      ? "Pesanan diproses dan diserahkan ke kurir hari Senin pagi pukul 10.00 WIB"
-      : "Pesanan diserahkan ke kurir besok pagi pukul 10.00 WIB (karena melewati batas cut-off 15.00 WIB)";
+      ? `Pesanan diproses dan diserahkan ke kurir hari Senin pagi pukul ${String(openHour + 2).padStart(2, "0")}.00 WIB`
+      : `Pesanan diserahkan ke kurir besok pagi pukul ${String(openHour + 2).padStart(2, "0")}.00 WIB (karena melewati batas cut-off ${cutOffFormatted})`;
   }
 
   return {
     current_time_wib: currentFormatted,
-    is_store_open: wibHour >= 8 && wibHour < 21,
+    is_store_open: wibHour >= openHour && wibHour < closeHour,
     same_day_dispatch_eligible: sameDayEligible,
-    cut_off_time: "15.00 WIB (Senin - Sabtu)",
+    cut_off_time: `${cutOffFormatted} (Senin - Sabtu)`,
     dispatch_schedule_estimate: estimate,
     courier_schedules: [
-      { courier: "JNT", pickup_hours: "11.00 & 16.00 WIB setiap hari" },
-      { courier: "SICEPAT", pickup_hours: "11.00 & 16.00 WIB (Senin - Sabtu)" },
-      { courier: "JNE", pickup_hours: "13.00 & 17.00 WIB (Senin - Sabtu)" },
+      { courier: "JNT", pickup_hours: `11.00 & ${String(cutOffHour + 1).padStart(2, "0")}.00 WIB setiap hari` },
+      { courier: "SICEPAT", pickup_hours: `11.00 & ${String(cutOffHour + 1).padStart(2, "0")}.00 WIB (Senin - Sabtu)` },
+      { courier: "JNE", pickup_hours: `13.00 & ${String(cutOffHour + 2).padStart(2, "0")}.00 WIB (Senin - Sabtu)` },
     ],
     note: sameDayEligible
-      ? "Transfer sebelum jam 15.00 WIB dijamin dikirim hari ini!"
+      ? `Transfer sebelum jam ${cutOffFormatted} dijamin dikirim hari ini!`
       : "Pesanan masuk antrean pengiriman kloter pertama besok pagi.",
   };
 }

@@ -10,6 +10,7 @@
  */
 
 import { env } from "@/lib/env";
+import type { TenantPromoTier, TenantShippingSchedule, TenantVoucher } from "@/lib/ai/types";
 
 export const AGENT_SYSTEM_PROMPT = `Anda adalah asisten Customer Service WhatsApp untuk sebuah toko online Indonesia. Nama toko: {{BUSINESS_NAME}}.
 
@@ -79,6 +80,9 @@ export type PromptVars = {
   botTone?: "RAMAH" | "FORMAL" | "ISLAMI" | "SANTAI" | string;
   customPersonaPrompt?: string;
   buyerJid?: string;
+  promoRules?: TenantPromoTier[];
+  voucherRules?: TenantVoucher[];
+  shippingSchedule?: TenantShippingSchedule;
 };
 
 export function buildSystemPrompt(vars: PromptVars): string {
@@ -117,6 +121,29 @@ export function buildSystemPrompt(vars: PromptVars): string {
 
   if (vars.knowledgeBaseContext) {
     prompt += `\n\n## RINGKASAN BASIS PENGETAHUAN & KEBIJAKAN TOKO\n${vars.knowledgeBaseContext}\n(Gunakan juga tool_baca_panduan_toko jika pembeli menanyakan detail spesifik yang memerlukan penelusuran lebih lanjut)`;
+  }
+
+  if (vars.promoRules && vars.promoRules.length > 0) {
+    const rulesDesc = vars.promoRules
+      .map((r) => `- Beli minimal ${r.min_qty} pcs: Diskon ${r.discount_percent}% ("${r.promo_name}")`)
+      .join("\n");
+    prompt += `\n\n## ATURAN PROMO BUNDLING RESMI TOKO INI\nToko ini memiliki kebijakan promo bundling resmi berikut:\n${rulesDesc}\nJika pembeli menanyakan promo atau membeli lebih dari 1 pcs, selalu panggil tool_hitung_promo_bundling untuk menghitung total potongan harga yang valid secara presisi.`;
+  } else {
+    prompt += `\n\n## ATURAN PROMO TOKO\nSaat ini toko tidak mengaktifkan promo diskon bundling. Jangan menjanjikan diskon kuantitas sembarangan kepada pembeli.`;
+  }
+
+  if (vars.voucherRules && vars.voucherRules.length > 0) {
+    const vouchersDesc = vars.voucherRules
+      .map((v) => {
+        const val = v.discount_amount ? `potongan Rp${v.discount_amount.toLocaleString("id-ID")}` : `diskon ${v.discount_percent}%`;
+        return `- Kode voucher "${v.code}": ${val}`;
+      })
+      .join("\n");
+    prompt += `\n\n## DAFTAR VOUCHER RESMI TOKO\n${vouchersDesc}\nValidasi pemakaian kode voucher selalu melalui tool_hitung_promo_bundling.`;
+  }
+
+  if (vars.shippingSchedule) {
+    prompt += `\n\n## JADWAL PENGIRIMAN & CUT-OFF RESMI TOKO\n- Jam operasional: ${vars.shippingSchedule.open_hour}.00 sampai ${vars.shippingSchedule.close_hour}.00 WIB\n- Batas transfer untuk kirim hari yang sama (same-day): pukul ${vars.shippingSchedule.cut_off_hour}.00 WIB\n- Selalu panggil tool_cek_jadwal_pengiriman jika pembeli menanyakan jam kirim atau pengiriman hari ini.`;
   }
 
   return prompt;
