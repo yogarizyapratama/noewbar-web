@@ -109,7 +109,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
   });
 
   test("sanitizeAgentReply: removes echoed buyer tags and leaked CoT sentences", () => {
-    const raw = "<pesan_pembeli>2 ke bandung</pesan_pembeli>Sekarang saya perlu memanggil tool_cek_ongkir untuk mengecek tarif.Totalnya Rp218.000 ya Kak.";
+    const raw = "<pesan_pembeli>2 ke bandung</pesan_pembeli>[Konteks Gambar Produk dari Pembeli: Kaos polos hitam]Sekarang saya perlu memanggil tool_cek_ongkir untuk mengecek tarif.Totalnya Rp218.000 ya Kak.";
     const clean = sanitizeAgentReply(raw);
     assert.strictEqual(clean, "Totalnya Rp218.000 ya Kak.");
   });

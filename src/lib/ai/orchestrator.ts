@@ -200,6 +200,8 @@ export function sanitizeAgentReply(raw: string): string {
 
   // 4. Remove [JID pembeli: ...] lines if model leaked them
   text = text.replace(/\[JID pembeli:[^\]]*\]/gi, "");
+  text = text.replace(/\[Konteks Gambar Produk[^\]]*\]/gi, "");
+  text = text.replace(/\[Lokasi pembeli[^\]]*\]/gi, "");
 
   // 5. Remove leading artifact tags like [JAWABAN], [BALASAN], [RESPONSE], [ANSWER], [CHAT], etc.
   text = text.replace(/^\s*\[(?:jawaban|balasan|response|answer|chat|cs|pesan)\]\s*:?\s*/i, "");

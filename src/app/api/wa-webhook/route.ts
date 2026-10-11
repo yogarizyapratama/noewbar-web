@@ -11,6 +11,7 @@ import { env } from "@/lib/env";
 import { safeEqual } from "@/lib/crypto";
 import { ingestInboundMedia } from "@/lib/media/inbound";
 import { analyzeProofMedia } from "@/lib/ai/vision-ocr";
+import { analyzeProductInquiryMedia } from "@/lib/ai/vision-product";
 import { reverseGeocode } from "@/lib/geo/geocode";
 import { notifyTenant } from "@/lib/realtime/event-bus";
 import { submitPaymentProof } from "@/lib/orders/orders";
@@ -128,7 +129,8 @@ export async function POST(req: NextRequest) {
   // --- Inbound media pipeline (chapter 8.B / 8.C.4): photo/video/document. ---
   // The daemon forwards media_url for downloaded files. We pull it into MinIO,
   // record the chat message, notify the dashboard, and for images run the AI
-  // Vision OCR as supportive insight (never auto-verification).
+  // Vision OCR for payment proofs or AI Vision product inquiry for catalog items.
+  let visualProductContext: string | null = null;
   if (payload.media_url) {
     const conversation = await prisma.conversation.findUnique({
       where: { tenant_id_buyer_jid: { tenant_id: tenant.id, buyer_jid: payload.sender_jid } },
@@ -206,8 +208,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // AI Vision Product Inquiry: jika gambar bukan bukti pembayaran pesanan aktif,
+    // analisa apakah ini foto contoh produk yang ditanyakan oleh pembeli.
+    if (!proof && ingest.ok && payload.media_kind === "image" && ingest.bytes) {
+      const productInsight = await analyzeProductInquiryMedia({ bytes: ingest.bytes, mime: ingest.mime });
+      if (productInsight.ok && productInsight.isProduct && productInsight.description) {
+        visualProductContext = `[Konteks Gambar Produk dari Pembeli: ${productInsight.description}${
+          productInsight.suggestedSearchQuery
+            ? ` (Kata kunci pencarian katalog yang disarankan: "${productInsight.suggestedSearchQuery}")`
+            : ""
+        }]`;
+
+        // Jika pembeli mengirim gambar produk tanpa caption, sintesiskan pesan pertanyaan alami.
+        if (!payload.body.trim()) {
+          payload.body = `Halo Kak, produk seperti di foto ini (${productInsight.description}) apakah ready atau ada di katalog?`;
+        }
+      }
+    }
+
     // B-2 FIX: jika ada caption/teks pada pesan bergambar, lanjut ke pipeline AI.
-    // Hanya return di sini jika body benar-benar kosong (media-only tanpa keterangan).
+    // Hanya return di sini jika body benar-benar kosong (media-only tanpa keterangan atau produk terdeteksi).
     if (!payload.body.trim()) {
       return ok({
         accepted: true,
@@ -218,11 +238,10 @@ export async function POST(req: NextRequest) {
           ? { amount: ocr.amount, bank: ocr.bank, confidence: ocr.confidence, ok: ocr.ok }
           : null,
         proof_attached: proof,
-        note: "Media-only inbound: stored, OCR sebagai panduan, verifikasi tetap manual oleh pemilik toko.",
+        note: "Media-only inbound: stored, tidak ada caption atau produk terdeteksi.",
       });
     }
     // Ada teks/caption bersama gambar: teruskan ke pipeline AI di bawah.
-    // locationContext tetap null, gambar sudah diproses di atas.
   }
 
   // --- Share-Location (USP 2): GPS -> kecamatan -> ongkir. ---
@@ -281,7 +300,7 @@ export async function POST(req: NextRequest) {
     tenantId: tenant.id,
     buyerJid: payload.sender_jid,
     buyerName: payload.sender_name || null,
-    incomingText: locationContext ? `${locationContext}\n\n${payload.body}` : payload.body,
+    incomingText: [locationContext, visualProductContext, payload.body].filter(Boolean).join("\n\n"),
     instanceKey: payload.instance_key,
     catalog: catalog.rows,
     catalogSource: catalog.source,

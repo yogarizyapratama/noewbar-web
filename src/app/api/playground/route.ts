@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { ok, fail, rateLimit } from "@/lib/http";
 import { readCatalog, fetchCatalog } from "@/lib/catalog/sheets";
 import { runAgent } from "@/lib/ai/orchestrator";
+import { analyzeProductInquiryMedia } from "@/lib/ai/vision-product";
 import type { ProductRow, ToolContext } from "@/lib/ai/types";
 import { isBotDisabled } from "@/lib/system/killswitch";
 
@@ -25,6 +26,8 @@ export const dynamic = "force-dynamic";
 
 const requestSchema = z.object({
   message: z.string().min(1).max(600),
+  image_url: z.string().url().optional(),
+  visual_context: z.string().max(1000).optional(),
   history: z
     .array(
       z.object({
@@ -219,12 +222,29 @@ export async function POST(req: NextRequest) {
     payment: { bankName: "", bankAccountNumber: "", bankAccountHolder: "", qrisUrl: null },
   };
 
+  let visualProductContext = parsed.data.visual_context
+    ? `[Konteks Gambar Produk dari Pembeli: ${parsed.data.visual_context}]`
+    : null;
+
+  if (!visualProductContext && parsed.data.image_url) {
+    const productInsight = await analyzeProductInquiryMedia(parsed.data.image_url);
+    if (productInsight.ok && productInsight.isProduct && productInsight.description) {
+      visualProductContext = `[Konteks Gambar Produk dari Pembeli: ${productInsight.description}${
+        productInsight.suggestedSearchQuery
+          ? ` (Kata kunci pencarian katalog yang disarankan: "${productInsight.suggestedSearchQuery}")`
+          : ""
+      }]`;
+    }
+  }
+
+  const incomingText = [visualProductContext, parsed.data.message].filter(Boolean).join("\n\n");
+
   const result = await runAgent({
     ctx,
     businessName: env.NEXT_PUBLIC_APP_NAME,
     catalogSource,
     history: parsed.data.history,
-    incomingText: parsed.data.message,
+    incomingText,
   });
 
   return ok({

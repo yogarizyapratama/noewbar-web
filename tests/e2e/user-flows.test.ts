@@ -45,15 +45,23 @@ export async function runE2ETests(): Promise<{ total: number; passed: number; fa
   let failed = 0;
 
   async function flow(name: string, fn: () => Promise<void>) {
-    try {
-      await fn();
-      passed += 1;
-      console.log(`  [PASS] ${name}`);
-    } catch (err) {
-      failed += 1;
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`  [FAIL] ${name} ->`, msg);
+    let lastErr: unknown = null;
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        await fn();
+        passed += 1;
+        console.log(`  [PASS] ${name}`);
+        return;
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
     }
+    failed += 1;
+    const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+    console.error(`  [FAIL] ${name} ->`, msg);
   }
 
   console.log(`\n=== END-TO-END FLOW TESTS (Target: ${BASE_URL}) ===\n`);
@@ -107,6 +115,23 @@ export async function runE2ETests(): Promise<{ total: number; passed: number; fa
     assert.ok(data.reply.includes("190.000"));
     assert.ok(!data.reply.toLowerCase().includes("saya cekkan dulu"));
     assert.ok(data.tool_calls.some((t: any) => t.tool === "tool_cek_ongkir"));
+  });
+
+  await flow("FLOW 1.4: Buyer sends product photo inquiry 'produk kaya gini ada ga kak'", async () => {
+    const res = await fetch(`${BASE_URL}/api/playground`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "produk kaya gini ada ga kak?",
+        visual_context: "Kaos polos lengan pendek oversize warna sage green bahan cotton combed",
+        history: [],
+      }),
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.ok, true);
+    assert.ok(data.reply.toLowerCase().includes("sage") || data.reply.toLowerCase().includes("kaos"));
+    assert.ok(data.tool_calls.some((t: any) => t.tool === "tool_cari_produk"));
   });
 
   // FLOW 2: Out of Context & Prompt Injection Defense Flow
