@@ -9,7 +9,7 @@ import { telegramHealth } from "@/lib/alerts/telegram";
 import { gatewayHealth } from "@/lib/ai/orchestrator";
 import { safeEqual } from "@/lib/crypto";
 import { env } from "@/lib/env";
-import { publicUrlFor } from "@/lib/storage/minio";
+import { publicUrlFor, tenantUsageBytes, TENANT_QUOTA_BYTES } from "@/lib/storage/minio";
 
 /**
  * Maintenance / cron endpoint (chapter 12 + chapter 11).
@@ -77,11 +77,12 @@ export async function GET() {
     include: { wa_instances: true, catalog_settings: true },
   });
 
-  const [daemon, gateway, telegram, queue] = await Promise.all([
+  const [daemon, gateway, telegram, queue, storageUsed] = await Promise.all([
     waDaemon.health(),
     gatewayHealth(),
     telegramHealth(),
     nudgeQueueStats(),
+    tenantUsageBytes(session.sub),
   ]);
 
   const scheduler = await schedulerHealth();
@@ -126,6 +127,26 @@ export async function GET() {
       bot_tone: tenant?.catalog_settings?.bot_tone ?? "RAMAH",
       custom_persona_prompt: tenant?.catalog_settings?.custom_persona_prompt ?? "",
       greeting_message: tenant?.catalog_settings?.greeting_message ?? "",
+    },
+    persona: {
+      bot_name: tenant?.catalog_settings?.bot_name ?? "Admin CS",
+      bot_tone: tenant?.catalog_settings?.bot_tone ?? "RAMAH",
+      custom_persona_prompt: tenant?.catalog_settings?.custom_persona_prompt ?? "",
+      greeting_message: tenant?.catalog_settings?.greeting_message ?? "",
+    },
+    promos: {
+      promo_rules: (tenant?.catalog_settings?.promo_rules as unknown as unknown[]) ?? [],
+      voucher_rules: (tenant?.catalog_settings?.voucher_rules as unknown as unknown[]) ?? [],
+    },
+    shipping: {
+      cut_off_hour: tenant?.catalog_settings?.shipping_cut_off_hour ?? 15,
+      open_hour: tenant?.catalog_settings?.shipping_open_hour ?? 8,
+      close_hour: tenant?.catalog_settings?.shipping_close_hour ?? 21,
+    },
+    storage: {
+      used_bytes: storageUsed,
+      quota_bytes: TENANT_QUOTA_BYTES,
+      used_percent: Math.round((storageUsed / TENANT_QUOTA_BYTES) * 1000) / 10,
     },
     ai: {
       gateway_ok: gateway.ok,

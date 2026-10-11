@@ -29,10 +29,41 @@ export type Health = {
     custom_persona_prompt: string;
     greeting_message: string;
   };
+  promos?: {
+    promo_rules: TenantPromoTier[];
+    voucher_rules: TenantVoucher[];
+  };
+  shipping?: TenantShippingSchedule;
+  storage?: StorageStats;
+  media_uploads?: number;
   ai: { gateway_ok: boolean; model: string; latency_ms: number; error: string | null };
   telegram: { ok: boolean; username: string | null };
   queue: { redis: boolean; waiting: number; delayed: number; pendingInDb: number };
   pending_proofs: number;
+};
+
+export type TenantPromoTier = {
+  min_qty: number;
+  discount_percent: number;
+  promo_name: string;
+};
+
+export type TenantVoucher = {
+  code: string;
+  discount_amount?: number;
+  discount_percent?: number;
+};
+
+export type TenantShippingSchedule = {
+  cut_off_hour: number;
+  open_hour: number;
+  close_hour: number;
+};
+
+export type StorageStats = {
+  used_bytes: number;
+  quota_bytes: number;
+  used_percent: number;
 };
 
 export type OrderItem = {

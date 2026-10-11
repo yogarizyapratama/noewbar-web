@@ -21,6 +21,7 @@ import {
   Receipt,
   ShoppingBag,
   Smartphone,
+  Tag,
 } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/app-shell";
 import { Badge, Button, ErrorState, StatusDot } from "@/components/ui";
@@ -29,6 +30,7 @@ import { PanelStatus } from "./panel-status";
 import { PanelWhatsapp } from "./panel-whatsapp";
 import { PanelProducts } from "./panel-products";
 import { PanelWebsiteBuilder } from "./panel-website-builder";
+import { PanelPromos } from "./panel-promos";
 import { PanelKatalog } from "./panel-katalog";
 import { PanelSimulator } from "./panel-simulator";
 import { PanelPesanan } from "./panel-pesanan";
@@ -41,8 +43,9 @@ type TabId =
   | "whatsapp"
   | "products"
   | "website"
-  | "katalog"
   | "simulator"
+  | "promos"
+  | "katalog"
   | "pesanan"
   | "chat"
   | "billing";
@@ -75,6 +78,13 @@ const NAV: NavItem<TabId>[] = [
     group: "Operasional",
     icon: <Bot className="h-4 w-4" aria-hidden="true" />,
     keywords: "ai persona bot simulator wa tes coba uji",
+  },
+  {
+    id: "promos",
+    label: "Promosi & Pengiriman",
+    group: "Operasional",
+    icon: <Tag className="h-4 w-4" aria-hidden="true" />,
+    keywords: "diskon promo voucher bundling jam operasional cut off kirim batas waktu kupon",
   },
   {
     id: "katalog",
@@ -443,6 +453,9 @@ export default function DashboardPage() {
       {tab === "status" && (
         <PanelStatus
           health={health}
+          orders={orders}
+          counts={counts}
+          conversations={conversations}
           error={healthError}
           loading={healthLoading}
           onGoWhatsapp={() => setTab("whatsapp")}
@@ -450,13 +463,31 @@ export default function DashboardPage() {
           onGoCatalog={() => setTab("katalog")}
           onGoOrders={() => setTab("pesanan")}
           onGoChat={() => setTab("chat")}
-          onRefresh={loadHealth}
+          onGoProducts={() => setTab("products")}
+          onGoWebsite={() => setTab("website")}
+          onGoPromos={() => setTab("promos")}
+          onRefresh={() => {
+            loadHealth();
+            loadOrders();
+            loadConversations();
+          }}
         />
       )}
 
       {tab === "products" && <PanelProducts />}
 
       {tab === "website" && <PanelWebsiteBuilder />}
+
+      {tab === "promos" && health && (
+        <PanelPromos
+          initialPromoRules={health.promos?.promo_rules ?? []}
+          initialVouchers={health.promos?.voucher_rules ?? []}
+          initialShipping={health.shipping}
+          onRefresh={() => {
+            loadHealth();
+          }}
+        />
+      )}
 
       {tab === "whatsapp" && <PanelWhatsapp health={health} onRefreshHealth={loadHealth} />}
 

@@ -13,6 +13,7 @@ import {
   ArrowLeft,
   Bot,
   MessageSquare,
+  Search,
   Send,
   UserRound,
 } from "lucide-react";
@@ -55,9 +56,21 @@ export function PanelChat({
   const [sending, setSending] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [mobileThread, setMobileThread] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [takeoverFilter, setTakeoverFilter] = useState<"all" | "takeover" | "bot">("all");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
+
+  const filteredConversations = conversations.filter((c) => {
+    if (takeoverFilter === "takeover" && !c.is_human_takeover) return false;
+    if (takeoverFilter === "bot" && c.is_human_takeover) return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const name = (c.buyer_name || "").toLowerCase();
+    const jid = c.buyer_jid.toLowerCase();
+    return name.includes(q) || jid.includes(q);
+  });
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -93,7 +106,53 @@ export function PanelChat({
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-600">
               Percakapan
             </p>
-            <span className="meta">{conversations.length}</span>
+            <span className="meta">{filteredConversations.length} / {conversations.length}</span>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className="border-b border-ink-100 p-2.5 space-y-2 bg-ink-50/50">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-ink-400" />
+              <input
+                type="text"
+                placeholder="Cari pembeli / nomor..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="field field-sm pl-8 text-xs h-8"
+              />
+            </div>
+            <div className="flex items-center gap-1 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setTakeoverFilter("all")}
+                className={cn(
+                  "px-2 py-0.5 rounded font-medium transition-colors",
+                  takeoverFilter === "all" ? "bg-ink-900 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200"
+                )}
+              >
+                Semua
+              </button>
+              <button
+                type="button"
+                onClick={() => setTakeoverFilter("takeover")}
+                className={cn(
+                  "px-2 py-0.5 rounded font-medium transition-colors",
+                  takeoverFilter === "takeover" ? "bg-amber-800 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200"
+                )}
+              >
+                Takeover
+              </button>
+              <button
+                type="button"
+                onClick={() => setTakeoverFilter("bot")}
+                className={cn(
+                  "px-2 py-0.5 rounded font-medium transition-colors",
+                  takeoverFilter === "bot" ? "bg-emerald-800 text-white" : "bg-ink-100 text-ink-600 hover:bg-ink-200"
+                )}
+              >
+                Bot AI
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -107,7 +166,13 @@ export function PanelChat({
               />
             )}
 
-            {conversations.map((c) => {
+            {!loading && conversations.length > 0 && filteredConversations.length === 0 && (
+              <div className="p-4 text-center text-xs text-ink-500">
+                Tidak ada percakapan yang cocok dengan filter pencarian.
+              </div>
+            )}
+
+            {filteredConversations.map((c) => {
               const isActive = c.id === activeId;
               return (
                 <button
