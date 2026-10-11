@@ -211,7 +211,7 @@ export async function GET() {
       include: {
         catalog_settings: { select: { sheets_url: true, origin_subdistrict: true, last_synced_at: true } },
         subscriptions: { orderBy: { created_at: "desc" }, take: 1 },
-        _count: { select: { conversations: true, orders: true, knowledge_docs: true } },
+        _count: { select: { conversations: true, orders: true, knowledge_docs: true, products: true, websites: true } },
       },
     }),
     prisma.waInstance.findMany({
@@ -270,6 +270,8 @@ export async function GET() {
       conversations: t._count.conversations,
       orders: t._count.orders,
       knowledge_docs: t._count.knowledge_docs,
+      products: t._count.products,
+      websites: t._count.websites,
       sheet: t.catalog_settings
         ? {
             url: t.catalog_settings.sheets_url,

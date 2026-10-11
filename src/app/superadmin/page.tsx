@@ -96,6 +96,8 @@ export type ConsoleData = {
     conversations: number;
     orders: number;
     knowledge_docs?: number;
+    products?: number;
+    websites?: number;
     sheet: { url: string; origin: string; last_synced_at: string | null } | null;
     subscription: { plan: string; status: string; expires_at: string; amount: number } | null;
   }[];
@@ -911,6 +913,8 @@ export default function SuperadminPage() {
                           <span>WA {t.owner_whatsapp}</span>
                           <span>{t.conversations} percakapan</span>
                           <span>{t.orders} pesanan</span>
+                          <span>{t.products ?? 0} produk</span>
+                          <span>{t.websites ?? 0} website</span>
                           <span>{t.knowledge_docs ?? 0} dokumen AI</span>
                           <span>trial s.d. {ts(t.trial_expires_at)}</span>
                         </p>

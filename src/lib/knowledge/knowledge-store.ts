@@ -64,12 +64,43 @@ export async function getActiveKnowledgeText(tenantId: string): Promise<string> 
     select: { title: true, doc_type: true, content_text: true },
   });
 
-  if (docs.length === 0) return '';
-
-  const sections = docs.map((d) =>
+  const sections: string[] = docs.map((d) =>
     `=== ${d.title} (${d.doc_type}) ===\n${d.content_text.slice(0, 1500)}`
   );
 
+  // USP 3: Website as AI Knowledge Source
+  try {
+    const websites = await prisma.website.findMany({
+      where: { tenant_id: tenantId, status: "PUBLISHED", is_knowledge_source: true },
+      select: { name: true, title: true, description: true, published_sections: true, sections: true },
+    });
+
+    for (const site of websites) {
+      const siteSections = (site.published_sections || site.sections) as any[];
+      if (Array.isArray(siteSections)) {
+        const textParts: string[] = [];
+        if (site.description) textParts.push(`Tentang Toko: ${site.description}`);
+        for (const sec of siteSections) {
+          if (sec.type === "faq" && Array.isArray(sec.content?.items)) {
+            const faqList = sec.content.items.map((item: any) => `Tanya: ${item.q}\nJawab: ${item.a}`).join("\n");
+            textParts.push(`FAQ Toko:\n${faqList}`);
+          } else if (sec.type === "benefits" && Array.isArray(sec.content?.items)) {
+            const benList = sec.content.items.map((item: any) => `- ${item.title}: ${item.desc}`).join("\n");
+            textParts.push(`Keunggulan Layanan:\n${benList}`);
+          } else if (sec.type === "announcement" && sec.content?.text) {
+            textParts.push(`Pengumuman: ${sec.content.text}`);
+          }
+        }
+        if (textParts.length > 0) {
+          sections.push(`=== WEBSITE TOKO (${site.name}) ===\n${textParts.join("\n\n")}`);
+        }
+      }
+    }
+  } catch {
+    // Non-critical website extraction fallback
+  }
+
+  if (sections.length === 0) return '';
   return sections.join('\n\n');
 }
 

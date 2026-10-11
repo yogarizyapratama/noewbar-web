@@ -1,4 +1,5 @@
 import type { ProductRow } from "@/lib/ai/types";
+import prisma from "@/lib/prisma";
 
 /**
  * Google Sheets catalog reader (specification chapter 2, USP 1: zero learning curve).
@@ -298,17 +299,62 @@ export function clearCatalogCache(tenantId?: string): void {
 
 /**
  * Reads a tenant's catalog with graceful degradation:
- *   fresh sheet -> cache -> (caller decides) hard failure.
+ *   database products + fresh sheet -> cache -> (caller decides) hard failure.
  */
 export async function readCatalog(
   tenantId: string,
   sheetsUrl: string
 ): Promise<{ rows: ProductRow[]; headers: string[]; source: "sheet" | "cache"; warning?: string }> {
+  let dbRows: ProductRow[] = [];
+  try {
+    const dbProducts = await prisma.product.findMany({
+      where: { tenant_id: tenantId, status: "ACTIVE" },
+      orderBy: { created_at: "desc" },
+    });
+    if (dbProducts.length > 0) {
+      dbRows = dbProducts.map((p) => {
+        let variantStr = "";
+        if (Array.isArray(p.variants) && p.variants.length > 0) {
+          const first = p.variants[0];
+          variantStr = typeof first === "string" ? first : (first as { name?: string }).name || "";
+        }
+        let photoUrl: string | null = null;
+        if (Array.isArray(p.images) && p.images.length > 0) {
+          photoUrl = String(p.images[0]);
+        }
+        const attrs = (p.attributes && typeof p.attributes === "object") ? p.attributes as Record<string, unknown> : {};
+        const weight = typeof attrs.weight_grams === "number" ? attrs.weight_grams : 500;
+
+        return {
+          sku: p.sku,
+          name: p.name,
+          variant: variantStr,
+          price: Number(p.discount_price ?? p.price),
+          stock: p.stock,
+          photo_url: photoUrl,
+          video_url: null,
+          description: p.description || null,
+          category: p.category || null,
+          weight_grams: weight,
+          is_active: p.status === "ACTIVE",
+        };
+      });
+    }
+  } catch {
+    // database fallback
+  }
+
   const fresh = await fetchCatalog(sheetsUrl);
 
   if (fresh.ok) {
-    setCachedCatalog(tenantId, fresh.rows, fresh.headers);
-    return { rows: fresh.rows, headers: fresh.headers, source: "sheet" };
+    const existingSkus = new Set(dbRows.map((r) => r.sku.toLowerCase()));
+    const merged = [...dbRows, ...fresh.rows.filter((r) => !existingSkus.has(r.sku.toLowerCase()))];
+    setCachedCatalog(tenantId, merged, fresh.headers);
+    return { rows: merged, headers: fresh.headers, source: "sheet" };
+  }
+
+  if (dbRows.length > 0) {
+    return { rows: dbRows, headers: ["sku", "name", "price", "stock"], source: "cache", warning: fresh.error };
   }
 
   const cached = getCachedCatalog(tenantId);

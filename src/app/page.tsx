@@ -15,17 +15,19 @@
 import { useState } from "react";
 import {
   ArrowRight,
+  Bot,
   Check,
-  Clock,
   Database,
-  ImageIcon,
+  Globe,
+  Layers,
   LayoutDashboard,
   Minus,
   Plus,
   ShieldCheck,
+  ShoppingBag,
   Smartphone,
+  Sparkles,
   Truck,
-  UserCheck,
 } from "lucide-react";
 import { Badge, StatusDot, cn } from "@/components/ui";
 import { PlaygroundPanel } from "@/components/landing/playground";
@@ -37,57 +39,67 @@ const FAQ = [
     a: "Bot Noewbar hanya membalas pembeli yang chat lebih dulu (inbound) dan meniru jeda mengetik manusia 1,8 sampai 3,2 detik sebelum mengirim. Sistem ini bukan alat spam blast massal.",
   },
   {
-    q: "Apakah laptop atau komputer saya harus menyala terus?",
-    a: "Tidak. Seluruh sistem berjalan di server cloud 24 jam nonstop. Anda bisa mematikan laptop dan tidur.",
+    q: "Bagaimana cara membuat website toko online dengan AI?",
+    a: "Cukup masukkan prompt instruksi jenis bisnis dan preferensi gaya di AI Website Builder. Sistem akan menyusun struktur section, copywriting, dan menampilkan katalog produk Anda secara otomatis.",
   },
   {
-    q: "Bagaimana jika saya ingin membalas chat pembeli sendiri?",
-    a: "Anda bisa membalas langsung dari HP seperti biasa, atau klik Ambil Alih di dashboard untuk menonaktifkan bot pada pembeli tersebut.",
-  },
-  {
-    q: "Apa yang terjadi setelah 7 hari uji coba berakhir?",
-    a: "Sistem mengirim notifikasi perpanjangan lewat WhatsApp. Kalau puas, bayar Rp 199.000 via QRIS Midtrans. Kalau tidak, bot otomatis nonaktif tanpa tagihan tersembunyi.",
-  },
-  {
-    q: "Bagaimana bot tahu stok dan harga terbaru?",
-    a: "Bot membaca spreadsheet Google Sheets Anda yang sudah di-publish ke web. Anda cukup mengedit spreadsheet seperti biasa, tanpa mempelajari dashboard baru.",
+    q: "Apakah informasi di website dijadikan sumber pengetahuan AI WhatsApp?",
+    a: "Ya. Halaman dan section website yang telah dipublikasikan (seperti FAQ, kebijakan pengiriman, dan keunggulan) otomatis tersinkronisasi sebagai knowledge base AI customer service Anda.",
   },
   {
     q: "Apakah uang pembayaran dari pembeli ditampung Noewbar?",
     a: "Tidak. Dana pembeli 100% masuk langsung ke rekening atau QRIS toko Anda. Noewbar hanya membantu menyusun tagihan dan mengingatkan pembeli.",
   },
+  {
+    q: "Bagaimana bot tahu stok dan harga terbaru?",
+    a: "Bot membaca data dari katalog produk PostgreSQL Anda dan Google Sheets secara real-time. Perubahan harga dan stok langsung berlaku tanpa delay.",
+  },
+  {
+    q: "Apa yang terjadi setelah 7 hari uji coba berakhir?",
+    a: "Sistem mengirim notifikasi perpanjangan lewat WhatsApp. Kalau puas, bayar Rp 199.000 via QRIS Midtrans. Kalau tidak, bot otomatis nonaktif tanpa tagihan tersembunyi.",
+  },
 ];
 
 const FEATURES = [
   {
+    icon: Bot,
+    t: "AI Customer Service Berbasis Data Bisnis",
+    d: "AI menjawab pertanyaan pembeli berdasarkan katalog produk aktual, FAQ, dan kebijakan toko resmi. Tidak ada jawaban mengarang atau harga palsu.",
+  },
+  {
+    icon: ShoppingBag,
+    t: "Smart Product Catalog",
+    d: "Kelola produk, varian, harga diskon, foto, dan stok dinamis langsung dari database sistem atau Google Sheets dalam satu tempat.",
+  },
+  {
+    icon: Globe,
+    t: "AI Website Builder & Store Generator",
+    d: "Buat website toko online atau landing page profesional cukup melalui prompt dan data bisnis yang sudah ada tanpa perlu coding.",
+  },
+  {
+    icon: Layers,
+    t: "Visual Block Editor",
+    d: "Sesuaikan tata letak halaman secara visual per section, atau instruksikan AI untuk memperbarui bagian tertentu seperti Hero atau FAQ.",
+  },
+  {
+    icon: Sparkles,
+    t: "Template Siap Pakai",
+    d: "Pilihan template desain spesifik industri: Skincare, Fashion, F&B, Gadget, hingga Toko Lokal UMKM yang teroptimasi mobile.",
+  },
+  {
     icon: Database,
-    t: "Sinkron langsung ke Google Sheets",
-    d: "Toko tidak dipaksa mempelajari dashboard baru. Cukup pakai spreadsheet stok dan harga yang sudah ada di HP. Perubahan harga dan stok terbaca bot pada chat berikutnya.",
+    t: "Sinkronisasi Knowledge Base AI",
+    d: "Konten website yang dipublikasikan dan dokumen SOP otomatis menjadi sumber rujukan bot WhatsApp saat melayani pelanggan.",
   },
   {
     icon: Truck,
-    t: "Cek ongkir otomatis",
-    d: "Bot memproses nama kecamatan singkat maupun share location GPS, lalu menghitung tarif J&T, SiCepat, dan JNE ke total tagihan. Tarif disimpan di cache PostgreSQL.",
-  },
-  {
-    icon: Clock,
-    t: "Mesin anti-ghosting 2 jam",
-    d: "Kalau pembeli berhenti merespons 2 jam setelah menerima nomor rekening, bot mengirim satu pesan pengingat yang sopan dan mengamankan reservasi stok.",
-  },
-  {
-    icon: UserCheck,
-    t: "Rem tangan ke WhatsApp Anda",
-    d: "Kalau terdeteksi komplain, negosiasi agresif, atau pertanyaan di luar katalog, bot diam dan langsung mengirim peringatan ke WhatsApp pribadi pemilik toko. Telegram opsional.",
-  },
-  {
-    icon: ImageIcon,
-    t: "Kirim foto dan video asli",
-    d: "Bot mengirim foto atau video asli produk sebagai lampiran WhatsApp native, bukan tautan teks yang membingungkan pembeli.",
+    t: "Cek Ongkir Otomatis & Logistik",
+    d: "Bot memproses nama kecamatan pembeli dan menghitung estimasi tarif J&T, SiCepat, dan JNE langsung ke total tagihan pesanan.",
   },
   {
     icon: ShieldCheck,
-    t: "Verifikasi pembayaran dua langkah",
-    d: "Foto struk dari pembeli hanya berstatus sedang diperiksa. Dana dinyatakan masuk setelah Anda cek mutasi rekening dan klik verifikasi. Ini yang menutup celah struk editan.",
+    t: "Multi-Tenant Workspace Aman",
+    d: "Setiap toko memiliki ruang terisolasi mandiri. Data pelanggan, draft website, dan transaksi terjamin privasinya antar tenant.",
   },
 ];
 
@@ -167,15 +179,13 @@ export default function LandingPage() {
             <div className="animate-fade-up">
               <Badge tone="signal" className="mb-4">
                 <StatusDot ok />
-                Customer service WhatsApp 24 jam
+                Platform Terpadu: AI CS + Website Builder + Katalog
               </Badge>
               <h1 className="text-display font-bold text-ink sm:text-display-lg">
-                Asisten WhatsApp yang menjaga toko online Anda tetap jualan saat Anda tidur.
+                Kelola Produk, Layani Pelanggan dengan AI, dan Bangun Toko Online dalam Satu Platform.
               </h1>
               <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-600 sm:text-lg">
-                40% calon pembeli berbelanja tengah malam saat Anda sudah beristirahat. Noewbar CS
-                Pro membalas chat secara cerdas dalam 2 detik, memeriksa stok langsung dari Google
-                Sheets Anda, menghitung ongkir otomatis, dan mengejar pembeli yang menghilang.
+                Atur katalog produk, jadikan informasi bisnis sebagai sumber pengetahuan AI, dan buat landing page atau toko online melalui prompt tanpa harus membangun semuanya dari nol.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">

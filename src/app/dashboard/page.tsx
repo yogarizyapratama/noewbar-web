@@ -13,11 +13,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bot,
   CreditCard,
+  Globe,
   LayoutDashboard,
   LogOut,
   MessageSquare,
   Package,
   Receipt,
+  ShoppingBag,
   Smartphone,
 } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -25,6 +27,8 @@ import { Badge, Button, ErrorState, StatusDot } from "@/components/ui";
 import { AuthPanel } from "./auth-panel";
 import { PanelStatus } from "./panel-status";
 import { PanelWhatsapp } from "./panel-whatsapp";
+import { PanelProducts } from "./panel-products";
+import { PanelWebsiteBuilder } from "./panel-website-builder";
 import { PanelKatalog } from "./panel-katalog";
 import { PanelSimulator } from "./panel-simulator";
 import { PanelPesanan } from "./panel-pesanan";
@@ -32,7 +36,16 @@ import { PanelChat } from "./panel-chat";
 import { PanelBilling } from "./panel-billing";
 import type { Billing, ConversationRow, Health, MessageRow, OrderRow } from "./types";
 
-type TabId = "status" | "whatsapp" | "katalog" | "simulator" | "pesanan" | "chat" | "billing";
+type TabId =
+  | "status"
+  | "whatsapp"
+  | "products"
+  | "website"
+  | "katalog"
+  | "simulator"
+  | "pesanan"
+  | "chat"
+  | "billing";
 
 const NAV: NavItem<TabId>[] = [
   {
@@ -43,6 +56,20 @@ const NAV: NavItem<TabId>[] = [
     keywords: "dashboard ringkasan beranda kpi status toko utama",
   },
   {
+    id: "products",
+    label: "Katalog Produk & AI",
+    group: "Operasional",
+    icon: <ShoppingBag className="h-4 w-4" aria-hidden="true" />,
+    keywords: "produk barang katalog sku harga stok varian import csv",
+  },
+  {
+    id: "website",
+    label: "AI Website Builder",
+    group: "Operasional",
+    icon: <Globe className="h-4 w-4" aria-hidden="true" />,
+    keywords: "website toko online builder landing page prompt template",
+  },
+  {
     id: "simulator",
     label: "AI Persona & Simulator",
     group: "Operasional",
@@ -51,7 +78,7 @@ const NAV: NavItem<TabId>[] = [
   },
   {
     id: "katalog",
-    label: "Katalog & Media",
+    label: "Basis Dokumen & Sheets",
     group: "Operasional",
     icon: <Package className="h-4 w-4" aria-hidden="true" />,
     keywords: "spreadsheet sheets stok harga ongkir kecamatan dokumen sop",
@@ -426,6 +453,10 @@ export default function DashboardPage() {
           onRefresh={loadHealth}
         />
       )}
+
+      {tab === "products" && <PanelProducts />}
+
+      {tab === "website" && <PanelWebsiteBuilder />}
 
       {tab === "whatsapp" && <PanelWhatsapp health={health} onRefreshHealth={loadHealth} />}
 

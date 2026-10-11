@@ -303,7 +303,13 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
     // single tool-calls at once!"). So the history we build is forced to one call
     // per round; any remaining calls the model asked for are offered again on the
     // next round, which MAX_TOOL_ROUNDS covers.
-    const requested = (msg.tool_calls ?? []).slice(0, 1);
+    const requested = (msg.tool_calls ?? []).slice(0, 1).map((tc, idx) => {
+      const clean = (tc.id || "").replace(/[^a-zA-Z0-9]/g, "");
+      const safeId = /^[a-zA-Z0-9]{9}$/.test(clean)
+        ? clean
+        : (clean + "call00000" + idx).slice(0, 9);
+      return { ...tc, id: safeId };
+    });
 
     if (requested.length === 0) {
       messages.push({
@@ -315,7 +321,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
 
     messages.push({
       role: "assistant",
-      content: msg.content ?? null,
+      content: msg.content || "",
       tool_calls: requested.map((tc) => ({
         id: tc.id,
         type: "function" as const,
