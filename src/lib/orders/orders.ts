@@ -78,7 +78,7 @@ async function reservedQtyForSku(tenantId: string, sku: string): Promise<number>
   return Number(rows[0]?.reserved ?? 0);
 }
 
-function buildOrderNumber(): string {
+export function buildOrderNumber(): string {
   const d = new Date();
   const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(
     d.getDate()

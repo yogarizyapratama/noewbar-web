@@ -70,7 +70,11 @@ function isKnownTool(name: string): name is ToolName {
  * not contain a Rupiah figure the tools never produced. This is the last line of
  * defence against invented prices.
  */
-export function findUnbackedPrices(replyText: string, toolOutcomes: ToolExecutionResult[]): string[] {
+export function findUnbackedPrices(
+  replyText: string,
+  toolOutcomes: ToolExecutionResult[],
+  additionalBackedValues?: (string | number)[]
+): string[] {
   const produced = new Set<string>();
   const backedNums = new Set<number>();
 
@@ -100,6 +104,9 @@ export function findUnbackedPrices(replyText: string, toolOutcomes: ToolExecutio
   };
 
   toolOutcomes.forEach((o) => collect(o.payload));
+  if (additionalBackedValues) {
+    additionalBackedValues.forEach((val) => collect(val));
+  }
 
   // Honest arithmetic over tool-backed values must NOT be flagged as invented:
   // a reply may legitimately quote subtotal + ongkir (e.g. 185.000 + 11.000 =
@@ -202,6 +209,9 @@ export function sanitizeAgentReply(raw: string): string {
 
   // 7. Remove accidental leaked CoT / internal monologue sentences (e.g. "Sekarang saya perlu mencari...")
   text = text.replace(/(?:Sekarang,?\s+)?saya\s+(?:perlu|harus|akan)\s+(?:mencari|mengecek|memanggil|menggunakan)[\s\S]*?(?:tool_[a-z_]+)[\s\S]*?\.\s*/gi, "");
+
+  // 8. Replace em-dash and en-dash with standard comma or hyphen
+  text = text.replace(/[\u2014\u2013]/g, ", ");
 
   return text.trim();
 }
@@ -331,7 +341,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
       const rawContent = msg.content ?? "";
       const isDangling =
         round < 2 &&
-        /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)\s+(?:dulu|sebentar|stok|ongkir)|(?:tunggu|mohon tunggu)\s+sebentar|sebentar\s+ya\s+kak)/i.test(
+        /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)|(?:tunggu|mohon tunggu)\s+sebentar|sebentar\s+ya\s+kak)/i.test(
           rawContent
         ) &&
         !rawContent.includes("Rp");
@@ -461,7 +471,19 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
     replyText = degraded ? SAFE_FALLBACK_REPLY : "Baik Kak, saya catat dulu ya 🙏";
   }
 
-  const unbacked = findUnbackedPrices(replyText, toolOutcomes);
+  const catalogAndHistoryPrices: number[] = [];
+  (input.history ?? []).forEach((h) => {
+    const matches = h.content.match(/(?:rp\.?\s*)([0-9][0-9.]*)/gi) ?? [];
+    matches.forEach((m) => {
+      const num = parseInt(m.replace(/[^0-9]/g, ""), 10);
+      if (num > 100) catalogAndHistoryPrices.push(num);
+    });
+  });
+  (input.ctx.catalog ?? []).forEach((item) => {
+    if (item.price > 0) catalogAndHistoryPrices.push(item.price);
+  });
+
+  const unbacked = findUnbackedPrices(replyText, toolOutcomes, catalogAndHistoryPrices);
   if (unbacked.length > 0) {
     degraded = true;
     degradationReason = `Blocked unbacked price(s) in reply: ${unbacked.join(", ")}`;

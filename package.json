@@ -14,6 +14,7 @@
     "start:next": "next start -p 3001",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test": "tsx scripts/run-all-tests.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "gates": "tsx scripts/gates.ts",
