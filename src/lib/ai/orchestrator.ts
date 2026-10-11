@@ -3,7 +3,7 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import prisma from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { TOOL_SCHEMAS, executeTool } from "@/lib/ai/micro-tools";
-import { buildSystemPrompt, fenceUntrusted, MAX_HISTORY_MESSAGES, MAX_TOOL_ROUNDS, SAFE_FALLBACK_REPLY } from "@/lib/ai/prompts";
+import { buildSystemPrompt, MAX_HISTORY_MESSAGES, MAX_TOOL_ROUNDS, SAFE_FALLBACK_REPLY } from "@/lib/ai/prompts";
 import { recordToolTraces } from "@/lib/ai/micro-tools";
 import type {
   OutboundMedia,
@@ -184,11 +184,21 @@ export function sanitizeAgentReply(raw: string): string {
   );
   text = text.replace(/\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*$/gi, "");
 
-  // 3. Remove leading artifact tags like [JAWABAN], [BALASAN], [RESPONSE], [ANSWER], [CHAT], etc.
+  // 3. Remove echoed <pesan_pembeli> blocks if model leaked them
+  text = text.replace(/<pesan_pembeli>[\s\S]*?<\/pesan_pembeli>/gi, "");
+  text = text.replace(/<\/?pesan_pembeli>/gi, "");
+
+  // 4. Remove [JID pembeli: ...] lines if model leaked them
+  text = text.replace(/\[JID pembeli:[^\]]*\]/gi, "");
+
+  // 5. Remove leading artifact tags like [JAWABAN], [BALASAN], [RESPONSE], [ANSWER], [CHAT], etc.
   text = text.replace(/^\s*\[(?:jawaban|balasan|response|answer|chat|cs|pesan)\]\s*:?\s*/i, "");
 
-  // 4. Remove standalone [JAWABAN] or [BALASAN] anywhere if left behind
+  // 6. Remove standalone [JAWABAN] or [BALASAN] anywhere if left behind
   text = text.replace(/\[(?:jawaban|balasan|response|answer)\]/gi, "");
+
+  // 7. Remove accidental leaked CoT / internal monologue sentences (e.g. "Sekarang saya perlu mencari...")
+  text = text.replace(/(?:Sekarang,?\s+)?saya\s+(?:perlu|harus|akan)\s+(?:mencari|mengecek|memanggil|menggunakan)[\s\S]*?(?:tool_[a-z_]+)[\s\S]*?\.\s*/gi, "");
 
   return text.trim();
 }
@@ -232,6 +242,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
         botName: input.botName,
         botTone: input.botTone,
         customPersonaPrompt: input.customPersonaPrompt,
+        buyerJid: input.ctx.buyerJid,
       }),
     },
     // History is already windowed by the query in handleInboundMessage
@@ -242,7 +253,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
     })),
     {
       role: "user",
-      content: `${fenceUntrusted(input.incomingText)}\n\n[JID pembeli: ${input.ctx.buyerJid}]`,
+      content: input.incomingText,
     },
   ];
 
@@ -379,30 +390,38 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
 
   let replyText = "";
 
-  // Final composition turn: force a plain text answer with the data already gathered.
-  // The directive rides with the leading system prompt for the same reason as above.
-  const finalMessages: ChatCompletionMessageParam[] = [
-    ...messages.slice(0, 1),
-    {
-      role: "system",
-      content:
-        "Susun balasan final untuk pembeli. Jangan memanggil tool lagi. Jangan menyebut harga/stok yang tidak ada di data tool di atas.",
-    },
-    ...messages.slice(1),
-  ];
+  if (toolOutcomes.length > 0) {
+    // Final composition turn: force a plain text answer with the data already gathered.
+    // The directive rides with the leading system prompt for the same reason as above.
+    const finalMessages: ChatCompletionMessageParam[] = [
+      ...messages.slice(0, 1),
+      {
+        role: "system",
+        content:
+          "Susun balasan final untuk pembeli. Jangan memanggil tool lagi. Jangan menyebut harga/stok yang tidak ada di data tool di atas.",
+      },
+      ...messages.slice(1),
+    ];
 
-  try {
-    const { content: composed, model: composedModel } = await chatWithFallback({
-      messages: finalMessages,
-      temperature: 0.4,
-      max_tokens: 900,
-    });
-    replyText = composed;
-    if (composedModel) modelUsed = composedModel;
-  } catch (err) {
-    degraded = true;
-    degradationReason =
-      err instanceof Error ? `Final composition failed: ${err.message}` : "Final composition failed";
+    try {
+      const { content: composed, model: composedModel } = await chatWithFallback({
+        messages: finalMessages,
+        temperature: 0.4,
+        max_tokens: 900,
+      });
+      replyText = composed;
+      if (composedModel) modelUsed = composedModel;
+    } catch (err) {
+      degraded = true;
+      degradationReason =
+        err instanceof Error ? `Final composition failed: ${err.message}` : "Final composition failed";
+    }
+  } else {
+    // If no tools were called, the assistant's reply from the loop is already the direct final answer!
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === "assistant" && typeof lastMsg.content === "string") {
+      replyText = lastMsg.content;
+    }
   }
 
   replyText = sanitizeAgentReply(replyText);

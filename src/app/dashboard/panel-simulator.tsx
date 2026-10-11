@@ -47,6 +47,10 @@ function cleanAiText(raw: string): string {
     ""
   );
   text = text.replace(/\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*$/gi, "");
+  text = text.replace(/<pesan_pembeli>[\s\S]*?<\/pesan_pembeli>/gi, "");
+  text = text.replace(/<\/?pesan_pembeli>/gi, "");
+  text = text.replace(/\[JID pembeli:[^\]]*\]/gi, "");
+  text = text.replace(/(?:Sekarang,?\s+)?saya\s+(?:perlu|harus|akan)\s+(?:mencari|mengecek|memanggil|menggunakan)[\s\S]*?(?:tool_[a-z_]+)[\s\S]*?\.\s*/gi, "");
   text = text.replace(/^\s*\[(?:jawaban|balasan|response|answer|chat|cs|pesan)\]\s*:?\s*/i, "");
   text = text.replace(/\[(?:jawaban|balasan|response|answer)\]/gi, "");
   return text.trim();

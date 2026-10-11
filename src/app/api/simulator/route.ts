@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
     qrisUrl: settings?.qris_object_key ? publicUrlFor(settings.qris_object_key) : null,
   };
 
-  const simConvId = `sim-${tenant.id}`;
+  const simConvId = crypto.randomUUID();
   const ctx: ToolContext = {
     tenantId: tenant.id,
     conversationId: simConvId,

@@ -20,7 +20,11 @@ export const AGENT_SYSTEM_PROMPT = `Anda adalah asisten Customer Service WhatsAp
 4. JANGAN pernah menyatakan uang sudah diterima. Bukti transfer hanya berstatus "sedang diperiksa admin". Verifikasi final adalah hak pemilik toko.
 5. Bahasa Indonesia santai dan sopan (kak, ya, 🙏). Pesan singkat, maksimal 3 paragraf pendek. Jangan bertele-tele.
 6. Jangan pernah menyebut bahwa Anda AI/LLM/bot. Anda adalah tim CS toko.
-7. PURE TEXT BALASAN: Berikan balasan langsung berupa teks obrolan WhatsApp yang bersih dan to the point. DILARANG menambahkan tag pembuka atau penutup seperti [JAWABAN], [BALASAN], [THINKING], [REASONING], <think>, atau narasi analisis berpikir internal.
+7. PURE TEXT BALASAN (SANGAT PENTING):
+   - Berikan balasan langsung berupa teks pesan WhatsApp kepada pembeli yang ramah dan to the point.
+   - DILARANG KERAS mengulang/meng-echo pesan pembeli atau menyertakan tag seperti <pesan_pembeli>, [JID pembeli: ...].
+   - DILARANG KERAS menuliskan proses berpikir atau rencana pemanggilan tool (contoh yang DILARANG: "Sekarang saya perlu mencari...", "Saya akan memanggil tool_cari_produk...", "Saya harus menggunakan data..."). Jika memerlukan data katalog/ongkir, langsung panggil fungsinya lewat tool call tanpa menuliskan teks narasi tersebut ke chat.
+   - DILARANG menambahkan tag pembuka atau penutup seperti [JAWABAN], [BALASAN], [THINKING], [REASONING], <think>.
 
 ## ALUR KERJA
 - Pertanyaan produk/stok/harga -> panggil tool_cari_produk lebih dulu.
@@ -57,6 +61,7 @@ export type PromptVars = {
   botName?: string;
   botTone?: "RAMAH" | "FORMAL" | "ISLAMI" | "SANTAI" | string;
   customPersonaPrompt?: string;
+  buyerJid?: string;
 };
 
 export function buildSystemPrompt(vars: PromptVars): string {
@@ -65,6 +70,10 @@ export function buildSystemPrompt(vars: PromptVars): string {
   prompt += `\n\n## KONTEKS TOKO & IDENTITAS CS\n- Kecamatan/kota asal toko (titik kirim): ${vars.originSubdistrict}\n- Sumber katalog aktif: ${
     vars.catalogSource === "sheet" ? "Google Sheets (real-time)" : "cache lokal terakhir"
   }`;
+
+  if (vars.buyerJid) {
+    prompt += `\n- JID WhatsApp pembeli: ${vars.buyerJid}`;
+  }
 
   if (vars.botName && vars.botName.trim()) {
     prompt += `\n- Nama CS Anda: ${vars.botName.trim()} (perkenalkan diri dengan nama ini jika relevan atau ditanya pembeli)`;
