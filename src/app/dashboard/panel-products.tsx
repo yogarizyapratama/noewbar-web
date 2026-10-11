@@ -11,11 +11,12 @@
  * - Search, Category filter, Status toggle.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Archive,
   Download,
   Edit2,
+  Loader2,
   Package,
   Plus,
   Search,
@@ -35,6 +36,18 @@ import {
   TextField,
   cn,
 } from "@/components/ui";
+
+export const PREDEFINED_CATEGORIES = [
+  "Skincare & Kecantikan",
+  "Fashion & Pakaian",
+  "Makanan & Minuman",
+  "Elektronik & Gadget",
+  "Kesehatan & Suplemen",
+  "Aksesoris & Perhiasan",
+  "Peralatan Rumah Tangga",
+  "Ibu & Bayi",
+  "Umum",
+];
 
 export type ProductItem = {
   id: string;
@@ -70,7 +83,8 @@ export function PanelProducts() {
   // Form states
   const [formName, setFormName] = useState("");
   const [formSku, setFormSku] = useState("");
-  const [formCat, setFormCat] = useState("");
+  const [formCat, setFormCat] = useState("Umum");
+  const [formCatSelect, setFormCatSelect] = useState("Umum");
   const [formPrice, setFormPrice] = useState("");
   const [formDiscPrice, setFormDiscPrice] = useState("");
   const [formStock, setFormStock] = useState("");
@@ -78,6 +92,12 @@ export function PanelProducts() {
   const [formImage, setFormImage] = useState("");
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Direct image upload states
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // CSV import state
   const [csvText, setCsvText] = useState("");
@@ -110,17 +130,46 @@ export function PanelProducts() {
     }
   }
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    setUploadError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/products/upload", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (data.ok && data.url) {
+        setFormImage(data.url);
+      } else {
+        setUploadError(data.error || "Gagal mengunggah foto.");
+      }
+    } catch {
+      setUploadError("Gagal mengunggah gambar ke server.");
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   function openCreate() {
     setEditingProduct(null);
     setFormName("");
     setFormSku(`PROD-${Math.floor(1000 + Math.random() * 9000)}`);
     setFormCat("Umum");
+    setFormCatSelect("Umum");
     setFormPrice("");
     setFormDiscPrice("");
     setFormStock("10");
     setFormDesc("");
     setFormImage("");
+    setUploadError(null);
     setFormError(null);
+    setShowUrlInput(false);
     setShowAddModal(true);
   }
 
@@ -128,13 +177,18 @@ export function PanelProducts() {
     setEditingProduct(p);
     setFormName(p.name);
     setFormSku(p.sku);
-    setFormCat(p.category || "Umum");
+    const cat = p.category || "Umum";
+    setFormCat(cat);
+    const isKnown = PREDEFINED_CATEGORIES.includes(cat) || categories.includes(cat);
+    setFormCatSelect(isKnown ? cat : "__CUSTOM__");
     setFormPrice(String(p.price));
     setFormDiscPrice(p.discount_price ? String(p.discount_price) : "");
     setFormStock(String(p.stock));
     setFormDesc(p.description || "");
     setFormImage(Array.isArray(p.images) && p.images[0] ? p.images[0] : "");
+    setUploadError(null);
     setFormError(null);
+    setShowUrlInput(false);
     setShowAddModal(true);
   }
 
@@ -364,18 +418,15 @@ export function PanelProducts() {
                       <tr key={p.id} className="hover:bg-ink-50/50 transition-colors">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            {img ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={img}
-                                alt={p.name}
-                                className="h-9 w-9 rounded-md object-cover border border-ink-200 shrink-0"
-                              />
-                            ) : (
-                              <span className="grid h-9 w-9 place-items-center rounded-md bg-ink-100 text-ink-400 shrink-0">
-                                <Package className="h-4 w-4" />
-                              </span>
-                            )}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={img || "/placeholder-product.svg"}
+                              alt={p.name}
+                              className="h-9 w-9 rounded-md object-cover border border-ink-200 shrink-0 bg-ink-50"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = "/placeholder-product.svg";
+                              }}
+                            />
                             <div>
                               <p className="font-semibold text-ink">{p.name}</p>
                               {p.description && (
@@ -487,13 +538,41 @@ export function PanelProducts() {
                   value={formSku}
                   onChange={(e) => setFormSku(e.target.value)}
                 />
-                <TextField
-                  id="p_cat"
-                  label="Kategori"
-                  placeholder="Fashion / Pakaian"
-                  value={formCat}
-                  onChange={(e) => setFormCat(e.target.value)}
-                />
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-600">
+                    Kategori Produk *
+                  </label>
+                  <select
+                    id="p_cat_select"
+                    value={formCatSelect}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormCatSelect(val);
+                      if (val !== "__CUSTOM__") {
+                        setFormCat(val);
+                      } else {
+                        setFormCat("");
+                      }
+                    }}
+                    className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs font-medium text-ink focus:border-signal focus:outline-none"
+                  >
+                    {Array.from(new Set([...PREDEFINED_CATEGORIES, ...categories.filter(Boolean)])).map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                    <option value="__CUSTOM__">+ Kategori Kustom Baru</option>
+                  </select>
+                  {formCatSelect === "__CUSTOM__" && (
+                    <input
+                      type="text"
+                      placeholder="Ketik kategori kustom..."
+                      value={formCat}
+                      onChange={(e) => setFormCat(e.target.value)}
+                      className="mt-1.5 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -521,15 +600,108 @@ export function PanelProducts() {
                 />
               </div>
 
-              <TextField
-                id="p_img"
-                label="Tautan Foto Produk (URL MinIO / Image)"
-                placeholder="https://..."
-                value={formImage}
-                onChange={(e) => setFormImage(e.target.value)}
-                optional
-                hint="Foto produk akan dikirimkan bot langsung ke pembeli via WhatsApp."
-              />
+              {/* Direct Image Upload Field */}
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-600">
+                  Foto Produk
+                </label>
+                <div className="space-y-2">
+                  {formImage ? (
+                    <div className="relative inline-flex items-center gap-3 rounded-xl border border-ink-200 bg-ink-50/70 p-2.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={formImage}
+                        alt="Pratinjau"
+                        className="h-20 w-20 rounded-lg object-cover border border-ink-200 bg-white shrink-0"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = "/placeholder-product.svg";
+                        }}
+                      />
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-ink">Foto Terpilih</p>
+                        <p className="text-2xs text-ink-500 max-w-[200px] truncate">{formImage}</p>
+                        <button
+                          type="button"
+                          onClick={() => setFormImage("")}
+                          className="inline-flex items-center gap-1 rounded bg-danger/10 px-2 py-0.5 text-2xs font-bold text-danger hover:bg-danger/20 transition-colors"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Hapus Foto
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className={cn(
+                        "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-ink-200 p-5 text-center transition-colors hover:border-signal hover:bg-ink-50/50",
+                        uploadingImage && "pointer-events-none opacity-60"
+                      )}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      {uploadingImage ? (
+                        <div className="flex flex-col items-center gap-1.5 py-1">
+                          <Loader2 className="h-6 w-6 animate-spin text-signal" />
+                          <p className="text-2xs font-semibold text-ink-600">Mengunggah foto ke penyimpanan...</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5">
+                          <div className="grid h-10 w-10 place-items-center rounded-lg bg-ink-100 text-ink-600">
+                            <Upload className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-ink">
+                              Pilih Foto Langsung dari Perangkat
+                            </p>
+                            <p className="text-2xs text-ink-500">
+                              Format JPG, PNG, atau WebP (Maks. 5 MB)
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {uploadError && (
+                    <p className="text-2xs font-medium text-danger">{uploadError}</p>
+                  )}
+
+                  <div className="pt-0.5">
+                    {!showUrlInput ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowUrlInput(true)}
+                        className="text-2xs text-ink-500 hover:text-ink underline"
+                      >
+                        atau masukkan URL gambar manual
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type="text"
+                          placeholder="https://... URL gambar"
+                          value={formImage}
+                          onChange={(e) => setFormImage(e.target.value)}
+                          className="flex-1 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowUrlInput(false)}
+                          className="text-2xs text-ink-400 hover:text-ink"
+                        >
+                          Tutup
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-600">

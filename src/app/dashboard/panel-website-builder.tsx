@@ -20,6 +20,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Bot,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   ExternalLink,
@@ -27,11 +28,13 @@ import {
   Globe,
   Layers,
   Layout,
+  MessageCircle,
   Monitor,
   Save,
   Smartphone,
   Sparkles,
   Wand2,
+  X,
 } from "lucide-react";
 import {
   Badge,
@@ -86,6 +89,10 @@ export function PanelWebsiteBuilder() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [editorMsg, setEditorMsg] = useState<string | null>(null);
+
+  // Template Preview Modal state
+  const [previewTemplate, setPreviewTemplate] = useState<WebsiteTemplate | null>(null);
+  const [templatePreviewDevice, setTemplatePreviewDevice] = useState<"desktop" | "mobile">("desktop");
 
   useEffect(() => {
     loadWebsites();
@@ -481,38 +488,386 @@ export function PanelWebsiteBuilder() {
 
       {/* VIEW 3: TEMPLATE GALLERY */}
       {activeTab === "templates" && (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {TEMPLATES.map((tmpl) => (
-              <Card key={tmpl.id} className="flex flex-col justify-between overflow-hidden">
-                <div className={cn("h-36 bg-gradient-to-br p-5 flex flex-col justify-between", tmpl.preview_bg)}>
-                  <span className="self-start rounded bg-white/90 px-2.5 py-0.5 text-2xs font-bold text-ink shadow-sm">
-                    {tmpl.category}
-                  </span>
-                  <div>
-                    <h3 className="text-lg font-extrabold text-ink">{tmpl.name}</h3>
-                    <p className="text-xs text-ink-600 font-medium">{tmpl.default_sections.length} Section Siap Pakai</p>
+              <Card key={tmpl.id} className="flex flex-col justify-between overflow-hidden shadow-flat hover:shadow-overlay transition-all">
+                {/* Mini Browser Web Frame */}
+                <div className="border-b border-ink-200 bg-ink-50">
+                  {/* Browser Bar */}
+                  <div className="flex items-center gap-1.5 border-b border-ink-200 bg-ink-100/70 px-3 py-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+                    <div className="ml-1.5 flex-1 rounded bg-white px-2 py-0.5 font-mono text-[9px] text-ink-500 truncate border border-ink-200">
+                      https://toko.noewbar.id/{tmpl.id}
+                    </div>
+                    <span className="rounded bg-white/90 px-1.5 py-0.5 text-[8px] font-bold text-ink-600 shadow-xs">
+                      {tmpl.category}
+                    </span>
+                  </div>
+
+                  {/* Render Miniature Website Content */}
+                  <div className="h-44 overflow-hidden bg-white text-[10px] leading-tight select-none border-b border-ink-100">
+                    {/* Mini Announcement */}
+                    <div
+                      style={{
+                        backgroundColor: tmpl.default_sections[0]?.style?.bg_color || tmpl.theme.primary_color,
+                        color: tmpl.default_sections[0]?.style?.text_color || "#FFFFFF",
+                      }}
+                      className="px-2 py-1 text-center font-medium text-[8px] truncate"
+                    >
+                      {tmpl.default_sections[0]?.content?.text || "Gratis Ongkir ke seluruh Indonesia!"}
+                    </div>
+
+                    {/* Mini Hero */}
+                    <div
+                      style={{ backgroundColor: tmpl.default_sections[1]?.style?.bg_color || "#F8FAFC" }}
+                      className="p-3 text-center border-b border-ink-100"
+                    >
+                      {tmpl.default_sections[1]?.content?.badge && (
+                        <span className="inline-block rounded-full bg-emerald-100 px-1.5 py-0.5 text-[8px] font-bold text-emerald-800 mb-1">
+                          {tmpl.default_sections[1].content.badge}
+                        </span>
+                      )}
+                      <h4 className="font-extrabold text-ink line-clamp-1 text-xs">
+                        {tmpl.default_sections[1]?.content?.headline || tmpl.name}
+                      </h4>
+                      <p className="text-[9px] text-ink-500 line-clamp-1 mt-0.5 max-w-xs mx-auto">
+                        {tmpl.default_sections[1]?.content?.subheadline || tmpl.description}
+                      </p>
+                      <div className="mt-2 flex justify-center">
+                        <span className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-0.5 text-[8px] font-bold text-white shadow-xs">
+                          <MessageCircle className="h-2.5 w-2.5" />
+                          Beli via WhatsApp
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Mini Products Grid Mock */}
+                    <div className="p-2.5 bg-ink-50/50">
+                      <p className="text-[9px] font-bold text-ink mb-1.5 text-center">Katalog Produk Pilihan</p>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {[1, 2, 3].map((idx) => (
+                          <div key={idx} className="rounded border border-ink-200 bg-white p-1 text-center shadow-xs">
+                            <div className="aspect-square w-full rounded bg-ink-100 mb-1 overflow-hidden">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src="/placeholder-product.svg"
+                                alt="Produk"
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <p className="text-[8px] font-semibold text-ink truncate">Item {idx}</p>
+                            <p className="font-mono text-[7px] text-emerald-700 font-bold">Rp 150rb</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="p-5 flex-1 flex flex-col justify-between">
-                  <p className="text-xs text-ink-600 leading-relaxed">{tmpl.description}</p>
+                <div className="p-4 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-ink">{tmpl.name}</h3>
+                    <p className="text-2xs text-ink-500 font-medium">
+                      {tmpl.category} &bull; {tmpl.default_sections.length} Section Siap Pakai
+                    </p>
+                    <p className="text-xs text-ink-600 leading-relaxed mt-2 line-clamp-2">{tmpl.description}</p>
+                  </div>
 
-                  <div className="mt-5 pt-3 border-t border-ink-100">
+                  <div className="mt-4 pt-3 border-t border-ink-100 flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1 text-xs font-semibold"
+                      onClick={() => setPreviewTemplate(tmpl)}
+                    >
+                      <Eye className="mr-1 h-3.5 w-3.5" />
+                      Pratinjau Web
+                    </Button>
                     <Button
                       variant="primary"
                       size="sm"
-                      className="w-full text-xs font-semibold"
+                      className="flex-1 text-xs font-semibold"
                       onClick={() => handleUseTemplate(tmpl)}
                     >
-                      Gunakan Template Ini
-                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                      Gunakan
+                      <ArrowRight className="ml-1 h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
               </Card>
             ))}
           </div>
+
+          {/* MODAL TEMPLATE WEB PREVIEW */}
+          {previewTemplate && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+              <div className="flex h-[92vh] w-full max-w-5xl flex-col rounded-2xl border border-ink-200 bg-ink-100 shadow-overlay overflow-hidden">
+                {/* Top Bar Preview Modal */}
+                <div className="flex items-center justify-between border-b border-ink-200 bg-white px-5 py-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-ink flex items-center gap-2">
+                      Pratinjau Desain Web: {previewTemplate.name}
+                      <span className="rounded bg-emerald-100 px-2 py-0.5 text-2xs font-semibold text-emerald-800">
+                        {previewTemplate.category}
+                      </span>
+                    </h3>
+                    <p className="text-2xs text-ink-500">
+                      Toko WhatsApp responsif siap pakai dengan tombol pemesanan langsung
+                    </p>
+                  </div>
+
+                  {/* Device Switcher & Actions */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex items-center rounded-lg border border-ink-200 bg-ink-50 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setTemplatePreviewDevice("desktop")}
+                        className={cn(
+                          "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs transition-colors",
+                          templatePreviewDevice === "desktop"
+                            ? "bg-white text-ink shadow-sm font-bold"
+                            : "text-ink-500 hover:text-ink font-medium"
+                        )}
+                      >
+                        <Monitor className="h-3.5 w-3.5" />
+                        Desktop
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTemplatePreviewDevice("mobile")}
+                        className={cn(
+                          "flex items-center gap-1 rounded-md px-2.5 py-1 text-xs transition-colors",
+                          templatePreviewDevice === "mobile"
+                            ? "bg-white text-ink shadow-sm font-bold"
+                            : "text-ink-500 hover:text-ink font-medium"
+                        )}
+                      >
+                        <Smartphone className="h-3.5 w-3.5" />
+                        Mobile
+                      </button>
+                    </div>
+
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        const t = previewTemplate;
+                        setPreviewTemplate(null);
+                        handleUseTemplate(t);
+                      }}
+                    >
+                      Gunakan Template Ini
+                      <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                    </Button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPreviewTemplate(null)}
+                      className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink transition-colors"
+                      title="Tutup pratinjau"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Canvas Area */}
+                <div className="flex-1 overflow-y-auto p-4 flex items-start justify-center">
+                  <div
+                    className={cn(
+                      "bg-white shadow-md transition-all duration-300 rounded-xl overflow-hidden border border-ink-200",
+                      templatePreviewDevice === "desktop" ? "w-full max-w-4xl" : "w-[375px]"
+                    )}
+                  >
+                    {/* Browser Address Bar */}
+                    <div className="border-b border-ink-200 bg-ink-50 px-4 py-2 flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-red-400" />
+                        <span className="h-2 w-2 rounded-full bg-amber-400" />
+                        <span className="h-2 w-2 rounded-full bg-green-400" />
+                      </div>
+                      <div className="flex-1 mx-3 rounded bg-white border border-ink-200 px-3 py-0.5 font-mono text-2xs text-ink-500 truncate">
+                        https://toko.noewbar.com/store/{previewTemplate.id}
+                      </div>
+                    </div>
+
+                    {/* Live Rendered Template Sections */}
+                    <div className="divide-y divide-ink-100">
+                      {previewTemplate.default_sections.map((sec) => (
+                        <div key={sec.id}>
+                          {sec.type === "announcement" && (
+                            <div
+                              style={{
+                                backgroundColor: sec.style?.bg_color || "#065F46",
+                                color: sec.style?.text_color || "#FFFFFF",
+                              }}
+                              className="py-2.5 px-4 text-center text-xs font-semibold"
+                            >
+                              {sec.content?.text}
+                            </div>
+                          )}
+
+                          {sec.type === "hero" && (
+                            <div
+                              style={{ backgroundColor: sec.style?.bg_color || "#F8FAFC" }}
+                              className="p-8 sm:p-12 text-center border-b border-slate-100"
+                            >
+                              {sec.content?.badge && (
+                                <span className="inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 mb-3 shadow-xs">
+                                  {sec.content.badge}
+                                </span>
+                              )}
+                              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 max-w-xl mx-auto">
+                                {sec.content?.headline}
+                              </h1>
+                              <p className="mt-3 text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                                {sec.content?.subheadline}
+                              </p>
+                              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                                <span className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm">
+                                  <MessageCircle className="h-4 w-4" />
+                                  {sec.content?.cta_primary_text || "Pesan via WhatsApp"}
+                                </span>
+                                {sec.content?.cta_secondary_text && (
+                                  <span className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-xs">
+                                    {sec.content?.cta_secondary_text}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {sec.type === "benefits" && (
+                            <div className="p-8 bg-white border-b border-slate-100">
+                              <h2 className="text-base sm:text-lg font-bold text-center text-slate-900 mb-6">
+                                {sec.content?.title || "Keunggulan Kami"}
+                              </h2>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                                {(sec.content?.items || []).map((it: any, i: number) => (
+                                  <div key={i} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-xs">
+                                    <div className="h-8 w-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold mb-2.5">
+                                      <CheckCircle2 className="h-4 w-4" />
+                                    </div>
+                                    <p className="font-bold text-slate-900">{it.title}</p>
+                                    <p className="text-2xs text-slate-600 mt-1 leading-relaxed">{it.desc}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {sec.type === "product_grid" && (
+                            <div className="p-8 bg-slate-50/80 border-b border-slate-100">
+                              <div className="text-center max-w-md mx-auto mb-6">
+                                <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                                  {sec.content?.title || "Katalog Produk Pilihan"}
+                                </h2>
+                                <p className="text-2xs text-slate-500 mt-1">
+                                  {sec.content?.subtitle || "Pesan langsung dengan respon cepat WhatsApp 24 jam"}
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                                {[1, 2, 3].map((idx) => (
+                                  <div key={idx} className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+                                    <div className="aspect-square w-full rounded-lg bg-slate-100 mb-2.5 overflow-hidden border border-slate-100">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src="/placeholder-product.svg"
+                                        alt="Contoh Produk"
+                                        className="h-full w-full object-cover"
+                                      />
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-900 truncate">Produk Unggulan {idx}</p>
+                                    <p className="font-mono text-2xs font-extrabold text-emerald-700 mt-0.5">Rp 185.000</p>
+                                    <span className="mt-2.5 w-full inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-600 py-1.5 text-2xs font-bold text-white">
+                                      <MessageCircle className="h-3 w-3" />
+                                      Beli via WA
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {sec.type === "testimonials" && (
+                            <div className="p-8 bg-white border-b border-slate-100">
+                              <h2 className="text-base sm:text-lg font-bold text-center text-slate-900 mb-4">
+                                {sec.content?.title || "Kata Pembeli Kami"}
+                              </h2>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+                                {(sec.content?.items || []).map((it: any, i: number) => (
+                                  <div key={i} className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs">
+                                    <p className="italic text-slate-700 leading-relaxed">&ldquo;{it.text}&rdquo;</p>
+                                    <p className="mt-2 font-bold text-slate-900 text-2xs">{it.name} - <span className="text-slate-500 font-normal">{it.role}</span></p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {sec.type === "faq" && (
+                            <div className="p-8 bg-slate-50/60 border-b border-slate-100">
+                              <h2 className="text-base sm:text-lg font-bold text-center text-slate-900 mb-4">
+                                {sec.content?.title || "Pertanyaan yang Sering Diajukan"}
+                              </h2>
+                              <div className="max-w-xl mx-auto space-y-2.5">
+                                {(sec.content?.items || []).map((it: any, i: number) => (
+                                  <div key={i} className="rounded-xl border border-slate-200 bg-white p-3.5 text-xs">
+                                    <p className="font-bold text-slate-900">{it.q}</p>
+                                    <p className="text-2xs text-slate-600 mt-1 leading-relaxed">{it.a}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {sec.type === "whatsapp_cta" && (
+                            <div
+                              style={{
+                                backgroundColor: sec.style?.bg_color || "#059669",
+                                color: sec.style?.text_color || "#FFFFFF",
+                              }}
+                              className="p-8 sm:p-10 text-center"
+                            >
+                              <h2 className="text-lg sm:text-2xl font-extrabold max-w-lg mx-auto">
+                                {sec.content?.title || "Pesan Mudah Langsung via WhatsApp"}
+                              </h2>
+                              <p className="mt-2 text-xs sm:text-sm opacity-90 max-w-md mx-auto leading-relaxed">
+                                {sec.content?.subtitle || "Customer service AI kami siap membalas dalam 2 detik."}
+                              </p>
+                              <div className="mt-5 flex justify-center">
+                                <span className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-emerald-800 shadow-sm">
+                                  <MessageCircle className="h-4 w-4 text-emerald-600" />
+                                  {sec.content?.button_text || "Chat WhatsApp Sekarang"}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {sec.type === "footer" && (
+                            <div
+                              style={{
+                                backgroundColor: sec.style?.bg_color || "#0F172A",
+                                color: sec.style?.text_color || "#94A3B8",
+                              }}
+                              className="py-6 px-4 text-center text-2xs"
+                            >
+                              <p className="font-bold text-white text-xs">{sec.content?.brand_name || "Toko Online"}</p>
+                              <p className="mt-1 opacity-80">{sec.content?.tagline}</p>
+                              <p className="mt-3 opacity-60">{sec.content?.copyright}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

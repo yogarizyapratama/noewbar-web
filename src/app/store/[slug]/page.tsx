@@ -237,8 +237,13 @@ export default async function PublicStorePage({
                                   />
                                 </div>
                               ) : (
-                                <div className="aspect-square w-full rounded-lg bg-slate-50 mb-4 flex items-center justify-center border border-slate-100">
-                                  <Package className="h-8 w-8 text-slate-300" />
+                                <div className="aspect-square w-full overflow-hidden rounded-lg bg-slate-100 mb-4 border border-slate-100">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src="/placeholder-product.svg"
+                                    alt={p.name}
+                                    className="h-full w-full object-cover"
+                                  />
                                 </div>
                               )}
 
