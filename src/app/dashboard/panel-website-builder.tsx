@@ -26,12 +26,14 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  EyeOff,
   Globe,
   Layers,
   Layout,
   MessageCircle,
   Monitor,
   Save,
+  Settings,
   Smartphone,
   Plus,
   Sparkles,
@@ -53,6 +55,8 @@ import {
 import {
   TEMPLATES,
   getEmbedVideoUrl,
+  getSectionTheme,
+  getCanvasPadding,
   type WebsiteSection,
   type WebsiteTemplate,
 } from "@/lib/website/types";
@@ -104,6 +108,70 @@ export function PanelWebsiteBuilder() {
   const [previewTemplate, setPreviewTemplate] = useState<WebsiteTemplate | null>(null);
   const [templatePreviewDevice, setTemplatePreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+
+  // Site Settings Modal state
+  const [showSiteSettingsModal, setShowSiteSettingsModal] = useState(false);
+  const [siteSettingsForm, setSiteSettingsForm] = useState({
+    name: "",
+    title: "",
+    description: "",
+    is_knowledge_source: false,
+  });
+
+  function openSiteSettingsModal() {
+    if (!currentSite) return;
+    setSiteSettingsForm({
+      name: currentSite.name,
+      title: currentSite.title || "",
+      description: currentSite.description || "",
+      is_knowledge_source: Boolean(currentSite.is_knowledge_source),
+    });
+    setShowSiteSettingsModal(true);
+  }
+
+  async function handleSaveSiteSettings() {
+    if (!currentSite) return;
+    setSavingDraft(true);
+    setEditorMsg(null);
+    try {
+      const res = await fetch("/api/websites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save_draft",
+          id: currentSite.id,
+          name: siteSettingsForm.name.trim(),
+          title: siteSettingsForm.title.trim(),
+          description: siteSettingsForm.description.trim(),
+          is_knowledge_source: siteSettingsForm.is_knowledge_source,
+          sections,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setCurrentSite((prev) =>
+          prev
+            ? {
+                ...prev,
+                name: siteSettingsForm.name.trim(),
+                title: siteSettingsForm.title.trim(),
+                description: siteSettingsForm.description.trim(),
+                is_knowledge_source: siteSettingsForm.is_knowledge_source,
+              }
+            : prev
+        );
+        setShowSiteSettingsModal(false);
+        setEditorMsg("Pengaturan toko berhasil diperbarui!");
+        await loadWebsites();
+      } else {
+        setEditorMsg(json.error || "Gagal menyimpan pengaturan toko.");
+      }
+    } catch {
+      setEditorMsg("Gagal menyimpan pengaturan toko.");
+    } finally {
+      setSavingDraft(false);
+    }
+  }
 
   useEffect(() => {
     loadWebsites();
@@ -980,6 +1048,11 @@ export function PanelWebsiteBuilder() {
                 </button>
               </div>
 
+              <Button size="sm" variant="secondary" onClick={openSiteSettingsModal}>
+                <Settings className="mr-1.5 h-3.5 w-3.5" />
+                Pengaturan Toko
+              </Button>
+
               <Button size="sm" variant="secondary" onClick={handleSaveDraft} loading={savingDraft}>
                 <Save className="mr-1.5 h-3.5 w-3.5" />
                 Simpan Draft
@@ -1126,8 +1199,31 @@ export function PanelWebsiteBuilder() {
                 {/* Render Sections in Canvas */}
                 <div className="divide-y divide-ink-100 max-h-[720px] overflow-y-auto">
                   {sections.map((sec, secIdx) => {
-                    if (!sec.visibility) return null;
                     const isSelected = sec.id === selectedSecId;
+
+                    if (!sec.visibility) {
+                      return (
+                        <div
+                          key={sec.id}
+                          onClick={() => setSelectedSecId(sec.id)}
+                          className={cn(
+                            "p-4 bg-ink-100/70 border-2 border-dashed border-ink-300 text-center cursor-pointer transition-all m-2 rounded-xl",
+                            isSelected && "ring-2 ring-signal ring-inset"
+                          )}
+                        >
+                          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-ink-500">
+                            <EyeOff className="h-3.5 w-3.5 text-danger" />
+                            Section Disembunyikan: <span className="font-bold text-ink uppercase">{sec.type.replace("_", " ")}</span>
+                          </div>
+                          <p className="text-2xs text-ink-400 mt-0.5">
+                            Klik untuk memilih dan aktifkan ikon mata pada panel inspector jika ingin menampilkan kembali.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    const theme = getSectionTheme(sec.style);
+                    const padClass = getCanvasPadding(sec.style?.padding);
 
                     return (
                       <div
@@ -1197,10 +1293,17 @@ export function PanelWebsiteBuilder() {
                         {sec.type === "announcement" && (
                           <div
                             style={{
-                              backgroundColor: sec.style?.bg_color || "#065F46",
-                              color: sec.style?.text_color || "#FFFFFF",
+                              backgroundColor: theme.bg,
+                              color: theme.text,
                             }}
-                            className="py-2.5 px-4 text-center text-xs font-semibold"
+                            className={cn(
+                              "text-center font-semibold transition-all",
+                              sec.style?.padding === "sm"
+                                ? "py-1.5 px-3 text-2xs"
+                                : sec.style?.padding === "lg"
+                                ? "py-3.5 px-5 text-sm"
+                                : "py-2.5 px-4 text-xs"
+                            )}
                           >
                             {sec.content?.text || "Pengumuman promo toko"}
                           </div>
@@ -1209,25 +1312,38 @@ export function PanelWebsiteBuilder() {
                         {/* 2. HERO */}
                         {sec.type === "hero" && (
                           <div
-                            style={{ backgroundColor: sec.style?.bg_color || "#F8FAFC" }}
-                            className="p-8 sm:p-12 text-center border-b border-slate-100"
+                            style={{ backgroundColor: theme.bg, color: theme.text }}
+                            className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                           >
                             <div className="max-w-2xl mx-auto">
                               {sec.content?.badge && (
-                                <span className="inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 mb-3 shadow-xs">
+                                <span
+                                  className={cn(
+                                    "inline-block rounded-full px-3 py-1 text-xs font-bold mb-3 shadow-xs border",
+                                    theme.isDark
+                                      ? "bg-white/10 text-emerald-300 border-white/20"
+                                      : "bg-emerald-100 text-emerald-800 border-emerald-200"
+                                  )}
+                                >
                                   {sec.content.badge}
                                 </span>
                               )}
-                              <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                              <h1
+                                style={{ color: theme.text }}
+                                className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight"
+                              >
                                 {sec.content?.headline || "Headline Produk Toko"}
                               </h1>
-                              <p className="mt-3 text-xs sm:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
+                              <p
+                                style={{ color: theme.mutedText }}
+                                className="mt-3 text-xs sm:text-sm max-w-lg mx-auto leading-relaxed"
+                              >
                                 {sec.content?.subheadline || "Penjelasan penawaran produk..."}
                               </p>
 
                               {/* Hero Media Preview */}
                               {sec.content?.image_url && (
-                                <div className="mt-6 mx-auto max-w-md overflow-hidden rounded-xl border border-slate-200 shadow-md">
+                                <div className="mt-6 mx-auto max-w-md overflow-hidden rounded-xl border border-black/10 shadow-md">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={sec.content.image_url}
@@ -1243,7 +1359,14 @@ export function PanelWebsiteBuilder() {
                                   {sec.content?.cta_primary_text || "Pesan via WA"}
                                 </span>
                                 {sec.content?.cta_secondary_text && (
-                                  <span className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-xs">
+                                  <span
+                                    className={cn(
+                                      "rounded-xl border px-4 py-2.5 text-xs font-semibold shadow-xs",
+                                      theme.isDark
+                                        ? "border-white/20 bg-white/10 text-white"
+                                        : "border-slate-300 bg-white text-slate-700"
+                                    )}
+                                  >
                                     {sec.content.cta_secondary_text}
                                   </span>
                                 )}
@@ -1258,25 +1381,38 @@ export function PanelWebsiteBuilder() {
                           return (
                             <div
                               style={{
-                                backgroundColor: sec.style?.bg_color || "#0F172A",
-                                color: sec.style?.text_color || "#FFFFFF",
+                                backgroundColor: theme.bg,
+                                color: theme.text,
                               }}
-                              className="p-8 text-center"
+                              className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                             >
                               {sec.content?.badge && (
-                                <span className="inline-block rounded-full bg-emerald-500/20 text-emerald-400 px-3 py-1 text-xs font-bold mb-2 border border-emerald-500/30">
+                                <span
+                                  className={cn(
+                                    "inline-block rounded-full px-3 py-1 text-xs font-bold mb-2 border",
+                                    theme.isDark
+                                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                      : "bg-emerald-100 text-emerald-800 border-emerald-200"
+                                  )}
+                                >
                                   {sec.content.badge}
                                 </span>
                               )}
-                              <h3 className="text-xl font-extrabold max-w-xl mx-auto">
+                              <h3
+                                style={{ color: theme.text }}
+                                className="text-xl font-extrabold max-w-xl mx-auto"
+                              >
                                 {sec.content?.title || "Video Showcase Produk"}
                               </h3>
                               {sec.content?.description && (
-                                <p className="mt-2 text-xs opacity-80 max-w-md mx-auto">
+                                <p
+                                  style={{ color: theme.mutedText }}
+                                  className="mt-2 text-xs max-w-md mx-auto"
+                                >
                                   {sec.content.description}
                                 </p>
                               )}
-                              <div className="mt-6 overflow-hidden rounded-xl border border-slate-700 bg-black aspect-video max-w-xl mx-auto">
+                              <div className="mt-6 overflow-hidden rounded-xl border border-slate-700 bg-black aspect-video max-w-xl mx-auto shadow-md">
                                 {vid.isEmbed && vid.url ? (
                                   <iframe
                                     src={vid.url}
@@ -1304,19 +1440,31 @@ export function PanelWebsiteBuilder() {
                         {/* 4. GALLERY MEDIA */}
                         {sec.type === "gallery_media" && (
                           <div
-                            style={{ backgroundColor: sec.style?.bg_color || "#FFFFFF" }}
-                            className="p-8 text-center"
+                            style={{ backgroundColor: theme.bg, color: theme.text }}
+                            className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                           >
-                            <h3 className="text-base font-bold text-slate-900 mb-1">
+                            <h3
+                              style={{ color: theme.text }}
+                              className="text-base font-bold mb-1"
+                            >
                               {sec.content?.title || "Galeri Foto"}
                             </h3>
                             {sec.content?.subtitle && (
-                              <p className="text-xs text-slate-500 mb-6">{sec.content.subtitle}</p>
+                              <p
+                                style={{ color: theme.mutedText }}
+                                className="text-xs mb-6"
+                              >
+                                {sec.content.subtitle}
+                              </p>
                             )}
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
                               {(sec.content?.items || []).map((it: any, i: number) => (
-                                <div key={i} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shadow-xs">
-                                  <div className="aspect-square w-full bg-slate-100">
+                                <div
+                                  key={i}
+                                  style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                                  className="rounded-xl border overflow-hidden shadow-xs transition-all"
+                                >
+                                  <div className="aspect-square w-full bg-black/10">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                       src={it.image_url || "/placeholder-product.svg"}
@@ -1325,7 +1473,10 @@ export function PanelWebsiteBuilder() {
                                     />
                                   </div>
                                   {it.caption && (
-                                    <p className="p-2 text-[10px] font-semibold text-slate-700 truncate bg-white">
+                                    <p
+                                      style={{ color: theme.cardText }}
+                                      className="p-2 text-[10px] font-semibold truncate"
+                                    >
                                       {it.caption}
                                     </p>
                                   )}
@@ -1338,30 +1489,60 @@ export function PanelWebsiteBuilder() {
                         {/* 5. TEXT BANNER / ABOUT */}
                         {sec.type === "text_banner" && (
                           <div
-                            style={{ backgroundColor: sec.style?.bg_color || "#F8FAFC" }}
-                            className="p-8"
+                            style={{ backgroundColor: theme.bg, color: theme.text }}
+                            className={cn("border-b border-black/10 transition-colors", padClass)}
                           >
                             <div className="grid gap-6 sm:grid-cols-2 sm:items-center max-w-3xl mx-auto">
                               <div>
                                 {sec.content?.badge && (
-                                  <span className="inline-block rounded-full bg-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 mb-2">
+                                  <span
+                                    className={cn(
+                                      "inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold mb-2 border",
+                                      theme.isDark
+                                        ? "bg-white/10 text-white border-white/20"
+                                        : "bg-slate-200 text-slate-700 border-slate-300"
+                                    )}
+                                  >
                                     {sec.content.badge}
                                   </span>
                                 )}
-                                <h3 className="text-lg font-bold text-slate-900">
+                                <h3
+                                  style={{ color: theme.text }}
+                                  className="text-lg font-bold"
+                                >
                                   {sec.content?.title || "Cerita Toko"}
                                 </h3>
-                                <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                                <p
+                                  style={{ color: theme.mutedText }}
+                                  className="mt-2 text-xs leading-relaxed"
+                                >
                                   {sec.content?.paragraph || "Paragraf cerita toko..."}
                                 </p>
+                                {Array.isArray(sec.content?.bullet_points) && sec.content.bullet_points.length > 0 && (
+                                  <ul className="mt-3 space-y-1 text-2xs">
+                                    {sec.content.bullet_points.map((pt: string, idx: number) => (
+                                      <li key={idx} className="flex items-center gap-1.5" style={{ color: theme.text }}>
+                                        <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                                        <span>{pt}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
                                 {sec.content?.button_text && (
-                                  <span className="mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white">
+                                  <span
+                                    className={cn(
+                                      "mt-4 inline-block rounded-lg px-4 py-2 text-xs font-bold shadow-xs",
+                                      theme.isDark
+                                        ? "bg-white text-slate-900"
+                                        : "bg-slate-900 text-white"
+                                    )}
+                                  >
                                     {sec.content.button_text}
                                   </span>
                                 )}
                               </div>
                               {sec.content?.image_url && (
-                                <div className="rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+                                <div className="rounded-xl border border-black/10 overflow-hidden shadow-xs">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={sec.content.image_url}
@@ -1378,22 +1559,30 @@ export function PanelWebsiteBuilder() {
                         {sec.type === "countdown_promo" && (
                           <div
                             style={{
-                              backgroundColor: sec.style?.bg_color || "#065F46",
-                              color: sec.style?.text_color || "#FFFFFF",
+                              backgroundColor: theme.bg,
+                              color: theme.text,
                             }}
-                            className="p-8 text-center"
+                            className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                           >
                             {sec.content?.badge && (
                               <span className="inline-block rounded-full bg-amber-400 text-slate-950 px-3 py-0.5 text-2xs font-extrabold mb-2 uppercase">
                                 {sec.content.badge}
                               </span>
                             )}
-                            <h3 className="text-xl font-extrabold max-w-lg mx-auto">
+                            <h3
+                              style={{ color: theme.text }}
+                              className="text-xl font-extrabold max-w-lg mx-auto"
+                            >
                               {sec.content?.title || "Promo Flash Sale"}
                             </h3>
-                            <p className="mt-1 text-xs opacity-90 max-w-md mx-auto">
-                              {sec.content?.subtitle}
-                            </p>
+                            {sec.content?.subtitle && (
+                              <p
+                                style={{ color: theme.mutedText }}
+                                className="mt-1 text-xs max-w-md mx-auto"
+                              >
+                                {sec.content?.subtitle}
+                              </p>
+                            )}
                             <div className="mt-4 flex items-center justify-center gap-2 font-mono text-xs">
                               {sec.content?.discount_tag && (
                                 <span className="rounded bg-white/20 px-3 py-1 font-bold">
@@ -1413,15 +1602,40 @@ export function PanelWebsiteBuilder() {
 
                         {/* 7. BENEFITS */}
                         {sec.type === "benefits" && (
-                          <div className="p-8 bg-white border-b border-slate-100">
-                            <h3 className="text-base font-bold text-center text-slate-900 mb-6">
+                          <div
+                            style={{ backgroundColor: theme.bg, color: theme.text }}
+                            className={cn("border-b border-black/10 transition-colors", padClass)}
+                          >
+                            <h3
+                              style={{ color: theme.text }}
+                              className="text-base font-bold text-center mb-6"
+                            >
                               {sec.content?.title || "Keunggulan Layanan"}
                             </h3>
+                            {sec.content?.subtitle && (
+                              <p
+                                style={{ color: theme.mutedText }}
+                                className="text-xs text-center -mt-4 mb-6"
+                              >
+                                {sec.content.subtitle}
+                              </p>
+                            )}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto">
                               {(sec.content?.items || []).map((it: any, i: number) => (
-                                <div key={i} className="rounded-xl border border-slate-200 p-3.5 bg-slate-50 text-xs">
-                                  <p className="font-bold text-slate-900">{it.title}</p>
-                                  <p className="text-2xs text-slate-500 mt-1 leading-relaxed">{it.desc}</p>
+                                <div
+                                  key={i}
+                                  style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                                  className="rounded-xl border p-3.5 text-xs shadow-xs transition-all"
+                                >
+                                  <div className="h-7 w-7 rounded-lg bg-emerald-500/20 text-emerald-600 flex items-center justify-center font-bold mb-2">
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                  </div>
+                                  <p style={{ color: theme.cardText }} className="font-bold">
+                                    {it.title}
+                                  </p>
+                                  <p style={{ color: theme.cardMuted }} className="text-2xs mt-1 leading-relaxed">
+                                    {it.desc}
+                                  </p>
                                 </div>
                               ))}
                             </div>
@@ -1430,19 +1644,45 @@ export function PanelWebsiteBuilder() {
 
                         {/* 8. PRODUCT GRID */}
                         {sec.type === "product_grid" && (
-                          <div className="p-8 bg-slate-50/70 text-center border-b border-slate-100">
-                            <h3 className="text-base font-bold text-slate-900">{sec.content?.title || "Katalog Produk Pilihan"}</h3>
-                            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">{sec.content?.subtitle}</p>
+                          <div
+                            style={{ backgroundColor: theme.bg, color: theme.text }}
+                            className={cn("text-center border-b border-black/10 transition-colors", padClass)}
+                          >
+                            <h3
+                              style={{ color: theme.text }}
+                              className="text-base font-bold"
+                            >
+                              {sec.content?.title || "Katalog Produk Pilihan"}
+                            </h3>
+                            <p
+                              style={{ color: theme.mutedText }}
+                              className="text-xs mt-1 max-w-md mx-auto"
+                            >
+                              {sec.content?.subtitle}
+                            </p>
                             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
                               {[1, 2, 3].map((num) => (
-                                <div key={num} className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xs">
-                                  <div className="aspect-square w-full rounded-lg bg-slate-100 mb-2 overflow-hidden">
+                                <div
+                                  key={num}
+                                  style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                                  className="rounded-xl border p-3 text-left shadow-xs transition-all"
+                                >
+                                  <div className="aspect-square w-full rounded-lg bg-black/10 mb-2 overflow-hidden">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img src="/placeholder-product.svg" alt="P" className="h-full w-full object-cover" />
                                   </div>
-                                  <p className="font-bold text-slate-900 text-xs truncate">Sample Produk #{num}</p>
-                                  <p className="font-mono text-emerald-700 font-extrabold text-xs mt-1">Rp 175.000</p>
-                                  <span className="mt-2 block rounded bg-slate-900 py-1 text-center text-[10px] font-bold text-white">
+                                  <p style={{ color: theme.cardText }} className="font-bold text-xs truncate">
+                                    Sample Produk #{num}
+                                  </p>
+                                  <p className="font-mono text-emerald-500 font-extrabold text-xs mt-1">Rp 175.000</p>
+                                  <span
+                                    className={cn(
+                                      "mt-2 block rounded py-1 text-center text-[10px] font-bold shadow-xs",
+                                      theme.isDark
+                                        ? "bg-emerald-600 text-white"
+                                        : "bg-slate-900 text-white"
+                                    )}
+                                  >
                                     Pesan via WA
                                   </span>
                                 </div>
@@ -1453,14 +1693,28 @@ export function PanelWebsiteBuilder() {
 
                         {/* 9. TESTIMONIALS */}
                         {sec.type === "testimonials" && (
-                          <div className="p-8 bg-white border-b border-slate-100">
-                            <h3 className="text-base font-bold text-center text-slate-900 mb-4">{sec.content?.title || "Ulasan Pembeli"}</h3>
+                          <div
+                            style={{ backgroundColor: theme.bg, color: theme.text }}
+                            className={cn("border-b border-black/10 transition-colors", padClass)}
+                          >
+                            <h3
+                              style={{ color: theme.text }}
+                              className="text-base font-bold text-center mb-4"
+                            >
+                              {sec.content?.title || "Ulasan Pembeli"}
+                            </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
                               {(sec.content?.items || []).map((it: any, i: number) => (
-                                <div key={i} className="rounded-xl border border-slate-200 p-3.5 text-xs italic text-slate-700 bg-slate-50">
-                                  &ldquo;{it.text}&rdquo;
-                                  <p className="mt-2 font-bold not-italic text-slate-900 text-2xs">
-                                    {it.name} <span className="text-slate-400 font-normal">- {it.role}</span>
+                                <div
+                                  key={i}
+                                  style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                                  className="rounded-xl border p-3.5 text-xs shadow-xs transition-all"
+                                >
+                                  <p style={{ color: theme.cardMuted }} className="italic">
+                                    &ldquo;{it.text}&rdquo;
+                                  </p>
+                                  <p style={{ color: theme.cardText }} className="mt-2 font-bold not-italic text-2xs">
+                                    {it.name} <span style={{ color: theme.cardMuted }} className="font-normal">- {it.role}</span>
                                   </p>
                                 </div>
                               ))}
@@ -1470,13 +1724,29 @@ export function PanelWebsiteBuilder() {
 
                         {/* 10. FAQ */}
                         {sec.type === "faq" && (
-                          <div className="p-8 bg-slate-50/70 border-b border-slate-100">
-                            <h3 className="text-base font-bold text-center text-slate-900 mb-4">{sec.content?.title || "FAQ"}</h3>
+                          <div
+                            style={{ backgroundColor: theme.bg, color: theme.text }}
+                            className={cn("border-b border-black/10 transition-colors", padClass)}
+                          >
+                            <h3
+                              style={{ color: theme.text }}
+                              className="text-base font-bold text-center mb-4"
+                            >
+                              {sec.content?.title || "FAQ"}
+                            </h3>
                             <div className="space-y-2 max-w-md mx-auto">
                               {(sec.content?.items || []).map((it: any, i: number) => (
-                                <div key={i} className="rounded-xl border border-slate-200 bg-white p-3 text-xs">
-                                  <p className="font-bold text-slate-900">{it.q}</p>
-                                  <p className="text-slate-600 mt-1 text-2xs leading-relaxed">{it.a}</p>
+                                <div
+                                  key={i}
+                                  style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                                  className="rounded-xl border p-3 text-xs shadow-xs transition-all"
+                                >
+                                  <p style={{ color: theme.cardText }} className="font-bold">
+                                    {it.q}
+                                  </p>
+                                  <p style={{ color: theme.cardMuted }} className="mt-1 text-2xs leading-relaxed">
+                                    {it.a}
+                                  </p>
                                 </div>
                               ))}
                             </div>
@@ -1487,13 +1757,17 @@ export function PanelWebsiteBuilder() {
                         {sec.type === "whatsapp_cta" && (
                           <div
                             style={{
-                              backgroundColor: sec.style?.bg_color || "#065F46",
-                              color: sec.style?.text_color || "#FFFFFF",
+                              backgroundColor: theme.bg,
+                              color: theme.text,
                             }}
-                            className="p-8 text-center"
+                            className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                           >
-                            <h3 className="text-lg font-extrabold max-w-md mx-auto">{sec.content?.title}</h3>
-                            <p className="text-xs mt-1.5 opacity-90 max-w-sm mx-auto leading-relaxed">{sec.content?.subtitle}</p>
+                            <h3 style={{ color: theme.text }} className="text-lg font-extrabold max-w-md mx-auto">
+                              {sec.content?.title}
+                            </h3>
+                            <p style={{ color: theme.mutedText }} className="text-xs mt-1.5 max-w-sm mx-auto leading-relaxed">
+                              {sec.content?.subtitle}
+                            </p>
                             <span className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-emerald-900 shadow-md">
                               <MessageCircle className="h-4 w-4 text-emerald-700" />
                               {sec.content?.button_text || "Chat WhatsApp"}
@@ -1505,14 +1779,20 @@ export function PanelWebsiteBuilder() {
                         {sec.type === "footer" && (
                           <div
                             style={{
-                              backgroundColor: sec.style?.bg_color || "#0F172A",
-                              color: sec.style?.text_color || "#94A3B8",
+                              backgroundColor: theme.bg,
+                              color: theme.text,
                             }}
-                            className="p-5 text-center text-2xs"
+                            className={cn("text-center border-t border-black/10 text-2xs transition-colors", padClass)}
                           >
-                            <p className="font-bold text-white text-xs">{sec.content?.brand_name || "Toko Online"}</p>
-                            <p className="mt-0.5 opacity-80">{sec.content?.tagline}</p>
-                            <p className="mt-2 opacity-60">{sec.content?.copyright}</p>
+                            <p style={{ color: theme.text }} className="font-bold text-xs">
+                              {sec.content?.brand_name || "Toko Online"}
+                            </p>
+                            <p style={{ color: theme.mutedText }} className="mt-0.5">
+                              {sec.content?.tagline}
+                            </p>
+                            <p style={{ color: theme.mutedText }} className="mt-2 opacity-60">
+                              {sec.content?.copyright}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -1546,6 +1826,133 @@ export function PanelWebsiteBuilder() {
         onClose={() => setShowAddSectionModal(false)}
         onAddSection={handleAddSection}
       />
+
+      {/* MODAL PENGATURAN TOKO (WEBSITE SETTINGS) */}
+      {showSiteSettingsModal && currentSite && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-ink-100 bg-ink-50/70 px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-signal-wash text-signal-strong">
+                  <Settings className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-ink">Pengaturan Website Toko</h3>
+                  <p className="text-2xs text-ink-500">Konfigurasi identitas toko, SEO, dan integrasi AI</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSiteSettingsModal(false)}
+                className="rounded-lg p-1 text-ink-400 hover:bg-ink-100 hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block text-2xs font-bold uppercase text-ink-600 mb-1">
+                  Nama Toko / Brand *
+                </label>
+                <input
+                  type="text"
+                  value={siteSettingsForm.name}
+                  onChange={(e) => setSiteSettingsForm({ ...siteSettingsForm, name: e.target.value })}
+                  placeholder="Misal: Glow Natural Official Store"
+                  className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs text-ink focus:border-signal focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-2xs font-bold uppercase text-ink-600 mb-1">
+                  Tautan Toko (Storefront URL)
+                </label>
+                <div className="flex items-center rounded-lg border border-ink-200 bg-ink-50 px-3 py-2 font-mono text-2xs text-ink-600">
+                  <span className="text-ink-400">https://noewbar.com/store/</span>
+                  <span className="font-bold text-ink">{currentSite.slug}</span>
+                </div>
+                <p className="text-[10px] text-ink-400 mt-1">
+                  Slug URL toko terdaftar otomatis dan dapat diakses publik setelah toko dipublikasikan.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-2xs font-bold uppercase text-ink-600 mb-1">
+                  Judul SEO Halaman (Meta Title)
+                </label>
+                <input
+                  type="text"
+                  value={siteSettingsForm.title}
+                  onChange={(e) => setSiteSettingsForm({ ...siteSettingsForm, title: e.target.value })}
+                  placeholder="Misal: Glow Natural - Skincare Alami BPOM & Halal"
+                  className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs text-ink focus:border-signal focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-2xs font-bold uppercase text-ink-600 mb-1">
+                  Deskripsi SEO (Meta Description)
+                </label>
+                <textarea
+                  rows={2}
+                  value={siteSettingsForm.description}
+                  onChange={(e) => setSiteSettingsForm({ ...siteSettingsForm, description: e.target.value })}
+                  placeholder="Deskripsi singkat toko yang muncul pada hasil pencarian Google..."
+                  className="w-full rounded-lg border border-ink-200 bg-white p-2.5 text-xs text-ink focus:border-signal focus:outline-none"
+                />
+              </div>
+
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 space-y-2">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={siteSettingsForm.is_knowledge_source}
+                    onChange={(e) =>
+                      setSiteSettingsForm({
+                        ...siteSettingsForm,
+                        is_knowledge_source: e.target.checked,
+                      })
+                    }
+                    className="mt-0.5 h-4 w-4 rounded border-ink-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <div>
+                    <span className="font-bold text-xs text-emerald-900 block">
+                      Sinkronkan sebagai Sumber AI Knowledge Base
+                    </span>
+                    <span className="text-2xs text-emerald-800 leading-relaxed block mt-0.5">
+                      Jika dicentang, seluruh informasi profil toko, FAQ, keunggulan, dan katalog produk di website ini otomatis diindeks agar chatbot WhatsApp AI dapat menjawab pertanyaan pelanggan dengan tepat.
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-ink-100 bg-ink-50/50 px-5 py-3.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={() => setShowSiteSettingsModal(false)}
+                disabled={savingDraft}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                type="button"
+                onClick={handleSaveSiteSettings}
+                loading={savingDraft}
+                disabled={!siteSettingsForm.name.trim()}
+              >
+                <Save className="mr-1.5 h-3.5 w-3.5" />
+                Simpan Pengaturan
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

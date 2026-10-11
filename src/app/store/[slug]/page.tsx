@@ -12,7 +12,12 @@ import {
   Star,
 } from "lucide-react";
 import { ProductCard } from "./product-card";
-import { getEmbedVideoUrl } from "@/lib/website/types";
+import {
+  getEmbedVideoUrl,
+  getSectionTheme,
+  getStorefrontPadding,
+} from "@/lib/website/types";
+import { cn } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -74,16 +79,26 @@ export default async function PublicStorePage({
         sections.map((section: any) => {
           if (!section.visibility) return null;
 
+          const theme = getSectionTheme(section.style);
+          const padClass = getStorefrontPadding(section.style?.padding);
+
           // 1. ANNOUNCEMENT
           if (section.type === "announcement") {
             return (
               <div
                 key={section.id}
                 style={{
-                  backgroundColor: section.style?.bg_color || "#065F46",
-                  color: section.style?.text_color || "#ECFDF5",
+                  backgroundColor: theme.bg,
+                  color: theme.text,
                 }}
-                className="py-2.5 px-4 text-center text-xs font-semibold tracking-wide"
+                className={cn(
+                  "text-center font-semibold tracking-wide transition-all",
+                  section.style?.padding === "sm"
+                    ? "py-1.5 px-4 text-xs"
+                    : section.style?.padding === "lg"
+                    ? "py-3.5 px-6 text-sm"
+                    : "py-2.5 px-4 text-xs"
+                )}
               >
                 {section.content?.text || "Selamat datang di toko resmi kami!"}
               </div>
@@ -95,22 +110,35 @@ export default async function PublicStorePage({
             return (
               <header
                 key={section.id}
-                style={{ backgroundColor: section.style?.bg_color || "#F8FAFC" }}
-                className="relative overflow-hidden border-b border-slate-100 py-16 sm:py-24"
+                style={{ backgroundColor: theme.bg, color: theme.text }}
+                className={cn("relative overflow-hidden border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-5xl px-5 sm:px-8">
                   <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
                     <div>
                       {section.content?.badge && (
-                        <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/80 px-3 py-1 text-xs font-semibold text-emerald-800 mb-4 border border-emerald-200">
-                          <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                        <div
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold mb-4 border",
+                            theme.isDark
+                              ? "bg-white/10 text-emerald-300 border-white/20"
+                              : "bg-emerald-100/80 text-emerald-800 border-emerald-200"
+                          )}
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
                           {section.content.badge}
                         </div>
                       )}
-                      <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl sm:leading-tight">
+                      <h1
+                        style={{ color: theme.text }}
+                        className="text-3xl font-extrabold tracking-tight sm:text-5xl sm:leading-tight"
+                      >
                         {section.content?.headline || website.name}
                       </h1>
-                      <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
+                      <p
+                        style={{ color: theme.mutedText }}
+                        className="mt-4 text-base leading-relaxed sm:text-lg"
+                      >
                         {section.content?.subheadline || website.description}
                       </p>
 
@@ -126,9 +154,14 @@ export default async function PublicStorePage({
                         </a>
                         <a
                           href="#katalog"
-                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-all"
+                          className={cn(
+                            "inline-flex items-center gap-2 rounded-xl border px-5 py-3.5 text-sm font-semibold shadow-sm transition-all",
+                            theme.isDark
+                              ? "border-white/20 bg-white/10 text-white hover:bg-white/20"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          )}
                         >
-                          <ShoppingBag className="h-4 w-4 text-slate-500" />
+                          <ShoppingBag className="h-4 w-4" />
                           {section.content?.cta_secondary_text || "Lihat Katalog"}
                         </a>
                       </div>
@@ -140,7 +173,7 @@ export default async function PublicStorePage({
                         <img
                           src={section.content.image_url}
                           alt={section.content?.headline || "Product Showcase"}
-                          className="w-full rounded-2xl object-cover shadow-xl border border-slate-200 max-h-[420px]"
+                          className="w-full rounded-2xl object-cover shadow-xl border border-black/10 max-h-[420px]"
                         />
                       </div>
                     )}
@@ -156,16 +189,21 @@ export default async function PublicStorePage({
             return (
               <section
                 key={section.id}
-                style={{ backgroundColor: section.style?.bg_color || "#FFFFFF" }}
-                className="py-14 sm:py-20 border-b border-slate-100"
+                style={{ backgroundColor: theme.bg, color: theme.text }}
+                className={cn("border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-5xl px-5 sm:px-8">
                   <div className="text-center max-w-2xl mx-auto mb-12">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    <h2
+                      style={{ color: theme.text }}
+                      className="text-2xl font-bold tracking-tight sm:text-3xl"
+                    >
                       {section.content?.title || "Keunggulan Layanan"}
                     </h2>
                     {section.content?.subtitle && (
-                      <p className="mt-2 text-sm text-slate-500">{section.content.subtitle}</p>
+                      <p style={{ color: theme.mutedText }} className="mt-2 text-sm">
+                        {section.content.subtitle}
+                      </p>
                     )}
                   </div>
 
@@ -173,13 +211,18 @@ export default async function PublicStorePage({
                     {items.map((item: any, idx: number) => (
                       <div
                         key={idx}
-                        className="rounded-xl border border-slate-200 bg-slate-50/50 p-6 transition-all hover:bg-white hover:shadow-md hover:border-slate-300"
+                        style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                        className="rounded-xl border p-6 transition-all hover:shadow-md"
                       >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 font-bold mb-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600 font-bold mb-4">
                           <CheckCircle2 className="h-5 w-5" />
                         </div>
-                        <h3 className="text-base font-bold text-slate-900">{item.title}</h3>
-                        <p className="mt-2 text-xs leading-relaxed text-slate-600">{item.desc}</p>
+                        <h3 style={{ color: theme.cardText }} className="text-base font-bold">
+                          {item.title}
+                        </h3>
+                        <p style={{ color: theme.cardMuted }} className="mt-2 text-xs leading-relaxed">
+                          {item.desc}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -194,24 +237,32 @@ export default async function PublicStorePage({
               <section
                 id="katalog"
                 key={section.id}
-                style={{ backgroundColor: section.style?.bg_color || "#F8FAFC" }}
-                className="py-16 sm:py-24 border-b border-slate-100"
+                style={{ backgroundColor: theme.bg, color: theme.text }}
+                className={cn("border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-5xl px-5 sm:px-8">
                   <div className="text-center max-w-2xl mx-auto mb-12">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    <h2
+                      style={{ color: theme.text }}
+                      className="text-2xl font-bold tracking-tight sm:text-3xl"
+                    >
                       {section.content?.title || "Katalog Produk Pilihan"}
                     </h2>
-                    <p className="mt-2 text-sm text-slate-500">
+                    <p style={{ color: theme.mutedText }} className="mt-2 text-sm">
                       {section.content?.subtitle || "Pesan langsung dengan respon otomatis WhatsApp 24 jam"}
                     </p>
                   </div>
 
                   {products.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center">
-                      <Package className="mx-auto h-8 w-8 text-slate-400 mb-2" />
-                      <p className="text-sm font-semibold text-slate-700">Produk Sedang Disiapkan</p>
-                      <p className="mt-1 text-xs text-slate-500">
+                    <div
+                      style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                      className="rounded-xl border border-dashed p-12 text-center"
+                    >
+                      <Package className="mx-auto h-8 w-8 opacity-50 mb-2" />
+                      <p style={{ color: theme.cardText }} className="text-sm font-semibold">
+                        Produk Sedang Disiapkan
+                      </p>
+                      <p style={{ color: theme.cardMuted }} className="mt-1 text-xs">
                         Hubungi admin WhatsApp kami untuk daftar produk lengkap.
                       </p>
                     </div>
@@ -233,12 +284,15 @@ export default async function PublicStorePage({
             return (
               <section
                 key={section.id}
-                style={{ backgroundColor: section.style?.bg_color || "#FFFFFF" }}
-                className="py-16 sm:py-20 border-b border-slate-100"
+                style={{ backgroundColor: theme.bg, color: theme.text }}
+                className={cn("border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-5xl px-5 sm:px-8">
                   <div className="text-center max-w-2xl mx-auto mb-10">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    <h2
+                      style={{ color: theme.text }}
+                      className="text-2xl font-bold tracking-tight sm:text-3xl"
+                    >
                       {section.content?.title || "Ulasan Pembeli"}
                     </h2>
                   </div>
@@ -247,17 +301,18 @@ export default async function PublicStorePage({
                     {items.map((item: any, idx: number) => (
                       <div
                         key={idx}
-                        className="rounded-xl border border-slate-200 bg-slate-50 p-6"
+                        style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                        className="rounded-xl border p-6 transition-all shadow-xs"
                       >
                         <div className="flex items-center gap-1 text-amber-500 mb-3">
                           {[...Array(5)].map((_, i) => (
                             <Star key={i} className="h-4 w-4 fill-amber-400" />
                           ))}
                         </div>
-                        <p className="text-sm leading-relaxed text-slate-700 italic">
+                        <p style={{ color: theme.cardMuted }} className="text-sm leading-relaxed italic">
                           &ldquo;{item.text}&rdquo;
                         </p>
-                        <p className="mt-4 text-xs font-bold text-slate-900 not-italic">
+                        <p style={{ color: theme.cardText }} className="mt-4 text-xs font-bold not-italic">
                           - {item.name}
                         </p>
                       </div>
@@ -274,12 +329,15 @@ export default async function PublicStorePage({
             return (
               <section
                 key={section.id}
-                style={{ backgroundColor: section.style?.bg_color || "#F8FAFC" }}
-                className="py-16 sm:py-20 border-b border-slate-100"
+                style={{ backgroundColor: theme.bg, color: theme.text }}
+                className={cn("border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-3xl px-5 sm:px-8">
                   <div className="text-center mb-10">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    <h2
+                      style={{ color: theme.text }}
+                      className="text-2xl font-bold tracking-tight sm:text-3xl"
+                    >
                       {section.content?.title || "Pertanyaan yang Sering Diajukan"}
                     </h2>
                   </div>
@@ -288,16 +346,23 @@ export default async function PublicStorePage({
                     {items.map((item: any, idx: number) => (
                       <details
                         key={idx}
-                        className="group rounded-xl border border-slate-200 bg-white p-5 transition-colors"
+                        style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                        className="group rounded-xl border p-5 transition-colors"
                       >
-                        <summary className="flex cursor-pointer items-center justify-between font-semibold text-slate-900 text-sm list-none">
+                        <summary
+                          style={{ color: theme.cardText }}
+                          className="flex cursor-pointer items-center justify-between font-semibold text-sm list-none"
+                        >
                           <span className="flex items-center gap-2">
-                            <HelpCircle className="h-4 w-4 text-emerald-600" />
+                            <HelpCircle className="h-4 w-4 text-emerald-500" />
                             {item.q}
                           </span>
-                          <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180" />
+                          <ChevronDown className="h-4 w-4 opacity-50 transition-transform group-open:rotate-180" />
                         </summary>
-                        <p className="mt-3 text-xs leading-relaxed text-slate-600 border-t border-slate-100 pt-3">
+                        <p
+                          style={{ color: theme.cardMuted }}
+                          className="mt-3 text-xs leading-relaxed border-t border-black/10 pt-3"
+                        >
                           {item.a}
                         </p>
                       </details>
@@ -315,22 +380,35 @@ export default async function PublicStorePage({
               <section
                 key={section.id}
                 style={{
-                  backgroundColor: section.style?.bg_color || "#0F172A",
-                  color: section.style?.text_color || "#FFFFFF",
+                  backgroundColor: theme.bg,
+                  color: theme.text,
                 }}
-                className="py-16 sm:py-24 border-b border-slate-800"
+                className={cn("border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-4xl px-5 text-center">
                   {section.content?.badge && (
-                    <span className="inline-block rounded-full bg-emerald-500/20 text-emerald-400 px-3 py-1 text-xs font-bold mb-3 border border-emerald-500/30">
+                    <span
+                      className={cn(
+                        "inline-block rounded-full px-3 py-1 text-xs font-bold mb-3 border",
+                        theme.isDark
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                          : "bg-emerald-100 text-emerald-800 border-emerald-200"
+                      )}
+                    >
                       {section.content.badge}
                     </span>
                   )}
-                  <h2 className="text-2xl font-extrabold sm:text-3xl max-w-2xl mx-auto">
+                  <h2
+                    style={{ color: theme.text }}
+                    className="text-2xl font-extrabold sm:text-3xl max-w-2xl mx-auto"
+                  >
                     {section.content?.title || "Video Produk"}
                   </h2>
                   {section.content?.description && (
-                    <p className="mt-3 text-xs sm:text-sm opacity-80 max-w-xl mx-auto leading-relaxed">
+                    <p
+                      style={{ color: theme.mutedText }}
+                      className="mt-3 text-xs sm:text-sm max-w-xl mx-auto leading-relaxed"
+                    >
                       {section.content.description}
                     </p>
                   )}
@@ -364,7 +442,7 @@ export default async function PublicStorePage({
                         href={waLink(`Halo ${tenant.business_name}, saya tertarik dengan produk di video ${section.content?.title || ""}.`)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-xs font-bold text-white shadow-lg hover:bg-emerald-700 transition-all"
+                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-xs font-bold text-white shadow-lg hover:bg-emerald-700 transition-all hover:scale-105"
                       >
                         <MessageCircle className="h-4 w-4" />
                         {section.content.button_text}
@@ -382,16 +460,21 @@ export default async function PublicStorePage({
             return (
               <section
                 key={section.id}
-                style={{ backgroundColor: section.style?.bg_color || "#FFFFFF" }}
-                className="py-16 sm:py-20 border-b border-slate-100"
+                style={{ backgroundColor: theme.bg, color: theme.text }}
+                className={cn("border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-5xl px-5 sm:px-8">
                   <div className="text-center max-w-2xl mx-auto mb-10">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    <h2
+                      style={{ color: theme.text }}
+                      className="text-2xl font-bold tracking-tight sm:text-3xl"
+                    >
                       {section.content?.title || "Galeri Foto"}
                     </h2>
                     {section.content?.subtitle && (
-                      <p className="mt-2 text-sm text-slate-500">{section.content.subtitle}</p>
+                      <p style={{ color: theme.mutedText }} className="mt-2 text-sm">
+                        {section.content.subtitle}
+                      </p>
                     )}
                   </div>
 
@@ -399,9 +482,10 @@ export default async function PublicStorePage({
                     {items.map((item: any, idx: number) => (
                       <div
                         key={idx}
-                        className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:shadow-md"
+                        style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
+                        className="group relative overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-md"
                       >
-                        <div className="aspect-square w-full overflow-hidden bg-slate-100">
+                        <div className="aspect-square w-full overflow-hidden bg-black/10">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={item.image_url || "/placeholder-product.svg"}
@@ -410,8 +494,13 @@ export default async function PublicStorePage({
                           />
                         </div>
                         {item.caption && (
-                          <div className="p-3 text-center bg-white border-t border-slate-100">
-                            <p className="text-xs font-semibold text-slate-800">{item.caption}</p>
+                          <div
+                            style={{ backgroundColor: theme.cardBg }}
+                            className="p-3 text-center border-t border-black/10"
+                          >
+                            <p style={{ color: theme.cardText }} className="text-xs font-semibold">
+                              {item.caption}
+                            </p>
                           </div>
                         )}
                       </div>
@@ -427,29 +516,42 @@ export default async function PublicStorePage({
             return (
               <section
                 key={section.id}
-                style={{ backgroundColor: section.style?.bg_color || "#F8FAFC" }}
-                className="py-16 sm:py-24 border-b border-slate-100"
+                style={{ backgroundColor: theme.bg, color: theme.text }}
+                className={cn("border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-5xl px-5 sm:px-8">
                   <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
                     <div>
                       {section.content?.badge && (
-                        <span className="inline-block rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 mb-3">
+                        <span
+                          className={cn(
+                            "inline-block rounded-full px-3 py-1 text-xs font-semibold mb-3 border",
+                            theme.isDark
+                              ? "bg-white/10 text-white border-white/20"
+                              : "bg-slate-200 text-slate-700 border-slate-300"
+                          )}
+                        >
                           {section.content.badge}
                         </span>
                       )}
-                      <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                      <h2
+                        style={{ color: theme.text }}
+                        className="text-2xl font-bold tracking-tight sm:text-3xl"
+                      >
                         {section.content?.title || "Tentang Brand Kami"}
                       </h2>
-                      <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
+                      <p
+                        style={{ color: theme.mutedText }}
+                        className="mt-4 text-sm leading-relaxed sm:text-base"
+                      >
                         {section.content?.paragraph || ""}
                       </p>
 
                       {Array.isArray(section.content?.bullet_points) && section.content.bullet_points.length > 0 && (
-                        <ul className="mt-6 space-y-2.5 text-xs text-slate-700">
+                        <ul className="mt-6 space-y-2.5 text-xs">
                           {section.content.bullet_points.map((pt: string, idx: number) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                            <li key={idx} className="flex items-start gap-2" style={{ color: theme.text }}>
+                              <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                               <span>{pt}</span>
                             </li>
                           ))}
@@ -462,7 +564,12 @@ export default async function PublicStorePage({
                             href={waLink(`Halo ${tenant.business_name}, saya ingin tahu lebih banyak tentang toko Anda.`)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-600 transition-all"
+                            className={cn(
+                              "inline-flex items-center gap-2 rounded-xl px-6 py-3 text-xs font-bold shadow-sm transition-all",
+                              theme.isDark
+                                ? "bg-white text-slate-900 hover:bg-slate-100"
+                                : "bg-slate-900 text-white hover:bg-emerald-600"
+                            )}
                           >
                             <MessageCircle className="h-4 w-4" />
                             {section.content.button_text}
@@ -472,7 +579,7 @@ export default async function PublicStorePage({
                     </div>
 
                     {section.content?.image_url && (
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-md">
+                      <div className="overflow-hidden rounded-2xl border border-black/10 shadow-md">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={section.content.image_url}
@@ -493,10 +600,10 @@ export default async function PublicStorePage({
               <section
                 key={section.id}
                 style={{
-                  backgroundColor: section.style?.bg_color || "#065F46",
-                  color: section.style?.text_color || "#FFFFFF",
+                  backgroundColor: theme.bg,
+                  color: theme.text,
                 }}
-                className="py-12 sm:py-16"
+                className={cn("border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-4xl px-5 text-center">
                   {section.content?.badge && (
@@ -504,10 +611,16 @@ export default async function PublicStorePage({
                       {section.content.badge}
                     </span>
                   )}
-                  <h2 className="text-2xl font-extrabold sm:text-4xl tracking-tight">
+                  <h2
+                    style={{ color: theme.text }}
+                    className="text-2xl font-extrabold sm:text-4xl tracking-tight"
+                  >
                     {section.content?.title || "Promo Kilat Terbatas"}
                   </h2>
-                  <p className="mt-3 text-xs sm:text-sm opacity-90 max-w-lg mx-auto leading-relaxed">
+                  <p
+                    style={{ color: theme.mutedText }}
+                    className="mt-3 text-xs sm:text-sm max-w-lg mx-auto leading-relaxed"
+                  >
                     {section.content?.subtitle || "Dapatkan harga promo terbaik sebelum penawaran berakhir."}
                   </p>
 
@@ -544,16 +657,22 @@ export default async function PublicStorePage({
               <section
                 key={section.id}
                 style={{
-                  backgroundColor: section.style?.bg_color || "#065F46",
-                  color: section.style?.text_color || "#FFFFFF",
+                  backgroundColor: theme.bg,
+                  color: theme.text,
                 }}
-                className="py-16 sm:py-24"
+                className={cn("border-b border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-3xl px-5 text-center">
-                  <h2 className="text-3xl font-extrabold sm:text-4xl">
+                  <h2
+                    style={{ color: theme.text }}
+                    className="text-3xl font-extrabold sm:text-4xl"
+                  >
                     {section.content?.title || "Siap Memesan Hari Ini?"}
                   </h2>
-                  <p className="mt-4 text-sm sm:text-base leading-relaxed opacity-90">
+                  <p
+                    style={{ color: theme.mutedText }}
+                    className="mt-4 text-sm sm:text-base leading-relaxed"
+                  >
                     {section.content?.subtitle || "Hubungi admin kami untuk cek ketersediaan stok dan konfirmasi ongkir otomatis."}
                   </p>
                   <div className="mt-8">
@@ -578,17 +697,21 @@ export default async function PublicStorePage({
               <footer
                 key={section.id}
                 style={{
-                  backgroundColor: section.style?.bg_color || "#0F172A",
-                  color: section.style?.text_color || "#94A3B8",
+                  backgroundColor: theme.bg,
+                  color: theme.text,
                 }}
-                className="py-8 px-5 border-t border-slate-800"
+                className={cn("border-t border-black/10 transition-colors", padClass)}
               >
                 <div className="mx-auto max-w-5xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
                   <div>
-                    <p className="font-bold text-white">{section.content?.brand_name || website.name}</p>
-                    <p className="mt-0.5 text-slate-400">{section.content?.tagline || website.description}</p>
+                    <p style={{ color: theme.text }} className="font-bold">
+                      {section.content?.brand_name || website.name}
+                    </p>
+                    <p style={{ color: theme.mutedText }} className="mt-0.5">
+                      {section.content?.tagline || website.description}
+                    </p>
                   </div>
-                  <p className="text-slate-500">
+                  <p style={{ color: theme.mutedText }}>
                     {section.content?.copyright || "Hak Cipta Dilindungi."} &bull; Powered by Noewbar CS Pro
                   </p>
                 </div>

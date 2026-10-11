@@ -642,3 +642,75 @@ export const AVAILABLE_SECTION_TEMPLATES: SectionBlueprint[] = [
     }),
   },
 ];
+
+/**
+ * Determines whether a background hex color is dark, so text and inner card styling
+ * can dynamically adjust contrast for WCAG AA compliance and modern aesthetics.
+ */
+export function isDarkColor(color?: string): boolean {
+  if (!color) return false;
+  let hex = color.trim().replace("#", "");
+  if (hex.length === 3) {
+    hex = hex.split("").map((c) => c + c).join("");
+  }
+  if (hex.length !== 6) return false;
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return false;
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq < 145;
+}
+
+export function getCanvasPadding(padding?: string): string {
+  if (padding === "sm") return "py-4 px-4 sm:px-5";
+  if (padding === "lg") return "py-14 px-6 sm:px-10";
+  return "py-8 px-5 sm:px-8";
+}
+
+export function getStorefrontPadding(padding?: string): string {
+  if (padding === "sm") return "py-8 sm:py-12 px-5 sm:px-8";
+  if (padding === "lg") return "py-20 sm:py-28 px-5 sm:px-8";
+  return "py-14 sm:py-20 px-5 sm:px-8";
+}
+
+export interface SectionTheme {
+  bg: string;
+  text: string;
+  mutedText: string;
+  isDark: boolean;
+  cardBg: string;
+  cardBorder: string;
+  cardText: string;
+  cardMuted: string;
+}
+
+export function getSectionTheme(
+  style?: WebsiteSection["style"],
+  defaultBg = "#FFFFFF",
+  defaultText?: string
+): SectionTheme {
+  const bg = style?.bg_color || defaultBg;
+  const dark = isDarkColor(bg);
+
+  const text = style?.text_color || defaultText || (dark ? "#FFFFFF" : "#0F172A");
+  const mutedText = style?.text_color
+    ? `${style.text_color}cc`
+    : (dark ? "#CBD5E1" : "#64748B");
+
+  const cardBg = dark ? "rgba(255, 255, 255, 0.08)" : "#FFFFFF";
+  const cardBorder = dark ? "rgba(255, 255, 255, 0.15)" : "#E2E8F0";
+  const cardText = dark ? "#FFFFFF" : "#0F172A";
+  const cardMuted = dark ? "#CBD5E1" : "#64748B";
+
+  return {
+    bg,
+    text,
+    mutedText,
+    isDark: dark,
+    cardBg,
+    cardBorder,
+    cardText,
+    cardMuted,
+  };
+}
