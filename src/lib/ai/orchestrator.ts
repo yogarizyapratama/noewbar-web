@@ -395,9 +395,14 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
 
   let replyText = "";
 
-  if (toolOutcomes.length > 0) {
-    // Final composition turn: force a plain text answer with the data already gathered.
-    // The directive rides with the leading system prompt for the same reason as above.
+  // 1. Check if the loop already produced a final assistant answer
+  const lastMsg = messages[messages.length - 1];
+  if (lastMsg && lastMsg.role === "assistant" && typeof lastMsg.content === "string" && lastMsg.content.trim()) {
+    replyText = lastMsg.content;
+  }
+
+  // 2. If tools were executed but no final text reply was produced, run composition turn
+  if (!replyText && toolOutcomes.length > 0) {
     const finalMessages: ChatCompletionMessageParam[] = [
       ...messages.slice(0, 1),
       {
@@ -405,7 +410,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
         content:
           "Susun balasan final untuk pembeli. Jangan memanggil tool lagi. Jangan menyebut harga/stok yang tidak ada di data tool di atas.",
       },
-      ...messages.slice(1),
+      ...messages.slice(1).filter((m) => m.role !== "assistant" || (m.role === "assistant" && m.tool_calls)),
     ];
 
     try {
@@ -420,12 +425,6 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
       degraded = true;
       degradationReason =
         err instanceof Error ? `Final composition failed: ${err.message}` : "Final composition failed";
-    }
-  } else {
-    // If no tools were called, the assistant's reply from the loop is already the direct final answer!
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg && lastMsg.role === "assistant" && typeof lastMsg.content === "string") {
-      replyText = lastMsg.content;
     }
   }
 
