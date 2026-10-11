@@ -22,6 +22,28 @@ const QUICK_PROMPTS = [
   "Bisa kurang ga kak?",
 ];
 
+function cleanAiText(raw: string): string {
+  if (!raw) return "";
+  let text = raw;
+  text = text.replace(/<think>[\s\S]*?<\/think>\s*/gi, "");
+  text = text.replace(/<think>[\s\S]*$/gi, "");
+  text = text.replace(/^[\s\S]*?<\/think>\s*/gi, "");
+  text = text.replace(
+    /\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*?\[\/(?:thinking|reasoning|pikirkan|analisis)\]\s*/gi,
+    ""
+  );
+  text = text.replace(/\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*$/gi, "");
+  text = text.replace(/^[\s\S]*?\[\/(?:thinking|reasoning|pikirkan|analisis)\]\s*/gi, "");
+  text = text.replace(/<\/?think>/gi, "");
+  text = text.replace(/<pesan_pembeli>[\s\S]*?<\/pesan_pembeli>/gi, "");
+  text = text.replace(/<\/?pesan_pembeli>/gi, "");
+  text = text.replace(/\[JID pembeli:[^\]]*\]/gi, "");
+  text = text.replace(/(?:Sekarang,?\s+)?saya\s+(?:perlu|harus|akan)\s+(?:mencari|mengecek|memanggil|menggunakan)[\s\S]*?(?:tool_[a-z_]+)[\s\S]*?\.\s*/gi, "");
+  text = text.replace(/^\s*\[(?:jawaban|balasan|response|answer|chat|cs|pesan)\]\s*:?\s*/i, "");
+  text = text.replace(/\[(?:jawaban|balasan|response|answer)\]/gi, "");
+  return text.trim();
+}
+
 export function PlaygroundPanel() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
@@ -131,7 +153,10 @@ export function PlaygroundPanel() {
         }
         meta.push(`Latensi ${json.latency_ms} ms${json.degraded ? " - degraded" : ""}`);
 
-        setTurns((prev) => [...prev, { role: "assistant", text: json.reply, meta }]);
+        setTurns((prev) => [
+          ...prev,
+          { role: "assistant", text: cleanAiText(json.reply) || "(Tidak ada balasan teks)", meta },
+        ]);
       } catch {
         setTurns((prev) => [
           ...prev,
