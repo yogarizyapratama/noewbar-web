@@ -145,14 +145,18 @@ export function findUnbackedAccountNumbers(
 ): string[] {
   const bankDigits = (payment.bankAccountNumber || "").replace(/\D/g, "");
   const toolHaystack = JSON.stringify(toolOutcomes);
-  const candidates = replyText.match(/[0-9][0-9\-\s]{8,}[0-9]/g) ?? [];
+  const toolDigits = toolHaystack.replace(/\D/g, "");
+
+  // Strip URLs so photo/video/web URLs with long numeric IDs are not misidentified as bank accounts.
+  const textWithoutUrls = replyText.replace(/https?:\/\/[^\s]+/gi, "");
+  const candidates = textWithoutUrls.match(/[0-9][0-9\-\s]{8,}[0-9]/g) ?? [];
   const unbacked: string[] = [];
 
   for (const raw of candidates) {
     const digits = raw.replace(/\D/g, "");
     if (digits.length < 10) continue;
     if (bankDigits && bankDigits.includes(digits)) continue;
-    if (toolHaystack.includes(digits)) continue;
+    if (toolHaystack.includes(digits) || toolDigits.includes(digits)) continue;
     unbacked.push(raw.trim());
   }
 

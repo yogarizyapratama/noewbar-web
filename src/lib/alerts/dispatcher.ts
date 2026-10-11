@@ -58,10 +58,14 @@ export async function escalateToOwner(input: EscalationInput): Promise<DispatchR
   const alertTelegram = settings?.alert_telegram_enabled ?? false;
 
   // 1. Mute the AI on this conversation (chapter 2.4: bot goes silent).
-  await prisma.conversation.update({
-    where: { id: input.conversationId },
-    data: { is_human_takeover: true, pipeline_stage: "ESCALATED" },
-  });
+  if (input.conversationId && input.conversationId !== "00000000-0000-0000-0000-000000000000") {
+    await prisma.conversation
+      .update({
+        where: { id: input.conversationId },
+        data: { is_human_takeover: true, pipeline_stage: "ESCALATED" },
+      })
+      .catch(() => null);
+  }
 
   const lines = [
     `Pembeli: ${input.buyerName ?? "Tanpa nama"} (${input.buyerJid.split("@")[0]})`,
@@ -123,14 +127,18 @@ export async function escalateToOwner(input: EscalationInput): Promise<DispatchR
   }
 
   // 3. Audit record on the tenant timeline.
-  await prisma.chatMessage.create({
-    data: {
-      conversation_id: input.conversationId,
-      sender_type: "HUMAN_AGENT",
-      message_type: "TEXT",
-      content: `[ESCALATION] ${humanReason(input.reason)} :: ${input.summary}`,
-    },
-  });
+  if (input.conversationId && input.conversationId !== "00000000-0000-0000-0000-000000000000") {
+    await prisma.chatMessage
+      .create({
+        data: {
+          conversation_id: input.conversationId,
+          sender_type: "HUMAN_AGENT",
+          message_type: "TEXT",
+          content: `[ESCALATION] ${humanReason(input.reason)} :: ${input.summary}`,
+        },
+      })
+      .catch(() => null);
+  }
 
   return result;
 }
