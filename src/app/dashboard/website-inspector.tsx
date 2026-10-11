@@ -311,6 +311,43 @@ export function WebsiteInspector({
                   </div>
                 </div>
 
+                <div className="rounded-lg border border-ink-100 bg-ink-50/50 p-2.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xs font-bold uppercase text-ink-700">Tujuan & Pesan Tombol WA</span>
+                    <span className="text-[10px] text-ink-400">Opsional</span>
+                  </div>
+                  <div>
+                    <label className="block text-2xs font-medium text-ink-600 mb-0.5">Nomor WhatsApp Khusus</label>
+                    <input
+                      type="text"
+                      value={content.custom_whatsapp || ""}
+                      onChange={(e) => onUpdateContent({ custom_whatsapp: e.target.value })}
+                      placeholder="Contoh: 08123456789 (kosongkan untuk nomor default toko)"
+                      className="w-full rounded-md border border-ink-200 bg-white px-2 py-1 text-xs text-ink focus:border-signal focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-2xs font-medium text-ink-600 mb-0.5">Pesan Pembuka Chat</label>
+                    <input
+                      type="text"
+                      value={content.custom_message || ""}
+                      onChange={(e) => onUpdateContent({ custom_message: e.target.value })}
+                      placeholder="Contoh: Halo kak, saya mau pesan promo dari website..."
+                      className="w-full rounded-md border border-ink-200 bg-white px-2 py-1 text-xs text-ink focus:border-signal focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-2xs font-medium text-ink-600 mb-0.5">Atau Alihkan ke URL Kustom</label>
+                    <input
+                      type="url"
+                      value={content.custom_url || ""}
+                      onChange={(e) => onUpdateContent({ custom_url: e.target.value })}
+                      placeholder="https://... (isi jika ingin membuka Shopee / Form alih-alih WA)"
+                      className="w-full rounded-md border border-ink-200 bg-white px-2 py-1 text-xs text-ink focus:border-signal focus:outline-none"
+                    />
+                  </div>
+                </div>
+
                 {/* Media Image / Video */}
                 <div className="border-t border-ink-100 pt-2.5 space-y-2">
                   <div className="flex items-center justify-between">
@@ -967,6 +1004,42 @@ export function WebsiteInspector({
                     placeholder="Chat WhatsApp Toko"
                     className="w-full rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-xs text-ink focus:border-signal focus:outline-none"
                   />
+                </div>
+                <div className="rounded-lg border border-ink-100 bg-ink-50/50 p-2.5 space-y-2 mt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xs font-bold uppercase text-ink-700">Tujuan & Pesan Tombol WA</span>
+                    <span className="text-[10px] text-ink-400">Opsional</span>
+                  </div>
+                  <div>
+                    <label className="block text-2xs font-medium text-ink-600 mb-0.5">Nomor WhatsApp Khusus</label>
+                    <input
+                      type="text"
+                      value={content.custom_whatsapp || ""}
+                      onChange={(e) => onUpdateContent({ custom_whatsapp: e.target.value })}
+                      placeholder="Contoh: 08123456789 (kosongkan untuk nomor default toko)"
+                      className="w-full rounded-md border border-ink-200 bg-white px-2 py-1 text-xs text-ink focus:border-signal focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-2xs font-medium text-ink-600 mb-0.5">Pesan Pembuka Chat</label>
+                    <input
+                      type="text"
+                      value={content.custom_message || ""}
+                      onChange={(e) => onUpdateContent({ custom_message: e.target.value })}
+                      placeholder="Contoh: Halo kak, saya mau tanya produk dari website..."
+                      className="w-full rounded-md border border-ink-200 bg-white px-2 py-1 text-xs text-ink focus:border-signal focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-2xs font-medium text-ink-600 mb-0.5">Atau Alihkan ke URL Kustom</label>
+                    <input
+                      type="url"
+                      value={content.custom_url || ""}
+                      onChange={(e) => onUpdateContent({ custom_url: e.target.value })}
+                      placeholder="https://... (isi jika ingin membuka Shopee / Form alih-alih WA)"
+                      className="w-full rounded-md border border-ink-200 bg-white px-2 py-1 text-xs text-ink focus:border-signal focus:outline-none"
+                    />
+                  </div>
                 </div>
               </>
             )}

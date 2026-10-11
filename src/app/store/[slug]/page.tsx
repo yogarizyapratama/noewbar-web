@@ -67,10 +67,22 @@ export default async function PublicStorePage({
   const sections = (website.published_sections || website.sections) as any[];
   const tenant = website.tenant;
   const products = tenant.products;
-  const waNumber = tenant.owner_whatsapp.replace(/[^0-9]/g, "");
+  const formatWa = (phone?: string | null) => {
+    if (!phone) return "";
+    const digits = phone.replace(/[^0-9]/g, "");
+    if (digits.startsWith("0")) return "62" + digits.slice(1);
+    if (digits.startsWith("8")) return "62" + digits;
+    return digits;
+  };
 
-  const waLink = (msg: string) =>
-    `https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`;
+  const defaultWaNumber = formatWa(tenant.owner_whatsapp || "");
+
+  const makeWaLink = (msg: string, overrideNumber?: string | null) => {
+    const targetNumber = overrideNumber && overrideNumber.trim() ? formatWa(overrideNumber) : defaultWaNumber;
+    return `https://wa.me/${targetNumber}?text=${encodeURIComponent(msg)}`;
+  };
+
+  const waLink = (msg: string) => makeWaLink(msg);
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans antialiased selection:bg-emerald-100 selection:text-emerald-900">
@@ -144,7 +156,15 @@ export default async function PublicStorePage({
 
                       <div className="mt-8 flex flex-wrap gap-3">
                         <a
-                          href={waLink(`Halo ${tenant.business_name}, saya ingin memesan produk dari website resmi.`)}
+                          href={
+                            section.content?.custom_url?.trim()
+                              ? section.content.custom_url.trim()
+                              : makeWaLink(
+                                  section.content?.custom_message?.trim() ||
+                                    `Halo ${tenant.business_name}, saya ingin memesan produk dari website resmi.`,
+                                  section.content?.custom_whatsapp
+                                )
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-bold text-white shadow-md hover:bg-emerald-700 transition-all hover:scale-[1.02] active:scale-[0.98]"
@@ -439,7 +459,15 @@ export default async function PublicStorePage({
                   {section.content?.button_text && (
                     <div className="mt-8">
                       <a
-                        href={waLink(`Halo ${tenant.business_name}, saya tertarik dengan produk di video ${section.content?.title || ""}.`)}
+                        href={
+                          section.content?.custom_url?.trim()
+                            ? section.content.custom_url.trim()
+                            : makeWaLink(
+                                section.content?.custom_message?.trim() ||
+                                  `Halo ${tenant.business_name}, saya tertarik dengan produk di video ${section.content?.title || ""}.`,
+                                section.content?.custom_whatsapp
+                              )
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-xs font-bold text-white shadow-lg hover:bg-emerald-700 transition-all hover:scale-105"
@@ -637,7 +665,15 @@ export default async function PublicStorePage({
 
                   <div className="mt-8">
                     <a
-                      href={waLink(`Halo ${tenant.business_name}, saya ingin klaim ${section.content?.title || "promo flash sale"} sekarang!`)}
+                      href={
+                        section.content?.custom_url?.trim()
+                          ? section.content.custom_url.trim()
+                          : makeWaLink(
+                              section.content?.custom_message?.trim() ||
+                                `Halo ${tenant.business_name}, saya ingin klaim ${section.content?.title || "promo flash sale"} sekarang!`,
+                              section.content?.custom_whatsapp
+                            )
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-7 py-3.5 text-xs font-bold text-slate-950 shadow-xl hover:bg-amber-300 transition-all hover:scale-105"
@@ -677,7 +713,15 @@ export default async function PublicStorePage({
                   </p>
                   <div className="mt-8">
                     <a
-                      href={waLink(`Halo ${tenant.business_name}, saya ingin tanya ketersediaan produk.`)}
+                      href={
+                        section.content?.custom_url?.trim()
+                          ? section.content.custom_url.trim()
+                          : makeWaLink(
+                              section.content?.custom_message?.trim() ||
+                                `Halo ${tenant.business_name}, saya ingin tanya ketersediaan produk.`,
+                              section.content?.custom_whatsapp
+                            )
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-xl bg-white px-7 py-4 text-sm font-bold text-emerald-900 shadow-xl hover:bg-emerald-50 transition-all hover:scale-105"
