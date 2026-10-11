@@ -32,6 +32,7 @@ import {
   X,
 } from "lucide-react";
 import { Badge, IconButton, Kbd, StatusDot, cn } from "@/components/ui";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 
 export type NavItem<T extends string = string> = {
   id: T;
@@ -142,8 +143,8 @@ export function AppShell<T extends string>({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex shrink-0 transform flex-col border-r border-ink-200 bg-white transition-[transform,width] duration-200 lg:static lg:translate-x-0",
-          collapsed ? "w-[68px]" : "w-[248px]",
+          "fixed inset-y-0 left-0 z-40 flex shrink-0 transform flex-col border-r border-ink-200 bg-white transition-[transform,width] duration-200 w-72 lg:w-auto lg:static lg:translate-x-0",
+          collapsed ? "lg:w-[68px]" : "lg:w-[248px]",
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -237,6 +238,11 @@ export function AppShell<T extends string>({
 
         {/* footer */}
         <div className="shrink-0 border-t border-ink-200 p-2">
+          {!collapsed && (
+            <div className="mb-2 px-1">
+              <PwaInstallPrompt variant="compact" className="w-full justify-center" />
+            </div>
+          )}
           {sidebarFooter && !collapsed && <div className="mb-2">{sidebarFooter}</div>}
           <button
             type="button"
@@ -285,6 +291,7 @@ export function AppShell<T extends string>({
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-3">
+            <PwaInstallPrompt variant="compact" className="hidden md:flex" />
             {headerActions}
             {status && (
               <Badge tone={status.ok ? "signal" : "danger"} className="hidden sm:inline-flex">

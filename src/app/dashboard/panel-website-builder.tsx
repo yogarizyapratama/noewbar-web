@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  Download,
   ExternalLink,
   Eye,
   EyeOff,
@@ -471,6 +472,16 @@ export function PanelWebsiteBuilder() {
     );
   }
 
+  function handleDownloadBackup(w: WebsiteRecord) {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(w, null, 2));
+    const link = document.createElement("a");
+    link.setAttribute("href", dataStr);
+    link.setAttribute("download", `website_${w.slug}_backup_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   const selectedSection = sections.find((s) => s.id === selectedSecId);
 
   return (
@@ -612,6 +623,15 @@ export function PanelWebsiteBuilder() {
                             <Eye className="h-4 w-4" />
                           </a>
                         )}
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="px-2.5 text-ink-600 hover:text-ink"
+                          onClick={() => handleDownloadBackup(w)}
+                          title="Unduh Cadangan JSON Website"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="secondary"

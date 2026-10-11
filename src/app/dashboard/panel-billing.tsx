@@ -7,7 +7,7 @@
  */
 
 import { useState } from "react";
-import { ArrowUpRight, CalendarClock, CreditCard, Info } from "lucide-react";
+import { ArrowUpRight, CalendarClock, CreditCard, Download, Info } from "lucide-react";
 import {
   Badge,
   Button,
@@ -92,6 +92,18 @@ export function PanelBilling({
     );
   }
 
+  function downloadReceipt() {
+    if (!sub) return;
+    const content = `NOEWBAR CS PRO - BUKTI STATUS LANGGANAN RESMI\n==============================================\nStatus Langganan : ${sub.status}\nPaket Aktif      : ${sub.planName ?? "Paket Standar"}\nSisa Masa Aktif  : ${sub.daysRemaining ?? "-"} hari\nBatas Berlaku    : ${sub.expiresAt ? new Date(sub.expiresAt).toLocaleDateString("id-ID") : "-"}\nTanggal Unduh    : ${new Date().toLocaleDateString("id-ID")}\n==============================================\nPlatform Noewbar CS Pro - Layanan Terverifikasi`;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `bukti-langganan-${new Date().toISOString().slice(0, 10)}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="page">
       <PageHeader
@@ -99,6 +111,14 @@ export function PanelBilling({
         title="Langganan"
         description="Satu langganan mencakup satu nomor WhatsApp toko. Semua fitur terbuka di kedua paket."
         icon={<CreditCard className="h-4 w-4" aria-hidden="true" />}
+        actions={
+          sub ? (
+            <Button variant="secondary" size="sm" onClick={downloadReceipt}>
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Unduh Bukti
+            </Button>
+          ) : undefined
+        }
       />
 
       {/* current plan */}

@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Loader2, MessageSquare, RefreshCw, Smartphone } from "lucide-react";
+import { CheckCircle2, Download, Loader2, MessageSquare, RefreshCw, Smartphone } from "lucide-react";
 import {
   Badge,
   Button,
@@ -256,9 +256,21 @@ export function PanelWhatsapp({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <Button variant="accent" onClick={startPairing} loading={busy}>
-                    {qr?.base64 ? "Muat ulang QR" : "Tampilkan QR pairing"}
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="accent" onClick={startPairing} loading={busy}>
+                      {qr?.base64 ? "Muat ulang QR" : "Tampilkan QR pairing"}
+                    </Button>
+                    {qr?.base64 && (
+                      <a
+                        href={qr.base64}
+                        download="qr-pairing-whatsapp-noewbar.png"
+                        className="btn-secondary inline-flex items-center gap-1.5 text-xs min-h-[36px] px-3 font-medium"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Unduh Gambar QR</span>
+                      </a>
+                    )}
+                  </div>
                   {qr?.status && (
                     <p className="meta mt-3">
                       status sesi: {qr.status}

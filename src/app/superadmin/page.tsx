@@ -51,6 +51,7 @@ import {
 } from "lucide-react";
 import { Badge, Button, StatusDot, cn, rupiah, timeAgo } from "@/components/ui";
 import { NotificationBell } from "@/components/notification-bell";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { AdminLogin } from "./admin-login";
 
 export type ConsoleData = {
@@ -195,6 +196,47 @@ function exportTenantsToCSV(tenants: ConsoleData["tenants"]) {
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
   link.setAttribute("download", `noewbar_tenants_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function exportOrdersToCSV(orders: ConsoleData["recent_orders"]) {
+  const headers = ["ID Pesanan", "Nomor Order", "Tenant Toko", "Status Pesanan", "Status Pembayaran", "Total Nominal", "Waktu Transaksi"];
+  const rows = orders.map((o) => [
+    o.id,
+    `"${o.order_number}"`,
+    `"${o.tenant.replace(/"/g, '""')}"`,
+    o.order_status,
+    o.payment_status,
+    o.total,
+    `"${o.created_at}"`,
+  ]);
+  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `noewbar_orders_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function exportWebhooksToCSV(webhooks: ConsoleData["webhooks"]) {
+  const headers = ["ID Log", "Penyedia", "Kunci Peristiwa", "Tipe Peristiwa", "Status Proses", "Waktu Masuk"];
+  const rows = webhooks.map((w) => [
+    w.id,
+    w.provider,
+    `"${w.event_key.replace(/"/g, '""')}"`,
+    `"${(w.event_type || "-").replace(/"/g, '""')}"`,
+    w.processed ? "Sukses" : "Gagal atau Antre",
+    `"${w.created_at}"`,
+  ]);
+  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `noewbar_webhooks_${new Date().toISOString().slice(0, 10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -630,6 +672,11 @@ export default function SuperadminPage() {
 
           {/* Top Quick Actions */}
           <div className="flex items-center gap-2 shrink-0">
+            <PwaInstallPrompt
+              variant="compact"
+              className="hidden md:flex border-slate-800 bg-slate-850 text-slate-300 hover:text-white"
+            />
+
             <Button
               size="sm"
               variant="accent"
@@ -682,12 +729,21 @@ export default function SuperadminPage() {
       </header>
 
       {/* ==================================================== 2. MAIN APPLICATION CONTAINER (SIDEBAR + WORKSPACE) */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile Backdrop Overlay */}
+        {mobileMenuOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm lg:hidden animate-fade-in"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* SIDEBAR NAVIGATION */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 lg:static flex flex-col border-r border-slate-800 bg-slate-900 transition-all duration-200 ease-in-out shrink-0",
-            sidebarOpen ? "w-64" : "w-16 hidden lg:flex",
+            "fixed inset-y-0 left-0 z-50 lg:static flex flex-col border-r border-slate-800 bg-slate-900 transition-all duration-200 ease-in-out shrink-0 w-72 lg:w-auto",
+            sidebarOpen ? "lg:w-64" : "lg:w-16",
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
         >
@@ -763,7 +819,11 @@ export default function SuperadminPage() {
 
           {/* Sidebar Footer */}
           {sidebarOpen ? (
-            <div className="p-3 border-t border-slate-800 bg-slate-950/60 text-2xs space-y-1.5">
+            <div className="p-3 border-t border-slate-800 bg-slate-950/60 text-2xs space-y-2">
+              <PwaInstallPrompt
+                variant="compact"
+                className="w-full justify-center border-slate-800 bg-slate-850 text-slate-300"
+              />
               <div className="flex items-center justify-between text-slate-400">
                 <span>Noewbar Console:</span>
                 <span className="font-mono text-indigo-300 font-semibold">v1.0.0</span>
@@ -1909,15 +1969,26 @@ export default function SuperadminPage() {
                   ))}
                 </div>
 
-                <div className="relative min-w-[280px]">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                  <input
-                    type="text"
-                    placeholder="Cari order number atau toko..."
-                    value={orderQuery}
-                    onChange={(e) => setOrderQuery(e.target.value)}
-                    className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none"
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="relative min-w-[220px]">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Cari order number atau toko..."
+                      value={orderQuery}
+                      onChange={(e) => setOrderQuery(e.target.value)}
+                      className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="border-slate-800 bg-slate-850 hover:bg-slate-800 text-slate-200 text-xs shrink-0 flex items-center gap-1.5 h-8"
+                    onClick={() => exportOrdersToCSV(filteredOrders)}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Ekspor CSV</span>
+                  </Button>
                 </div>
               </div>
 
@@ -2021,22 +2092,33 @@ export default function SuperadminPage() {
                       Log event yang masuk dengan perlindungan idempotensi untuk mencegah duplikasi pesanan.
                     </p>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs">
-                    {(["all", "MIDTRANS", "TELEGRAM"] as const).map((prov) => (
-                      <button
-                        key={prov}
-                        type="button"
-                        onClick={() => setWebhookProviderFilter(prov)}
-                        className={cn(
-                          "px-2.5 py-1 rounded text-2xs font-medium transition-colors",
-                          webhookProviderFilter === prov
-                            ? "bg-indigo-600 text-white font-semibold"
-                            : "bg-slate-800 text-slate-400 hover:text-white"
-                        )}
-                      >
-                        {prov === "all" ? "Semua Provider" : prov}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      {(["all", "MIDTRANS", "TELEGRAM"] as const).map((prov) => (
+                        <button
+                          key={prov}
+                          type="button"
+                          onClick={() => setWebhookProviderFilter(prov)}
+                          className={cn(
+                            "px-2.5 py-1 rounded text-2xs font-medium transition-colors",
+                            webhookProviderFilter === prov
+                              ? "bg-indigo-600 text-white font-semibold"
+                              : "bg-slate-800 text-slate-400 hover:text-white"
+                          )}
+                        >
+                          {prov === "all" ? "Semua Provider" : prov}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="border-slate-800 bg-slate-850 hover:bg-slate-800 text-slate-200 text-xs shrink-0 flex items-center gap-1.5 h-7 px-2.5"
+                      onClick={() => exportWebhooksToCSV(filteredWebhooks)}
+                    >
+                      <Download className="h-3 w-3" />
+                      <span>Ekspor CSV</span>
+                    </Button>
                   </div>
                 </div>
                 <div className="overflow-x-auto">

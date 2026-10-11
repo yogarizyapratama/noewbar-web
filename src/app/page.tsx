@@ -21,6 +21,7 @@ import {
   Globe,
   Layers,
   LayoutDashboard,
+  Menu,
   Minus,
   Plus,
   ShieldCheck,
@@ -28,10 +29,12 @@ import {
   Smartphone,
   Sparkles,
   Truck,
+  X,
 } from "lucide-react";
 import { Badge, StatusDot, cn } from "@/components/ui";
 import { PlaygroundPanel } from "@/components/landing/playground";
 import { RoiCalculator } from "@/components/landing/roi-calculator";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 
 const FAQ = [
   {
@@ -121,21 +124,33 @@ const STATS = [
 
 export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <main className="bg-white">
       {/* ------------------------------------------------------------- header */}
       <header className="sticky top-0 z-40 border-b border-ink-200 bg-white/90 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
-          <a href="#" className="flex items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink font-mono text-xs font-bold text-white shadow-raised">
-              N
-            </span>
-            <span className="font-mono text-sm font-bold tracking-tight text-ink">NOEWBAR</span>
-            <span className="hidden text-2xs font-semibold uppercase tracking-[0.14em] text-ink-500 sm:inline">
-              CS Pro
-            </span>
-          </a>
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(!mobileNavOpen)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-100 md:hidden"
+              aria-label="Buka menu navigasi"
+            >
+              {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+
+            <a href="#" className="flex items-center gap-2.5">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink font-mono text-xs font-bold text-white shadow-raised">
+                N
+              </span>
+              <span className="font-mono text-sm font-bold tracking-tight text-ink">NOEWBAR</span>
+              <span className="hidden text-2xs font-semibold uppercase tracking-[0.14em] text-ink-500 sm:inline">
+                CS Pro
+              </span>
+            </a>
+          </div>
 
           <nav aria-label="Navigasi utama" className="hidden items-center gap-1 md:flex">
             {NAV_LINKS.map((l) => (
@@ -155,21 +170,51 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <PwaInstallPrompt variant="compact" className="hidden lg:flex" />
             <a
               href="/dashboard"
               className="btn-secondary btn-sm flex items-center gap-1.5 font-medium text-ink transition-colors"
             >
               <LayoutDashboard className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>Dashboard</span>
+              <span className="hidden sm:inline">Dashboard</span>
             </a>
             <a
               href="/dashboard?intent=register"
               className="btn-primary btn-sm sm:min-h-[44px] sm:px-5 sm:text-sm"
             >
-              Mulai trial 7 hari
+              Mulai trial
             </a>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer */}
+        {mobileNavOpen && (
+          <div className="border-b border-ink-200 bg-white px-5 py-4 md:hidden animate-fade-in shadow-lg">
+            <nav className="flex flex-col gap-1">
+              {NAV_LINKS.map((l) => (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setMobileNavOpen(false)}
+                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-ink-700 hover:bg-ink-50 hover:text-ink min-h-[44px] flex items-center"
+                >
+                  {l.label}
+                </a>
+              ))}
+            </nav>
+            <div className="mt-4 pt-4 border-t border-ink-100 flex flex-col gap-2.5">
+              <PwaInstallPrompt variant="banner" />
+              <a
+                href="/dashboard?intent=register"
+                onClick={() => setMobileNavOpen(false)}
+                className="btn-primary w-full justify-center min-h-[44px]"
+              >
+                Mulai trial 7 hari
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* --------------------------------------------------------------- hero */}
@@ -502,7 +547,8 @@ export default function LandingPage() {
               {new Date().getFullYear()} &middot; Semua sistem dipantau langsung
             </p>
           </div>
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-ink-600">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-600">
+            <PwaInstallPrompt variant="compact" />
             <a href="/dashboard" className="font-medium text-ink transition-colors hover:underline">
               Dashboard Toko
             </a>
