@@ -569,16 +569,23 @@ export function PanelProducts() {
 
       {/* Modal Tambah / Edit Produk */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-6 shadow-overlay space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-ink-100 pb-3">
-              <h3 className="text-base font-bold text-ink">
-                {editingProduct ? "Edit Produk Katalog" : "Tambah Produk Baru"}
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="w-full max-w-xl rounded-2xl border border-ink-200 bg-white p-4 sm:p-6 shadow-overlay space-y-4 max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="flex items-start justify-between border-b border-ink-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-ink flex items-center gap-2">
+                  <Package className="h-4 w-4 text-signal" />
+                  {editingProduct ? "Edit Produk Katalog" : "Tambah Produk Baru"}
+                </h3>
+                <p className="text-2xs text-ink-500 mt-0.5">
+                  Lengkapi data produk untuk etalase dan basis pengetahuan AI Customer Service.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="rounded p-1 text-ink-400 hover:text-ink"
+                className="rounded-lg p-2 text-ink-400 hover:bg-ink-100 hover:text-ink transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center -mr-1"
+                aria-label="Tutup modal"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -586,7 +593,7 @@ export function PanelProducts() {
 
             {formError && <ErrorState title="Peringatan" description={formError} compact />}
 
-            <div className="space-y-3.5">
+            <div className="overflow-y-auto space-y-3.5 pr-0.5 sm:pr-1 flex-1">
               <TextField
                 id="p_name"
                 label="Nama Produk *"
@@ -595,7 +602,7 @@ export function PanelProducts() {
                 onChange={(e) => setFormName(e.target.value)}
               />
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <TextField
                   id="p_sku"
                   label="SKU / Kode Barang *"
@@ -619,7 +626,7 @@ export function PanelProducts() {
                         setFormCat("");
                       }
                     }}
-                    className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs font-medium text-ink focus:border-signal focus:outline-none"
+                    className="w-full min-h-[42px] rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs font-medium text-ink focus:border-signal focus:outline-none"
                   >
                     {Array.from(new Set([...PREDEFINED_CATEGORIES, ...categories.filter(Boolean)])).map((c) => (
                       <option key={c} value={c}>
@@ -634,17 +641,18 @@ export function PanelProducts() {
                       placeholder="Ketik kategori kustom..."
                       value={formCat}
                       onChange={(e) => setFormCat(e.target.value)}
-                      className="mt-1.5 w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
+                      className="mt-1.5 w-full min-h-[38px] rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
                     />
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <TextField
                   id="p_price"
                   label="Harga Normal (Rp) *"
                   placeholder="185000"
+                  inputMode="numeric"
                   value={formPrice}
                   onChange={(e) => setFormPrice(e.target.value)}
                 />
@@ -652,6 +660,7 @@ export function PanelProducts() {
                   id="p_disc"
                   label="Harga Promo (Rp)"
                   placeholder="165000"
+                  inputMode="numeric"
                   value={formDiscPrice}
                   onChange={(e) => setFormDiscPrice(e.target.value)}
                   optional
@@ -660,6 +669,7 @@ export function PanelProducts() {
                   id="p_stock"
                   label="Stok *"
                   placeholder="15"
+                  inputMode="numeric"
                   value={formStock}
                   onChange={(e) => setFormStock(e.target.value)}
                 />
@@ -679,7 +689,7 @@ export function PanelProducts() {
                 <div className="space-y-3">
                   {/* Gallery of Uploaded Photos */}
                   {formImages.length > 0 && (
-                    <div className="grid grid-cols-5 gap-2.5">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-2.5">
                       {formImages.map((imgUrl, idx) => (
                         <div
                           key={idx}
@@ -704,7 +714,7 @@ export function PanelProducts() {
                                 type="button"
                                 onClick={() => setAsPrimaryImage(idx)}
                                 title="Jadikan Foto Utama"
-                                className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white opacity-0 transition-opacity hover:bg-black/80 group-hover:opacity-100"
+                                className="absolute left-1 top-1 rounded bg-black/70 px-1 py-0.5 text-[9px] font-medium text-white transition-opacity hover:bg-black/90 opacity-90 sm:opacity-0 sm:group-hover:opacity-100"
                               >
                                 Set Utama
                               </button>
@@ -713,7 +723,7 @@ export function PanelProducts() {
                               type="button"
                               onClick={() => removeImage(idx)}
                               title="Hapus foto ini"
-                              className="absolute right-1 top-1 rounded bg-danger/90 p-1 text-white opacity-0 transition-opacity hover:bg-danger group-hover:opacity-100"
+                              className="absolute right-1 top-1 rounded bg-danger/90 p-1 text-white transition-opacity hover:bg-danger opacity-90 sm:opacity-0 sm:group-hover:opacity-100"
                             >
                               <Trash2 className="h-3 w-3" />
                             </button>
@@ -731,7 +741,7 @@ export function PanelProducts() {
                     <div
                       onClick={() => fileInputRef.current?.click()}
                       className={cn(
-                        "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-ink-200 p-4 text-center transition-colors hover:border-signal hover:bg-ink-50/50",
+                        "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-ink-200 p-4 sm:p-5 text-center transition-colors hover:border-signal hover:bg-ink-50/50 min-h-[96px]",
                         uploadingImage && "pointer-events-none opacity-60"
                       )}
                     >
@@ -828,9 +838,12 @@ export function PanelProducts() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-600">
-                  Deskripsi & Bahan (Dibaca AI)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-600">
+                    Deskripsi & Bahan (Dibaca AI)
+                  </label>
+                  <span className="text-[10px] text-ink-400">Dipakai AI saat membalas calon pembeli</span>
+                </div>
                 <textarea
                   rows={3}
                   placeholder="Bahan sutra premium adem, jahitan rapi, wudhu friendly..."
@@ -841,11 +854,17 @@ export function PanelProducts() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-ink-100">
-              <Button variant="ghost" onClick={() => setShowAddModal(false)}>
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 sm:gap-2.5 pt-3 border-t border-ink-100">
+              <Button variant="ghost" onClick={() => setShowAddModal(false)} className="w-full sm:w-auto min-h-[42px]">
                 Batal
               </Button>
-              <Button variant="primary" onClick={handleSave} loading={formBusy} disabled={!formName.trim() || !formSku.trim() || !formPrice.trim()}>
+              <Button
+                variant="primary"
+                onClick={handleSave}
+                loading={formBusy}
+                disabled={!formName.trim() || !formSku.trim() || !formPrice.trim()}
+                className="w-full sm:w-auto min-h-[42px]"
+              >
                 Simpan ke Katalog
               </Button>
             </div>
@@ -855,42 +874,56 @@ export function PanelProducts() {
 
       {/* Modal Import CSV */}
       {showCsvModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-6 shadow-overlay space-y-4">
-            <div className="flex items-center justify-between border-b border-ink-100 pb-3">
-              <h3 className="text-base font-bold text-ink">Impor Produk Massal via CSV</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-4 sm:p-6 shadow-overlay space-y-4 max-h-[92vh] flex flex-col overflow-hidden">
+            <div className="flex items-start justify-between border-b border-ink-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-ink">Impor Produk Massal via CSV</h3>
+                <p className="text-2xs text-ink-500 mt-0.5">
+                  Salin dan tempel data baris produk toko Anda.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowCsvModal(false)}
-                className="rounded p-1 text-ink-400 hover:text-ink"
+                className="rounded-lg p-2 text-ink-400 hover:bg-ink-100 hover:text-ink transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center -mr-1"
+                aria-label="Tutup modal"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <p className="text-xs text-ink-600 leading-relaxed">
-              Tempel data CSV produk toko Anda di bawah ini. Kolom wajib: <code>SKU</code>, <code>Nama Produk</code>, dan <code>Harga</code>.
-            </p>
+            <div className="overflow-y-auto space-y-3 flex-1 pr-0.5 sm:pr-1">
+              <p className="text-xs text-ink-600 leading-relaxed">
+                Tempel data CSV produk toko Anda di bawah ini. Kolom wajib: <code>SKU</code>, <code>Nama Produk</code>, dan <code>Harga</code>.
+              </p>
 
-            <textarea
-              rows={6}
-              placeholder={`SKU,Nama Produk,Kategori,Harga,Stok\nGMS-01,Gamis Silk Emerald,Fashion,185000,15\nGMS-02,Gamis Velvet Black,Fashion,210000,8`}
-              value={csvText}
-              onChange={(e) => setCsvText(e.target.value)}
-              className="w-full rounded-lg border border-ink-200 bg-white p-3 font-mono text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
-            />
+              <textarea
+                rows={6}
+                placeholder={`SKU,Nama Produk,Kategori,Harga,Stok\nGMS-01,Gamis Silk Emerald,Fashion,185000,15\nGMS-02,Gamis Velvet Black,Fashion,210000,8`}
+                value={csvText}
+                onChange={(e) => setCsvText(e.target.value)}
+                className="w-full rounded-lg border border-ink-200 bg-white p-3 font-mono text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
+              />
 
-            {csvMsg && (
-              <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-800 font-medium">
-                {csvMsg}
-              </div>
-            )}
+              {csvMsg && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-800 font-medium">
+                  {csvMsg}
+                </div>
+              )}
+            </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <Button variant="ghost" onClick={() => setShowCsvModal(false)}>
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 sm:gap-2.5 pt-2 border-t border-ink-100">
+              <Button variant="ghost" onClick={() => setShowCsvModal(false)} className="w-full sm:w-auto min-h-[42px]">
                 Tutup
               </Button>
-              <Button variant="primary" onClick={handleImportCsv} loading={csvBusy} disabled={!csvText.trim()}>
+              <Button
+                variant="primary"
+                onClick={handleImportCsv}
+                loading={csvBusy}
+                disabled={!csvText.trim()}
+                className="w-full sm:w-auto min-h-[42px]"
+              >
                 Mulai Impor
               </Button>
             </div>
