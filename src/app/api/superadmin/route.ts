@@ -11,9 +11,10 @@ import { nudgeQueueStats } from "@/lib/queue/nudge-queue";
 import { getKillSwitch, setKillSwitch } from "@/lib/system/killswitch";
 import { recentWebhookEvents } from "@/lib/webhooks/idempotency";
 import { reconcileSubscriptions, fetchMidtransStatus } from "@/lib/billing/midtrans";
-import { telegramHealth } from "@/lib/alerts/telegram";
+import { telegramHealth, sendTelegramAlert } from "@/lib/alerts/telegram";
 import { redisHealthy } from "@/lib/queue/nudge-queue";
 import { notifyAdmin, notifyTenant } from "@/lib/realtime/event-bus";
+import { runMaintenanceSweep } from "@/lib/system/scheduler";
 
 /**
  * Master Control Console API (chapter 11).
@@ -37,6 +38,8 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("reconcile") }),
   z.object({ action: z.literal("restart_instance"), instance_key: z.string().min(1) }),
   z.object({ action: z.literal("fleet") }),
+  z.object({ action: z.literal("trigger_maintenance") }),
+  z.object({ action: z.literal("test_telegram") }),
 ]);
 
 export async function POST(req: NextRequest) {
@@ -179,6 +182,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  if (body.action === "trigger_maintenance") {
+    const sweep = await runMaintenanceSweep({ nudgeLimit: 50, reconcile: true });
+    notifyAdmin({ type: "alert" });
+    return ok({ action: "trigger_maintenance", sweep, at: new Date().toISOString() });
+  }
+
+  if (body.action === "test_telegram") {
+    const alert = await sendTelegramAlert("NOEWBAR MASTER CONSOLE: Uji coba notifikasi platform berhasil.");
+    return ok({ action: "test_telegram", delivered: alert.delivered, error: alert.error ?? null });
+  }
+
   return fail("Unsupported action", 400);
 }
 
@@ -198,6 +212,10 @@ export async function GET() {
     instances,
     subscriptionCounts,
     recentOrders,
+    totalTenantsCount,
+    totalOrdersCount,
+    totalConversationsCount,
+    totalProductsCount,
   ] = await Promise.all([
     gatewayHealth(),
     waDaemon.health(),
@@ -225,6 +243,10 @@ export async function GET() {
       take: 20,
       include: { tenant: { select: { business_name: true } } },
     }),
+    prisma.tenant.count(),
+    prisma.order.count(),
+    prisma.conversation.count(),
+    prisma.product.count(),
   ]);
 
   // 9router latency sample: one real round-trip measured now.
@@ -301,5 +323,15 @@ export async function GET() {
       total: Number(o.total_amount),
       created_at: o.created_at.toISOString(),
     })),
+    system_stats: {
+      node_version: process.version,
+      memory_heap_used_mb: Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 10) / 10,
+      memory_rss_mb: Math.round((process.memoryUsage().rss / 1024 / 1024) * 10) / 10,
+      uptime_seconds: Math.round(process.uptime()),
+      total_tenants: totalTenantsCount,
+      total_orders: totalOrdersCount,
+      total_conversations: totalConversationsCount,
+      total_products: totalProductsCount,
+    },
   });
 }

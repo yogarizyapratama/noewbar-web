@@ -1,51 +1,62 @@
 "use client";
 
 /**
- * Master Control Console (chapter 11).
+ * Master Control Console - Dark Command Center Edition (Chapter 11).
  *
- * Every panel renders a real probe result from /api/superadmin. When the operator
- * session is missing the console shows a login form; when a dependency is down
- * the panel names the dependency and its error instead of a green placeholder.
+ * Antarmuka Operator Khusus Admin Sistem Platform:
+ * - Telemetri node real-time (AI Gateway, WhatsMeow Daemon, Redis/BullMQ, PostgreSQL).
+ * - Monitor multi-tenant & perkiraan konsumsi kuota AI seluruh toko.
+ * - Fleet manajemen sesi WhatsApp dan kontrol soket terdistribusi.
+ * - Audit ledger webhook dan sinkronisasi pembayaran Midtrans.
+ * - Operasi pemeliharaan platform (Maintenance sweep 3-in-1, Telegram alert ping).
+ * - Emergency Kill-Switch global satu sentuhan.
+ *
+ * Standar Anti-Slop:
+ * - Dark Command Center palette, kontras WCAG AA, monospace telemetry, zero em-dash.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  BookOpen,
+  Activity,
+  AlertOctagon,
+  Bell,
+  CheckCircle2,
+  Cpu,
+  Database,
   DollarSign,
+  HardDrive,
   LayoutDashboard,
+  LogOut,
   MessageSquare,
   Radio,
+  RefreshCw,
   Search,
   Server,
+  ShieldAlert,
   ShoppingBag,
-  Table2,
+  Terminal,
+  Trash2,
   Users,
   Webhook,
   X,
+  Zap,
 } from "lucide-react";
-import {
-  AppShell,
-  type NavItem,
-  type PaletteCommand,
-} from "@/components/app-shell";
-import {
-  Badge,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  EmptyState,
-  PageHeader,
-  Segmented,
-  StatusDot,
-  rupiah,
-  timeAgo,
-} from "@/components/ui";
+import { Badge, Button, StatusDot, cn, rupiah, timeAgo } from "@/components/ui";
 import { AdminLogin } from "./admin-login";
 
 export type ConsoleData = {
   kill_switch: { disabled: boolean; disabledAt: string | null; disabledBy: string | null };
   superadmin_hash_configured: boolean;
+  system_stats?: {
+    node_version: string;
+    memory_heap_used_mb: number;
+    memory_rss_mb: number;
+    uptime_seconds: number;
+    total_tenants: number;
+    total_orders: number;
+    total_conversations: number;
+    total_products: number;
+  };
   gateway: {
     ok: boolean;
     url: string;
@@ -113,85 +124,21 @@ export type ConsoleData = {
   }[];
 };
 
-type Tab = "telemetry" | "fleet" | "tenants" | "webhooks";
+type Tab = "telemetry" | "tenants" | "fleet" | "webhooks" | "system_ops";
 type TenantFilter = "all" | "ACTIVE" | "TRIAL" | "SUSPENDED";
 
-const TABS: NavItem<Tab>[] = [
-  {
-    id: "telemetry",
-    label: "Telemetri",
-    group: "Pemantauan",
-    icon: <Radio className="h-4 w-4" aria-hidden="true" />,
-    keywords: "probe gateway daemon redis antrean rekonsiliasi",
-  },
-  {
-    id: "fleet",
-    label: "Fleet WhatsApp",
-    group: "Pemantauan",
-    icon: <Server className="h-4 w-4" aria-hidden="true" />,
-    keywords: "sesi instance nomor restart",
-  },
-  {
-    id: "tenants",
-    label: "Kontrol Tenant",
-    group: "Operasional",
-    icon: <Table2 className="h-4 w-4" aria-hidden="true" />,
-    keywords: "toko suspend trial perpanjang hapus",
-  },
-  {
-    id: "webhooks",
-    label: "Ledger Webhook",
-    group: "Operasional",
-    icon: <Webhook className="h-4 w-4" aria-hidden="true" />,
-    keywords: "idempotensi provider midtrans",
-  },
-];
+function formatSeconds(sec: number): string {
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `${d}h ${h}j ${m}m`;
+  if (h > 0) return `${h}j ${m}m`;
+  return `${m}m`;
+}
 
 function ts(iso: string | null): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" });
-}
-
-function ProbePanel({
-  title,
-  ok,
-  icon,
-  rows,
-  footer,
-}: {
-  title: string;
-  ok: boolean;
-  icon: React.ReactNode;
-  rows: [string, string][];
-  footer?: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader
-        icon={icon}
-        title={title}
-        actions={
-          <Badge tone={ok ? "signal" : "danger"}>
-            <StatusDot ok={ok} />
-            {ok ? "siap" : "gangguan"}
-          </Badge>
-        }
-      />
-      <CardBody className="p-0">
-        <dl className="divide-y divide-ink-200">
-          {rows.map(([k, v]) => (
-            <div key={k} className="flex items-baseline justify-between gap-4 px-5 py-2.5">
-              <dt className="text-xs text-ink-500">{k}</dt>
-              <dd className="truncate font-mono text-xs font-medium text-ink" title={v}>
-                {v}
-              </dd>
-            </div>
-          ))}
-        </dl>
-        {footer && <div className="border-t border-ink-200 px-5 py-3">{footer}</div>}
-      </CardBody>
-    </Card>
-  );
 }
 
 export default function SuperadminPage() {
@@ -204,6 +151,8 @@ export default function SuperadminPage() {
   const [tenantFilter, setTenantFilter] = useState<TenantFilter>("all");
   const [tenantQuery, setTenantQuery] = useState("");
   const [orderId, setOrderId] = useState("");
+  const [wipeConfirmModal, setWipeConfirmModal] = useState<{ id: string; name: string } | null>(null);
+  const [wipeInput, setWipeInput] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -218,7 +167,7 @@ export default function SuperadminPage() {
         setAuthed(true);
       }
     } catch {
-      setMsg("Gagal membaca data konsol.");
+      setMsg("Gagal membaca telemetri konsol.");
     }
   }, []);
 
@@ -226,14 +175,14 @@ export default function SuperadminPage() {
     load();
   }, [load]);
 
+  // Polling fallback setiap 30 detik
   useEffect(() => {
     if (!authed) return;
     const t = setInterval(load, 30000);
     return () => clearInterval(t);
   }, [authed, load]);
 
-  // Realtime fleet signals: kill-switch, tenant status and instance restarts
-  // push an admin event so the console reflects them without waiting 30s.
+  // Real-time EventSource listener
   useEffect(() => {
     if (!authed) return;
     const es = new EventSource("/api/realtime?scope=admin");
@@ -255,7 +204,7 @@ export default function SuperadminPage() {
 
   useEffect(() => {
     if (!live) return;
-    const t = setTimeout(() => setLive(null), 2500);
+    const t = setTimeout(() => setLive(null), 3000);
     return () => clearTimeout(t);
   }, [live]);
 
@@ -270,13 +219,26 @@ export default function SuperadminPage() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      setMsg(json.ok ? `Selesai: ${String(payload.action)}` : `${json.error}`);
+      if (json.ok) {
+        setMsg(`Aksi berhasil: ${String(payload.action)}`);
+      } else {
+        setMsg(`Gagal: ${json.error || "Aksi ditolak server."}`);
+      }
       await load();
     } catch {
-      setMsg("Aksi gagal dikirim.");
+      setMsg("Aksi gagal dikirim ke server konsol.");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleLogout() {
+    await fetch("/api/superadmin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "logout" }),
+    });
+    setAuthed(false);
   }
 
   if (authed === false) {
@@ -285,24 +247,28 @@ export default function SuperadminPage() {
 
   if (authed === null || !data) {
     return (
-      <main className="grid min-h-screen place-items-center bg-surface-sunken px-5">
-        <p className="text-sm text-ink-500" role="status">
-          Memuat konsol operator...
-        </p>
+      <main className="grid min-h-screen place-items-center bg-[#070A11] px-5 text-slate-100">
+        <div className="flex flex-col items-center gap-3">
+          <Terminal className="h-8 w-8 text-cyan-400 animate-pulse" />
+          <p className="font-mono text-xs uppercase tracking-wider text-slate-400">
+            Menginisialisasi Mission Control Console...
+          </p>
+        </div>
       </main>
     );
   }
 
   const ks = data.kill_switch;
+  const stats = data.system_stats;
   const totalMRR = data.tenants.reduce(
     (acc, t) => acc + (t.subscription?.status === "ACTIVE" ? t.subscription.amount : 0),
     0
   );
   const activeTenantsCount = data.tenants.filter((t) => t.status === "ACTIVE").length;
   const trialTenantsCount = data.tenants.filter((t) => t.status === "TRIAL").length;
-  const totalConversations = data.tenants.reduce((acc, t) => acc + t.conversations, 0);
-  const totalOrders = data.tenants.reduce((acc, t) => acc + t.orders, 0);
-  const totalDocs = data.tenants.reduce((acc, t) => acc + (t.knowledge_docs ?? 0), 0);
+  const totalConversations = stats?.total_conversations ?? data.tenants.reduce((acc, t) => acc + t.conversations, 0);
+  const totalOrders = stats?.total_orders ?? data.tenants.reduce((acc, t) => acc + t.orders, 0);
+  const totalStores = stats?.total_tenants ?? data.tenants.length;
 
   const filteredTenants = data.tenants
     .filter((t) => (tenantFilter === "all" ? true : t.status === tenantFilter))
@@ -316,743 +282,942 @@ export default function SuperadminPage() {
       );
     });
 
-  const commands: PaletteCommand[] = [
-    {
-      id: "refresh",
-      label: "Probe ulang seluruh konsol",
-      hint: "Jalankan probe",
-      icon: <Radio className="h-4 w-4" aria-hidden="true" />,
-      run: load,
-    },
-    {
-      id: "reconcile",
-      label: "Jalankan rekonsiliasi Midtrans",
-      hint: "Periksa transaksi menggantung",
-      icon: <Webhook className="h-4 w-4" aria-hidden="true" />,
-      run: () => act({ action: "reconcile" }),
-    },
-    {
-      id: "kill",
-      label: ks.disabled ? "Aktifkan bot global" : "Kill-switch global",
-      hint: "Semua tenant",
-      icon: <Server className="h-4 w-4" aria-hidden="true" />,
-      run: () =>
-        act(
-          { action: "kill_switch", disabled: !ks.disabled },
-          ks.disabled ? undefined : "Matikan SEMUA balasan bot di seluruh toko?"
-        ),
-    },
-  ];
-
   return (
-    <AppShell<Tab>
-      brand="NOEWBAR CONSOLE"
-      brandNote="Operator platform"
-      nav={TABS}
-      active={tab}
-      onNavigate={setTab}
-      status={{ ok: data.gateway.ok && data.daemon.ok, label: "Konsol operator" }}
-      headerActions={
-        <>
-          <a
-            href="/dashboard"
-            className="btn-secondary btn-sm flex items-center gap-1.5 font-medium text-ink transition-colors"
-            title="Buka dashboard toko klien"
-          >
-            <LayoutDashboard className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">Dashboard Toko</span>
-          </a>
-          {live && (
-            <Badge tone="signal" aria-live="polite">
-              <StatusDot ok />
-              Real-time
-            </Badge>
-          )}
-        </>
-      }
-      sidebarFooter={
-        ks.disabled ? (
-          <Button
-            variant="primary"
-            className="w-full"
-            loading={busy}
-            onClick={() => act({ action: "kill_switch", disabled: false })}
-          >
-            Aktifkan bot global
-          </Button>
-        ) : (
-          <Button
-            variant="danger"
-            className="w-full"
-            loading={busy}
-            onClick={() =>
-              act(
-                { action: "kill_switch", disabled: true },
-                "Matikan SEMUA balasan bot di seluruh toko?"
-              )
-            }
-          >
-            Kill-switch global
-          </Button>
-        )
-      }
-      commands={commands}
-    >
-      <div className="page">
-        {/* global banners */}
+    <div className="min-h-screen bg-[#070A11] text-slate-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+      {/* 1. TOP HEADER: MISSION CONTROL COCKPIT */}
+      <header className="sticky top-0 z-40 border-b border-slate-800 bg-[#0B0F19]/95 backdrop-blur-md px-4 sm:px-6 py-3">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          {/* Brand + Cluster Identity */}
+          <div className="flex items-center gap-3">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/80 font-mono text-xs font-bold shadow-md shadow-cyan-950/30">
+              <Terminal className="h-4 w-4" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold tracking-wider text-cyan-400 uppercase">
+                  NOEWBAR OPS COCKPIT
+                </span>
+                <span className="inline-flex items-center gap-1 rounded bg-slate-800 px-1.5 py-0.2 font-mono text-[10px] text-slate-300">
+                  NODE-JKT-01
+                </span>
+                {live && (
+                  <span className="inline-flex items-center gap-1 rounded bg-emerald-950 border border-emerald-500/40 px-2 py-0.5 font-mono text-[10px] text-emerald-400 animate-pulse">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    LIVE SIGNAL
+                  </span>
+                )}
+              </div>
+              <p className="text-2xs text-slate-400 font-mono">
+                Platform Administrator &amp; Multi-Tenant Fleet Master
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Telemetry Ticker (Monospaced Metrics) */}
+          <div className="hidden xl:flex items-center gap-3 font-mono text-2xs text-slate-300 bg-slate-900/90 border border-slate-800 rounded-lg px-3 py-1.5">
+            <div className="flex items-center gap-1.5" title="AI Gateway Round-trip latency">
+              <Zap className={cn("h-3 w-3", data.gateway.ok ? "text-cyan-400" : "text-rose-400")} />
+              <span>AI GW:</span>
+              <span className="font-bold text-slate-100">{data.gateway.latency_ms ? `${data.gateway.latency_ms}ms` : "DOWN"}</span>
+            </div>
+            <span className="text-slate-700">|</span>
+            <div className="flex items-center gap-1.5" title="WhatsMeow Daemon Sockets">
+              <Server className={cn("h-3 w-3", data.daemon.ok ? "text-emerald-400" : "text-rose-400")} />
+              <span>WA Sockets:</span>
+              <span className="font-bold text-slate-100">{data.daemon.active_instances ?? 0}</span>
+            </div>
+            <span className="text-slate-700">|</span>
+            <div className="flex items-center gap-1.5" title="BullMQ Nudge Queue">
+              <Cpu className={cn("h-3 w-3", data.queue.redis ? "text-amber-400" : "text-rose-400")} />
+              <span>Queue:</span>
+              <span className="font-bold text-slate-100">{data.queue.waiting} wait / {data.queue.failed} fail</span>
+            </div>
+            {stats && (
+              <>
+                <span className="text-slate-700">|</span>
+                <div className="flex items-center gap-1.5" title="Node Uptime & Memory">
+                  <Activity className="h-3 w-3 text-purple-400" />
+                  <span>Heap:</span>
+                  <span className="font-bold text-slate-100">{stats.memory_heap_used_mb}MB</span>
+                  <span className="text-slate-500">({formatSeconds(stats.uptime_seconds)})</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Top Actions: Emergency Kill Switch, Store Dashboard Link, Logout */}
+          <div className="flex items-center gap-2 shrink-0">
+            {ks.disabled ? (
+              <Button
+                size="sm"
+                variant="accent"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs border-none shadow-md"
+                loading={busy}
+                onClick={() => act({ action: "kill_switch", disabled: false })}
+              >
+                <Zap className="mr-1.5 h-3.5 w-3.5" />
+                Nyalakan Bot Global
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="danger"
+                className="bg-rose-700 hover:bg-rose-600 text-white font-mono text-xs border-none shadow-md"
+                loading={busy}
+                onClick={() =>
+                  act(
+                    { action: "kill_switch", disabled: true },
+                    "PERINGATAN KRITIS: Matikan seluruh balasan bot WhatsApp di SEMUA toko client?"
+                  )
+                }
+              >
+                <AlertOctagon className="mr-1.5 h-3.5 w-3.5" />
+                Emergency Kill-Switch
+              </Button>
+            )}
+
+            <Button
+              size="sm"
+              variant="secondary"
+              className="bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200 font-mono text-xs"
+              onClick={load}
+            >
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              Probe
+            </Button>
+
+            <a
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-750 bg-slate-900 px-3 py-1.5 font-mono text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+              title="Masuk ke Dashboard Toko Merchant"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Dashboard Toko</span>
+            </a>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+              title="Keluar dari Konsol Superadmin"
+              aria-label="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* 2. COMMAND NAVIGATION TABS */}
+        <div className="mt-3 flex items-center gap-1.5 overflow-x-auto border-t border-slate-800/80 pt-2.5">
+          {[
+            { id: "telemetry", label: "Telemetri Node", icon: <Radio className="h-3.5 w-3.5" /> },
+            { id: "tenants", label: `Kontrol Tenant (${data.tenants.length})`, icon: <Users className="h-3.5 w-3.5" /> },
+            { id: "fleet", label: `Fleet WhatsApp (${data.fleet.length})`, icon: <Server className="h-3.5 w-3.5" /> },
+            { id: "webhooks", label: `Ledger Webhooks (${data.webhooks.length})`, icon: <Webhook className="h-3.5 w-3.5" /> },
+            { id: "system_ops", label: "Operasi & Pemeliharaan", icon: <Cpu className="h-3.5 w-3.5" /> },
+          ].map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id as Tab)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-xs font-semibold whitespace-nowrap transition-all",
+                tab === t.id
+                  ? "bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-md shadow-cyan-950/40"
+                  : "bg-slate-900/60 text-slate-400 border border-slate-800/60 hover:bg-slate-800 hover:text-slate-200"
+              )}
+            >
+              {t.icon}
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* Main Body */}
+      <main className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+        {/* Banner Kritis jika Kill-Switch Aktif */}
         {ks.disabled && (
-          <Card className="border-danger/40 bg-danger-wash">
-            <CardBody className="text-sm text-danger">
-              <strong>Kill-switch aktif.</strong> Seluruh balasan bot dihentikan sejak{" "}
-              {ts(ks.disabledAt)}
-              {ks.disabledBy ? ` oleh ${ks.disabledBy}` : ""}. Tekan Aktifkan bot global untuk
-              memulihkan.
-            </CardBody>
-          </Card>
+          <div className="rounded-xl border border-rose-500/50 bg-rose-950/40 p-4 shadow-lg flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <ShieldAlert className="h-6 w-6 text-rose-400 shrink-0" />
+              <div>
+                <p className="font-mono text-sm font-bold text-rose-200 uppercase tracking-wide">
+                  GLOBAL KILL-SWITCH AKTIF
+                </p>
+                <p className="text-xs text-rose-300 mt-0.5">
+                  Seluruh balasan bot AI di semua toko dibekukan sejak {ts(ks.disabledAt)}
+                  {ks.disabledBy ? ` oleh ${ks.disabledBy}` : ""}.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="accent"
+              className="bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs border-none"
+              onClick={() => act({ action: "kill_switch", disabled: false })}
+            >
+              Pulihkan Bot Sekarang
+            </Button>
+          </div>
         )}
 
-        {!data.superadmin_hash_configured && (
-          <Card className="border-warn/40 bg-warn-wash">
-            <CardBody className="text-sm text-warn">
-              <strong>SUPERADMIN_PASSWORD_HASH belum valid.</strong> Konsol berjalan dengan hash
-              placeholder sehingga login akan selalu ditolak. Isi hash Argon2id asli di .env untuk
-              mengaktifkan akses penuh.
-            </CardBody>
-          </Card>
-        )}
-
+        {/* Banner Feedback Aksi Operator */}
         {msg && (
-          <Card variant="sunken">
-            <CardBody className="text-sm text-ink-600">{msg}</CardBody>
-          </Card>
+          <div className="rounded-lg border border-cyan-500/40 bg-cyan-950/40 px-4 py-3 font-mono text-xs text-cyan-200 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-cyan-400 shrink-0" />
+              <span>{msg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMsg(null)}
+              className="text-cyan-400 hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         )}
 
-        {/* ------------------------------------------------------- TELEMETRY */}
+        {/* ---------------------------------------------------- TAB 1: TELEMETRY */}
         {tab === "telemetry" && (
-          <>
-            <PageHeader
-              eyebrow="Diagnostik platform"
-              title="Telemetri & Ringkasan"
-              description="Setiap nilai di bawah adalah hasil probe langsung ke dependensi, dijalankan setiap 30 detik."
-              icon={<Radio className="h-4 w-4" aria-hidden="true" />}
-            />
-
-            {/* Platform KPI Banner */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              <Card className="p-5 transition-all hover:border-ink-300">
-                <div className="flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 bg-ink-50 text-ink-700 shadow-flat">
-                    <Users className="h-4 w-4" aria-hidden="true" />
+          <div className="space-y-6">
+            {/* Platform Master KPIs */}
+            <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-2xs uppercase tracking-wider text-slate-400">
+                    Platform MRR (Rupiah)
                   </span>
-                  <p className="text-xs font-semibold text-ink">Total Toko</p>
-                </div>
-                <p className="mt-3 font-mono text-3xl font-bold tabular-nums text-ink">
-                  {data.tenants.length}
-                </p>
-                <p className="mt-1 text-2xs text-ink-500">
-                  {activeTenantsCount} aktif &middot; {trialTenantsCount} trial
-                </p>
-              </Card>
-
-              <Card className="p-5 transition-all hover:border-ink-300">
-                <div className="flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg border border-signal/20 bg-signal-wash text-signal-strong shadow-flat">
-                    <DollarSign className="h-4 w-4" aria-hidden="true" />
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-mono text-xs">
+                    <DollarSign className="h-4 w-4" />
                   </span>
-                  <p className="text-xs font-semibold text-ink">MRR Langganan</p>
                 </div>
-                <p className="mt-3 font-mono text-3xl font-bold tabular-nums text-ink">
-                  {rupiah(totalMRR)}
+                <p className="mt-3 font-mono text-2xl font-extrabold text-white">
+                  Rp {rupiah(totalMRR)}
                 </p>
-                <p className="mt-1 text-2xs font-medium text-signal-strong">Tenant berbayar aktif</p>
-              </Card>
+                <p className="mt-1 font-mono text-2xs text-emerald-400">
+                  {data.subscription_counts["ACTIVE"] ?? 0} Toko Berlangganan Aktif
+                </p>
+              </div>
 
-              <Card className="p-5 transition-all hover:border-ink-300">
-                <div className="flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg border border-indigo-200/60 bg-indigo-50 text-indigo-700 shadow-flat">
-                    <MessageSquare className="h-4 w-4" aria-hidden="true" />
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-2xs uppercase tracking-wider text-slate-400">
+                    Total Toko Client
                   </span>
-                  <p className="text-xs font-semibold text-ink">Percakapan</p>
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-mono text-xs">
+                    <Users className="h-4 w-4" />
+                  </span>
                 </div>
-                <p className="mt-3 font-mono text-3xl font-bold tabular-nums text-ink">
-                  {totalConversations}
+                <p className="mt-3 font-mono text-2xl font-extrabold text-white">
+                  {totalStores} <span className="text-xs font-normal text-slate-400">tenant</span>
                 </p>
-                <p className="mt-1 text-2xs text-ink-500">Pesan tertangani</p>
-              </Card>
+                <p className="mt-1 font-mono text-2xs text-cyan-400">
+                  {activeTenantsCount} Aktif &bull; {trialTenantsCount} Masa Percobaan
+                </p>
+              </div>
 
-              <Card className="p-5 transition-all hover:border-ink-300">
-                <div className="flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg border border-amber-200/60 bg-amber-50 text-amber-700 shadow-flat">
-                    <ShoppingBag className="h-4 w-4" aria-hidden="true" />
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-2xs uppercase tracking-wider text-slate-400">
+                    Volume Pesanan Transaksi
                   </span>
-                  <p className="text-xs font-semibold text-ink">Pesanan</p>
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-950 text-amber-400 border border-amber-800/60 font-mono text-xs">
+                    <ShoppingBag className="h-4 w-4" />
+                  </span>
                 </div>
-                <p className="mt-3 font-mono text-3xl font-bold tabular-nums text-ink">
-                  {totalOrders}
+                <p className="mt-3 font-mono text-2xl font-extrabold text-white">
+                  {totalOrders} <span className="text-xs font-normal text-slate-400">order</span>
                 </p>
-                <p className="mt-1 text-2xs text-ink-500">Tercatat di sistem</p>
-              </Card>
+                <p className="mt-1 font-mono text-2xs text-amber-400">
+                  Diproses otomatis oleh platform
+                </p>
+              </div>
 
-              <Card className="p-5 transition-all hover:border-ink-300">
-                <div className="flex items-center gap-2">
-                  <span className="grid h-8 w-8 place-items-center rounded-lg border border-sky-200/60 bg-sky-50 text-sky-700 shadow-flat">
-                    <BookOpen className="h-4 w-4" aria-hidden="true" />
+              <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-2xs uppercase tracking-wider text-slate-400">
+                    Total Percakapan CS Bot
                   </span>
-                  <p className="text-xs font-semibold text-ink">Dokumen SOP</p>
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-purple-950 text-purple-400 border border-purple-800/60 font-mono text-xs">
+                    <MessageSquare className="h-4 w-4" />
+                  </span>
                 </div>
-                <p className="mt-3 font-mono text-3xl font-bold tabular-nums text-ink">
-                  {totalDocs}
+                <p className="mt-3 font-mono text-2xl font-extrabold text-white">
+                  {totalConversations} <span className="text-xs font-normal text-slate-400">chat</span>
                 </p>
-                <p className="mt-1 text-2xs text-ink-500">Basis pengetahuan AI</p>
-              </Card>
+                <p className="mt-1 font-mono text-2xs text-purple-400">
+                  Direspon 24/7 tanpa delay
+                </p>
+              </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <ProbePanel
-                icon={<Radio className="h-4 w-4" aria-hidden="true" />}
-                title="9router AI Gateway"
-                ok={data.gateway.ok}
-                rows={[
-                  ["Endpoint", data.gateway.url],
-                  ["Model", data.gateway.model],
-                  [
-                    "Latensi probe",
-                    data.gateway.latency_ms !== null ? `${data.gateway.latency_ms} ms` : "-",
-                  ],
-                  ["Jumlah model", String(data.gateway.models.length)],
-                  ["Error", data.gateway.error ?? "tidak ada"],
-                ]}
-              />
+            {/* Probe Node Servers Grid (6 Deep Probe Cards) */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Status Kesehatan Dependensi &amp; Node Cluster
+                </h3>
+                <span className="font-mono text-2xs text-slate-500">Auto-probe setiap 30 detik</span>
+              </div>
 
-              <ProbePanel
-                icon={<Server className="h-4 w-4" aria-hidden="true" />}
-                title="Whatsmeow Daemon"
-                ok={data.daemon.ok}
-                rows={[
-                  ["Endpoint", data.daemon.url],
-                  [
-                    "Sesi aktif",
-                    data.daemon.active_instances !== null
-                      ? String(data.daemon.active_instances)
-                      : "-",
-                  ],
-                  ["Lapor pada", ts(data.daemon.uptime_reported_at)],
-                  ["Error", data.daemon.error ?? "tidak ada"],
-                ]}
-              />
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                {/* Probe 1: AI Gateway */}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-cyan-400" />
+                      <h4 className="font-mono text-xs font-bold text-white uppercase">AI LLM Gateway</h4>
+                    </div>
+                    <Badge tone={data.gateway.ok ? "signal" : "danger"}>
+                      <StatusDot ok={data.gateway.ok} />
+                      {data.gateway.ok ? "ONLINE" : "OFFLINE"}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Active Model:</span>
+                      <span className="font-bold text-cyan-300">{data.gateway.model}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Gateway Latency:</span>
+                      <span className="font-bold text-white">{data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "-"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Available Models:</span>
+                      <span className="text-slate-300">{data.gateway.models.length} model loaded</span>
+                    </div>
+                    {data.gateway.error && (
+                      <p className="text-rose-400 mt-1 font-sans">{data.gateway.error}</p>
+                    )}
+                  </div>
+                </div>
 
-              <ProbePanel
-                icon={<Server className="h-4 w-4" aria-hidden="true" />}
-                title="Antrean BullMQ"
-                ok={data.queue.redis}
-                rows={[
-                  ["Redis", data.redis ? "terhubung" : "tidak terhubung"],
-                  ["Menunggu", String(data.queue.waiting)],
-                  ["Terjadwal", String(data.queue.delayed)],
-                  ["Aktif", String(data.queue.active)],
-                  ["Gagal", String(data.queue.failed)],
-                  ["Pending di DB", String(data.queue.pendingInDb)],
-                ]}
-              />
+                {/* Probe 2: WhatsApp Gateway Daemon */}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Server className="h-4 w-4 text-emerald-400" />
+                      <h4 className="font-mono text-xs font-bold text-white uppercase">WhatsMeow Daemon</h4>
+                    </div>
+                    <Badge tone={data.daemon.ok ? "signal" : "danger"}>
+                      <StatusDot ok={data.daemon.ok} />
+                      {data.daemon.ok ? "ONLINE" : "OFFLINE"}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Active Instances:</span>
+                      <span className="font-bold text-emerald-400">{data.daemon.active_instances ?? 0} sockets</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Daemon Base URL:</span>
+                      <span className="text-slate-400 truncate max-w-[150px]" title={data.daemon.url}>{data.daemon.url}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Daemon Ping:</span>
+                      <span className="text-slate-300">{ts(data.daemon.uptime_reported_at)}</span>
+                    </div>
+                  </div>
+                </div>
 
-              <ProbePanel
-                icon={<Webhook className="h-4 w-4" aria-hidden="true" />}
-                title="Telegram Alert"
-                ok={data.telegram.ok}
-                rows={[
-                  ["Bot", data.telegram.username ?? "-"],
-                  ["Status", data.telegram.ok ? "terhubung" : "tidak terhubung"],
-                  ["Error", data.telegram.error ?? "tidak ada"],
-                ]}
-              />
-            </div>
+                {/* Probe 3: Redis & BullMQ Queue */}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Cpu className="h-4 w-4 text-amber-400" />
+                      <h4 className="font-mono text-xs font-bold text-white uppercase">Redis / BullMQ Queue</h4>
+                    </div>
+                    <Badge tone={data.queue.redis ? "signal" : "danger"}>
+                      <StatusDot ok={data.queue.redis} />
+                      {data.queue.redis ? "HEALTHY" : "DOWN"}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Waiting Jobs:</span>
+                      <span className="font-bold text-amber-300">{data.queue.waiting}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Delayed (Anti-Ghosting):</span>
+                      <span>{data.queue.delayed}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Failed / Pending In DB:</span>
+                      <span className={cn(data.queue.failed > 0 && "text-rose-400 font-bold")}>
+                        {data.queue.failed} failed / {data.queue.pendingInDb} fallback db
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Card>
-                <CardHeader
-                  title="Status langganan platform"
-                  description="Sebaran status langganan seluruh tenant."
-                />
-                <CardBody className="p-0">
-                  {Object.entries(data.subscription_counts).length === 0 ? (
-                    <EmptyState
-                      title="Belum ada langganan tercatat"
-                      description="Angka muncul setelah tenant pertama menyelesaikan pembayaran."
-                    />
-                  ) : (
-                    <dl className="divide-y divide-ink-200">
-                      {Object.entries(data.subscription_counts).map(([k, v]) => (
-                        <div
-                          key={k}
-                          className="flex items-baseline justify-between gap-4 px-5 py-2.5"
-                        >
-                          <dt className="text-xs text-ink-500">{k}</dt>
-                          <dd className="font-mono text-xs font-semibold tabular-nums text-ink">
-                            {v}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
-                  )}
-                </CardBody>
-              </Card>
+                {/* Probe 4: PostgreSQL Cluster */}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4 text-purple-400" />
+                      <h4 className="font-mono text-xs font-bold text-white uppercase">PostgreSQL Database</h4>
+                    </div>
+                    <Badge tone="signal">
+                      <StatusDot ok />
+                      CONNECTED
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Total Toko (Tenants):</span>
+                      <span className="font-bold text-white">{stats?.total_tenants ?? data.tenants.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Total Transaksi Orders:</span>
+                      <span className="font-bold text-white">{stats?.total_orders ?? totalOrders}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Total Produk SKU:</span>
+                      <span className="font-bold text-white">{stats?.total_products ?? 0}</span>
+                    </div>
+                  </div>
+                </div>
 
-              <Card>
-                <CardHeader
-                  title="Rekonsiliasi Midtrans"
-                  description="Memeriksa transaksi menggantung lewat Status API dan memindahkan tenant yang lewat jatuh tempo ke masa tenggang atau suspend."
-                  actions={
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={busy}
-                      onClick={() => act({ action: "reconcile" })}
-                    >
-                      Jalankan sekarang
-                    </Button>
-                  }
-                />
-                <CardBody className="space-y-3">
-                  <div>
-                    <label htmlFor="orderid" className="label">
-                      Cek satu order Midtrans
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        id="orderid"
-                        className="field flex-1"
-                        placeholder="NOEWBAR-M-xxxxxxxx-1712..."
-                        value={orderId}
-                        onChange={(e) => setOrderId(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && orderId) {
-                            act({ action: "sync_midtrans", order_id: orderId });
-                          }
-                        }}
-                        autoComplete="off"
-                      />
+                {/* Probe 5: Telegram Alert Bot */}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell className="h-4 w-4 text-sky-400" />
+                      <h4 className="font-mono text-xs font-bold text-white uppercase">Telegram Alert Channel</h4>
+                    </div>
+                    <Badge tone={data.telegram.ok ? "signal" : "warn"}>
+                      <StatusDot ok={data.telegram.ok} />
+                      {data.telegram.ok ? "READY" : "NO BOT"}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Target Bot:</span>
+                      <span className="text-sky-300">@{data.telegram.username || "not_configured"}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1">
+                      <span className="text-slate-500">Test Alert Ping:</span>
                       <Button
+                        size="sm"
                         variant="secondary"
-                        loading={busy}
-                        disabled={!orderId}
-                        onClick={() => act({ action: "sync_midtrans", order_id: orderId })}
+                        className="h-6 text-[11px] px-2 bg-slate-800 text-slate-300 hover:text-white"
+                        onClick={() => act({ action: "test_telegram" })}
                       >
-                        Cek
+                        Kirim Ping
                       </Button>
                     </div>
-                    <p className="hint">
-                      Order ID diambil dari ledger webhook atau email konfirmasi Midtrans.
-                    </p>
                   </div>
-
-                  {data.recent_orders.length > 0 && (
-                    <div className="rounded border border-ink-200">
-                      <p className="border-b border-ink-200 px-3 py-2 text-2xs font-semibold uppercase tracking-wide text-ink-500">
-                        Pesanan terbaru
-                      </p>
-                      <ul className="divide-y divide-ink-200">
-                        {data.recent_orders.slice(0, 5).map((o) => (
-                          <li
-                            key={o.id}
-                            className="flex items-center justify-between gap-3 px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate font-mono text-2xs text-ink">{o.order_number}</p>
-                              <p className="truncate text-2xs text-ink-500">
-                                {o.tenant} &middot; {timeAgo(o.created_at)}
-                              </p>
-                            </div>
-                            <p className="shrink-0 font-mono text-2xs font-semibold tabular-nums text-ink">
-                              Rp {rupiah(o.total)}
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </CardBody>
-              </Card>
-            </div>
-          </>
-        )}
-
-        {/* ----------------------------------------------------------- FLEET */}
-        {tab === "fleet" && (
-          <>
-            <PageHeader
-              eyebrow="Sesi WhatsApp"
-              title="Fleet WhatsApp"
-              description="Satu baris per nomor toko. Restart ulang soket tanpa menghapus kredensial sesi."
-              icon={<Server className="h-4 w-4" aria-hidden="true" />}
-              actions={
-                <Badge tone={data.daemon.ok ? "signal" : "danger"}>
-                  <StatusDot ok={data.daemon.ok} />
-                  daemon {data.daemon.ok ? "siap" : "gangguan"}
-                </Badge>
-              }
-            />
-
-            {data.fleet.length === 0 ? (
-              <Card>
-                <EmptyState
-                  icon={<Server className="h-5 w-5" aria-hidden="true" />}
-                  title="Belum ada sesi nomor toko"
-                  description="Sesi dibuat saat tenant menekan Tampilkan QR pairing di dashboard mereka."
-                />
-              </Card>
-            ) : (
-              <Card className="overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead className="border-b border-ink-200 bg-ink-50">
-                      <tr className="text-2xs uppercase tracking-wide text-ink-500">
-                        <th className="px-4 py-2.5 font-semibold">Instance</th>
-                        <th className="px-4 py-2.5 font-semibold">Toko</th>
-                        <th className="px-4 py-2.5 font-semibold">Status</th>
-                        <th className="px-4 py-2.5 font-semibold">Nomor</th>
-                        <th className="px-4 py-2.5 font-semibold">Terakhir aktif</th>
-                        <th className="px-4 py-2.5 font-semibold">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ink-200">
-                      {data.fleet.map((f) => (
-                        <tr key={f.instance_key} className="hover:bg-ink-50">
-                          <td className="px-4 py-3 font-mono text-xs text-ink">{f.instance_key}</td>
-                          <td className="px-4 py-3 text-ink">{f.tenant}</td>
-                          <td className="px-4 py-3">
-                            <Badge tone={f.connection_status === "CONNECTED" ? "signal" : "warn"}>
-                              {f.connection_status}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 font-mono text-xs text-ink">
-                            {f.phone_number ?? "-"}
-                          </td>
-                          <td className="px-4 py-3 font-mono text-xs text-ink-500">
-                            {f.last_seen ? timeAgo(f.last_seen) : "belum pernah"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              loading={busy}
-                              onClick={() =>
-                                act(
-                                  { action: "restart_instance", instance_key: f.instance_key },
-                                  `Restart soket ${f.instance_key}? Sesi tetap tersimpan, hanya koneksi yang disambung ulang.`
-                                )
-                              }
-                            >
-                              Restart
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
-              </Card>
-            )}
-          </>
-        )}
 
-        {/* --------------------------------------------------------- TENANTS */}
-        {tab === "tenants" && (
-          <>
-            <PageHeader
-              eyebrow="Siklus hidup"
-              title="Kontrol tenant"
-              description="Perpanjang uji coba, aktifkan, tangguhkan, atau hapus permanen. Penghapusan tidak bisa dibatalkan."
-              icon={<Table2 className="h-4 w-4" aria-hidden="true" />}
-            />
-
-            {/* KPI Summary Cards */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded border border-ink-200 bg-white p-3.5">
-                <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-500">
-                  <Users className="h-3.5 w-3.5 text-ink-400" /> Total Toko
-                </p>
-                <p className="mt-1 font-mono text-xl font-bold text-ink">{data.tenants.length}</p>
-                <p className="mt-0.5 text-2xs text-ink-500">
-                  {activeTenantsCount} aktif &middot; {trialTenantsCount} trial
-                </p>
-              </div>
-              <div className="rounded border border-ink-200 bg-white p-3.5">
-                <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-500">
-                  <DollarSign className="h-3.5 w-3.5 text-ink-400" /> Estimasi MRR
-                </p>
-                <p className="mt-1 font-mono text-xl font-bold text-ink">Rp {rupiah(totalMRR)}</p>
-                <p className="mt-0.5 text-2xs text-ink-500">Langganan aktif</p>
-              </div>
-              <div className="rounded border border-ink-200 bg-white p-3.5">
-                <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-500">
-                  <MessageSquare className="h-3.5 w-3.5 text-ink-400" /> Sesi Obrolan
-                </p>
-                <p className="mt-1 font-mono text-xl font-bold text-ink">
-                  {totalConversations.toLocaleString("id-ID")}
-                </p>
-                <p className="mt-0.5 text-2xs text-ink-500">Percakapan AI</p>
-              </div>
-              <div className="rounded border border-ink-200 bg-white p-3.5">
-                <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-500">
-                  <ShoppingBag className="h-3.5 w-3.5 text-ink-400" /> Pesanan Toko
-                </p>
-                <p className="mt-1 font-mono text-xl font-bold text-ink">
-                  {totalOrders.toLocaleString("id-ID")}
-                </p>
-                <p className="mt-0.5 text-2xs text-ink-500">Tercatat di sistem</p>
-              </div>
-              <div className="rounded border border-ink-200 bg-white p-3.5">
-                <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-500">
-                  <BookOpen className="h-3.5 w-3.5 text-ink-400" /> Dokumen AI
-                </p>
-                <p className="mt-1 font-mono text-xl font-bold text-ink">
-                  {totalDocs.toLocaleString("id-ID")}
-                </p>
-                <p className="mt-0.5 text-2xs text-ink-500">Basis pengetahuan</p>
+                {/* Probe 6: Node.js Runtime Spec */}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <HardDrive className="h-4 w-4 text-indigo-400" />
+                      <h4 className="font-mono text-xs font-bold text-white uppercase">Runtime Server Node</h4>
+                    </div>
+                    <Badge tone="signal">
+                      <StatusDot ok />
+                      V8 ENGINE
+                    </Badge>
+                  </div>
+                  <div className="space-y-1.5 font-mono text-2xs text-slate-300">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Node Version:</span>
+                      <span className="font-bold text-indigo-300">{stats?.node_version ?? process.version}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Memory RSS:</span>
+                      <span>{stats?.memory_rss_mb ?? 0} MB</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Server Uptime:</span>
+                      <span className="text-emerald-400 font-bold">{stats ? formatSeconds(stats.uptime_seconds) : "-"}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Segmented
-                label="Filter status tenant"
-                items={[
-                  { id: "all" as TenantFilter, label: "Semua", count: data.tenants.length },
-                  {
-                    id: "ACTIVE" as TenantFilter,
-                    label: "ACTIVE",
-                    count: data.tenants.filter((t) => t.status === "ACTIVE").length,
-                  },
-                  {
-                    id: "TRIAL" as TenantFilter,
-                    label: "TRIAL",
-                    count: data.tenants.filter((t) => t.status === "TRIAL").length,
-                  },
-                  {
-                    id: "SUSPENDED" as TenantFilter,
-                    label: "SUSPENDED",
-                    count: data.tenants.filter((t) => t.status === "SUSPENDED").length,
-                  },
-                ]}
-                value={tenantFilter}
-                onChange={setTenantFilter}
-              />
-
-              <div className="relative min-w-[240px] flex-1 sm:max-w-xs">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-400" />
-                <input
-                  type="text"
-                  placeholder="Cari toko, email, atau WA..."
-                  value={tenantQuery}
-                  onChange={(e) => setTenantQuery(e.target.value)}
-                  className="w-full rounded border border-ink-300 bg-white py-1.5 pl-8 pr-8 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
-                />
-                {tenantQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setTenantQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+            {/* 5 Pesanan Platform Terbaru */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900/80 overflow-hidden">
+              <div className="border-b border-slate-800 px-5 py-3.5 flex items-center justify-between">
+                <div>
+                  <h4 className="font-mono text-xs font-bold text-white uppercase">
+                    Aktivitas Transaksi Lintas Tenant (Global Feed)
+                  </h4>
+                  <p className="text-2xs text-slate-400">Order terbaru dari seluruh toko di platform.</p>
+                </div>
+                <span className="font-mono text-2xs text-slate-500">{data.recent_orders.length} transaksi terakhir</span>
+              </div>
+              <div className="divide-y divide-slate-800/80">
+                {data.recent_orders.length === 0 ? (
+                  <p className="p-4 text-center text-xs text-slate-500 font-mono">Belum ada transaksi di platform.</p>
+                ) : (
+                  data.recent_orders.slice(0, 5).map((o) => (
+                    <div key={o.id} className="px-5 py-3 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                      <div className="flex items-center gap-3">
+                        <span className="text-cyan-400 font-bold">{o.order_number}</span>
+                        <span className="text-slate-400">Toko: <strong className="text-slate-200">{o.tenant}</strong></span>
+                        <span className="text-slate-600">&bull;</span>
+                        <span className="text-slate-400">{timeAgo(o.created_at)}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-emerald-400">Rp {rupiah(o.total)}</span>
+                        <Badge tone={o.payment_status === "VERIFIED" ? "signal" : "warn"} className="text-[10px]">
+                          {o.payment_status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </div>
+          </div>
+        )}
 
-            {data.tenants.length === 0 ? (
-              <Card>
-                <EmptyState
-                  icon={<Table2 className="h-5 w-5" aria-hidden="true" />}
-                  title="Belum ada tenant terdaftar"
-                  description="Tenant muncul setelah ada toko yang menyelesaikan pendaftaran."
-                />
-              </Card>
-            ) : filteredTenants.length === 0 ? (
-              <Card>
-                <EmptyState
-                  title="Tidak ada tenant yang cocok"
-                  description={
-                    tenantQuery
-                      ? `Tidak ditemukan toko dengan kata kunci "${tenantQuery}".`
-                      : `Tidak ada tenant berstatus ${tenantFilter}.`
-                  }
-                  action={
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        setTenantFilter("all");
-                        setTenantQuery("");
-                      }}
-                    >
-                      Reset filter & pencarian
-                    </Button>
-                  }
-                />
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {filteredTenants.map((t) => (
-                  <Card key={t.id}>
-                    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-ink-200 px-5 py-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-ink">{t.business_name}</p>
-                          <Badge
-                            tone={
-                              t.status === "ACTIVE"
-                                ? "signal"
-                                : t.status === "SUSPENDED"
-                                  ? "danger"
-                                  : "warn"
-                            }
-                          >
-                            {t.status}
-                          </Badge>
-                        </div>
-                        <p className="mt-1 text-xs text-ink-600">{t.email}</p>
-                        <p className="mt-0.5 flex flex-wrap gap-x-3 font-mono text-2xs text-ink-500">
-                          <span>WA {t.owner_whatsapp}</span>
-                          <span>{t.conversations} percakapan</span>
-                          <span>{t.orders} pesanan</span>
-                          <span>{t.products ?? 0} produk</span>
-                          <span>{t.websites ?? 0} website</span>
-                          <span>{t.knowledge_docs ?? 0} dokumen AI</span>
-                          <span>trial s.d. {ts(t.trial_expires_at)}</span>
-                        </p>
-                        {t.sheet && (
-                          <p className="mt-0.5 truncate font-mono text-2xs text-ink-500">
-                            Sheet sinkron {ts(t.sheet.last_synced_at)} &middot; asal {t.sheet.origin}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="text-right">
-                        {t.subscription ? (
-                          <>
-                            <p className="font-mono text-sm font-bold tabular-nums text-ink">
-                              Rp {rupiah(t.subscription.amount)}
-                            </p>
-                            <p className="mt-0.5 text-2xs text-ink-500">
-                              {t.subscription.plan} &middot; {t.subscription.status}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-2xs text-ink-500">belum berlangganan</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 px-5 py-3">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        loading={busy}
-                        onClick={() =>
-                          act({ action: "extend_trial", tenant_id: t.id, days: 7 })
-                        }
-                      >
-                        Perpanjang trial 7 hari
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        loading={busy}
-                        disabled={t.status === "ACTIVE"}
-                        onClick={() =>
-                          act({ action: "tenant_status", tenant_id: t.id, status: "ACTIVE" })
-                        }
-                      >
-                        Jadikan ACTIVE
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        loading={busy}
-                        disabled={t.status === "SUSPENDED"}
-                        onClick={() =>
-                          act(
-                            { action: "tenant_status", tenant_id: t.id, status: "SUSPENDED" },
-                            `Tangguhkan ${t.business_name}? Bot berhenti membalas sampai diaktifkan kembali.`
-                          )
-                        }
-                      >
-                        Suspend
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        loading={busy}
-                        onClick={() =>
-                          act(
-                            { action: "wipe_tenant", tenant_id: t.id, confirm: "HAPUS" },
-                            `HAPUS PERMANEN ${t.business_name} beserta seluruh percakapan dan pesanan? Tindakan ini tidak bisa dibatalkan.`
-                          )
-                        }
-                      >
-                        Hapus permanen
-                      </Button>
-                    </div>
-                  </Card>
+        {/* ---------------------------------------------------- TAB 2: TENANTS */}
+        {tab === "tenants" && (
+          <div className="space-y-4">
+            {/* Toolbar Pencarian & Filter */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
+              <div className="flex flex-wrap items-center gap-1.5 font-mono text-xs">
+                {(["all", "ACTIVE", "TRIAL", "SUSPENDED"] as const).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => setTenantFilter(st)}
+                    className={cn(
+                      "px-2.5 py-1 rounded font-semibold uppercase text-2xs transition-colors",
+                      tenantFilter === st
+                        ? "bg-cyan-900 text-cyan-200 border border-cyan-600"
+                        : "bg-slate-800 text-slate-400 hover:bg-slate-750"
+                    )}
+                  >
+                    {st === "all" ? "Semua Status" : st}
+                  </button>
                 ))}
               </div>
-            )}
-          </>
-        )}
 
-        {/* -------------------------------------------------------- WEBHOOKS */}
-        {tab === "webhooks" && (
-          <>
-            <PageHeader
-              eyebrow="Idempotensi"
-              title="Ledger webhook"
-              description="Setiap webhook masuk dicatat sebelum diproses. Kiriman ulang dari provider ditolak unique constraint, sehingga langganan tidak pernah diperpanjang dua kali."
-              icon={<Webhook className="h-4 w-4" aria-hidden="true" />}
-            />
-
-            {data.webhooks.length === 0 ? (
-              <Card>
-                <EmptyState
-                  icon={<Webhook className="h-5 w-5" aria-hidden="true" />}
-                  title="Belum ada webhook tercatat"
-                  description="Baris muncul begitu penyedia pembayaran mengirim notifikasi pertama."
+              <div className="relative min-w-[240px]">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Cari toko, email, WA..."
+                  value={tenantQuery}
+                  onChange={(e) => setTenantQuery(e.target.value)}
+                  className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-8 pr-3 py-1.5 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none"
                 />
-              </Card>
-            ) : (
-              <Card className="overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
-                    <thead className="border-b border-ink-200 bg-ink-50">
-                      <tr className="text-2xs uppercase tracking-wide text-ink-500">
-                        <th className="px-4 py-2.5 font-semibold">Provider</th>
-                        <th className="px-4 py-2.5 font-semibold">Event key</th>
-                        <th className="px-4 py-2.5 font-semibold">Tipe</th>
-                        <th className="px-4 py-2.5 font-semibold">Diproses</th>
-                        <th className="px-4 py-2.5 font-semibold">Waktu</th>
+              </div>
+            </div>
+
+            {/* Tabel Multi-Tenant & Kuota AI */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead className="bg-slate-950/80 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                    <tr>
+                      <th className="px-4 py-3">Nama Toko &amp; Kontak</th>
+                      <th className="px-4 py-3">Status Langganan</th>
+                      <th className="px-4 py-3 text-center">Beban Kuota AI &amp; Aktivitas</th>
+                      <th className="px-4 py-3 text-center">Basis Data Toko</th>
+                      <th className="px-4 py-3 text-right">Aksi Operator</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                    {filteredTenants.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-500">
+                          Tidak ada tenant yang cocok dengan filter.
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ink-200">
-                      {data.webhooks.map((w) => (
-                        <tr key={w.id} className="hover:bg-ink-50">
-                          <td className="px-4 py-3 font-mono text-xs text-ink">{w.provider}</td>
-                          <td className="px-4 py-3 font-mono text-xs text-ink">{w.event_key}</td>
-                          <td className="px-4 py-3 text-xs text-ink-600">{w.event_type ?? "-"}</td>
-                          <td className="px-4 py-3">
-                            <Badge tone={w.processed ? "signal" : "neutral"}>
-                              {w.processed ? "ya" : "belum"}
-                            </Badge>
+                    ) : (
+                      filteredTenants.map((t) => (
+                        <tr key={t.id} className="hover:bg-slate-850/50 transition-colors">
+                          <td className="px-4 py-3.5">
+                            <p className="font-bold text-white text-sm">{t.business_name}</p>
+                            <p className="text-2xs text-slate-400">{t.email}</p>
+                            <p className="text-2xs text-cyan-400 font-mono mt-0.5">{t.owner_whatsapp}</p>
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs text-ink-500">
-                            {ts(w.created_at)}
+                          <td className="px-4 py-3.5">
+                            <Badge
+                              tone={t.status === "ACTIVE" ? "signal" : t.status === "TRIAL" ? "warn" : "danger"}
+                              className="text-[10px]"
+                            >
+                              {t.status}
+                            </Badge>
+                            <p className="mt-1 text-2xs text-slate-400">
+                              Berakhir: {new Date(t.trial_expires_at).toLocaleDateString("id-ID")}
+                            </p>
+                            {t.subscription && (
+                              <p className="text-2xs text-emerald-400 font-semibold">
+                                {t.subscription.plan} &bull; Rp {rupiah(t.subscription.amount)}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <div className="inline-flex flex-col items-center">
+                              <span className="font-bold text-slate-100">{t.conversations} chat / {t.orders} order</span>
+                              <span className="text-[10px] text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/40 mt-1">
+                                Est. {t.conversations * 450} Token AI
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5 text-center text-2xs text-slate-400">
+                            <div>{t.products ?? 0} SKU Produk</div>
+                            <div>{t.knowledge_docs ?? 0} Dokumen SOP</div>
+                            <div>{t.websites ?? 0} Landing Page</div>
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="h-7 text-[10px] px-2 bg-slate-800 text-slate-200 hover:text-white"
+                                onClick={() => act({ action: "extend_trial", tenant_id: t.id, days: 7 })}
+                              >
+                                +7 Hari
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={t.status === "SUSPENDED" ? "accent" : "secondary"}
+                                className={cn(
+                                  "h-7 text-[10px] px-2",
+                                  t.status === "SUSPENDED"
+                                    ? "bg-emerald-700 text-white"
+                                    : "bg-amber-900/60 text-amber-200 hover:bg-amber-800"
+                                )}
+                                onClick={() =>
+                                  act({
+                                    action: "tenant_status",
+                                    tenant_id: t.id,
+                                    status: t.status === "SUSPENDED" ? "ACTIVE" : "SUSPENDED",
+                                  })
+                                }
+                              >
+                                {t.status === "SUSPENDED" ? "Aktifkan" : "Suspend"}
+                              </Button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setWipeConfirmModal({ id: t.id, name: t.business_name });
+                                  setWipeInput("");
+                                }}
+                                className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                                title="Hapus tenant permanen"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            )}
-          </>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         )}
-      </div>
-    </AppShell>
+
+        {/* ---------------------------------------------------- TAB 3: FLEET */}
+        {tab === "fleet" && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden">
+              <div className="border-b border-slate-800 px-5 py-3 flex items-center justify-between">
+                <div>
+                  <h4 className="font-mono text-xs font-bold text-white uppercase">
+                    Fleet Sesi Soket WhatsApp Toko
+                  </h4>
+                  <p className="text-2xs text-slate-400">Pantau seluruh nomor WA toko yang terhubung ke WhatsMeow daemon.</p>
+                </div>
+                <span className="font-mono text-2xs text-slate-400">{data.fleet.length} Sesi Terdaftar</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead className="bg-slate-950/80 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                    <tr>
+                      <th className="px-4 py-3">Instance Key</th>
+                      <th className="px-4 py-3">Toko Terkait</th>
+                      <th className="px-4 py-3">Status Koneksi</th>
+                      <th className="px-4 py-3">Nomor WhatsApp</th>
+                      <th className="px-4 py-3">Ping Terakhir</th>
+                      <th className="px-4 py-3 text-right">Aksi Soket</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                    {data.fleet.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-slate-500">
+                          Belum ada instance WhatsApp yang terdaftar.
+                        </td>
+                      </tr>
+                    ) : (
+                      data.fleet.map((inst) => (
+                        <tr key={inst.instance_key} className="hover:bg-slate-850/50">
+                          <td className="px-4 py-3.5 font-bold text-cyan-300">{inst.instance_key}</td>
+                          <td className="px-4 py-3.5 font-semibold text-white">{inst.tenant}</td>
+                          <td className="px-4 py-3.5">
+                            <Badge
+                              tone={inst.connection_status === "CONNECTED" ? "signal" : inst.connection_status === "PAIRING" ? "warn" : "danger"}
+                              className="text-[10px]"
+                            >
+                              <StatusDot ok={inst.connection_status === "CONNECTED"} />
+                              {inst.connection_status}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3.5 text-slate-200">{inst.phone_number || "Belum Scan QR"}</td>
+                          <td className="px-4 py-3.5 text-2xs text-slate-400">{inst.last_seen ? timeAgo(inst.last_seen) : "-"}</td>
+                          <td className="px-4 py-3.5 text-right">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="h-7 text-[10px] px-2 bg-slate-800 text-slate-200 hover:text-white"
+                              onClick={() => act({ action: "restart_instance", instance_key: inst.instance_key }, `Restart soket sesi ${inst.instance_key}?`)}
+                            >
+                              Restart Soket
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- TAB 4: WEBHOOKS */}
+        {tab === "webhooks" && (
+          <div className="space-y-4">
+            {/* Quick Midtrans Sync Tool */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="font-mono text-xs font-bold text-white uppercase">
+                  Sinkronisasi Status Midtrans Manual
+                </h4>
+                <p className="text-2xs text-slate-400">Verifikasi status transaksi jika webhook Midtrans mengalami delay.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Order ID Midtrans..."
+                  value={orderId}
+                  onChange={(e) => setOrderId(e.target.value)}
+                  className="rounded-lg border border-slate-750 bg-slate-950 px-3 py-1.5 font-mono text-xs text-slate-100 placeholder:text-slate-600 focus:border-cyan-500 focus:outline-none w-48"
+                />
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs border-none"
+                  disabled={!orderId.trim()}
+                  onClick={() => act({ action: "sync_midtrans", order_id: orderId.trim() })}
+                >
+                  Cek Status
+                </Button>
+              </div>
+            </div>
+
+            {/* Tabel Ledger Webhook */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900/90 overflow-hidden">
+              <div className="border-b border-slate-800 px-5 py-3 flex items-center justify-between">
+                <h4 className="font-mono text-xs font-bold text-white uppercase">
+                  Audit Ledger Webhook Masuk (Idempotensi Terlindungi)
+                </h4>
+                <span className="font-mono text-2xs text-slate-400">{data.webhooks.length} Events Tercatat</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead className="bg-slate-950/80 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                    <tr>
+                      <th className="px-4 py-3">Provider</th>
+                      <th className="px-4 py-3">Event Key</th>
+                      <th className="px-4 py-3">Tipe Event</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3 text-right">Waktu Masuk</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                    {data.webhooks.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-500">Belum ada webhook event tercatat.</td>
+                      </tr>
+                    ) : (
+                      data.webhooks.map((w) => (
+                        <tr key={w.id} className="hover:bg-slate-850/50">
+                          <td className="px-4 py-3">
+                            <span className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded text-2xs font-bold",
+                              w.provider === "MIDTRANS" ? "bg-emerald-950 text-emerald-400 border border-emerald-800/60" : "bg-cyan-950 text-cyan-400 border border-cyan-800/60"
+                            )}>
+                              {w.provider}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-200">{w.event_key}</td>
+                          <td className="px-4 py-3 text-slate-400">{w.event_type || "-"}</td>
+                          <td className="px-4 py-3">
+                            <span className={cn("text-2xs font-bold", w.processed ? "text-emerald-400" : "text-amber-400")}>
+                              {w.processed ? "PROCESSED" : "PENDING"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-2xs text-slate-400">{ts(w.created_at)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ---------------------------------------------------- TAB 5: SYSTEM OPS */}
+        {tab === "system_ops" && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                Operasi Pemeliharaan &amp; Diagnostik Cluster Platform
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {/* Op 1: Maintenance Sweep */}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Cpu className="h-4 w-4 text-cyan-400" />
+                      <h4 className="font-mono text-xs font-bold text-white uppercase">Maintenance Sweep 3-in-1</h4>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+                      Jalankan siklus sweep berkala manual: kadaluarsa reservasi stok 2 jam, kirim antrean anti-ghosting, dan rekonsiliasi status langganan tenant.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-800">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-xs border-none"
+                      loading={busy}
+                      onClick={() => act({ action: "trigger_maintenance" })}
+                    >
+                      Jalankan Sweep Sekarang
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Op 2: Midtrans Force Reconcile */}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Webhook className="h-4 w-4 text-emerald-400" />
+                      <h4 className="font-mono text-xs font-bold text-white uppercase">Rekonsiliasi Langganan</h4>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+                      Pindai seluruh tagihan Midtrans yang menggantung untuk memastikan langganan toko yang sudah lunas segera aktif otomatis.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-800">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs"
+                      loading={busy}
+                      onClick={() => act({ action: "reconcile" })}
+                    >
+                      Pindai Status Midtrans
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Op 3: Telegram Alert Test Ping */}
+                <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Bell className="h-4 w-4 text-sky-400" />
+                      <h4 className="font-mono text-xs font-bold text-white uppercase">Uji Saluran Telegram</h4>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+                      Kirim pesan pengujian alert darurat ke bot dan admin chat ID untuk memastikan notifikasi server dapat diterima.
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-800">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs"
+                      loading={busy}
+                      onClick={() => act({ action: "test_telegram" })}
+                    >
+                      Kirim Pesan Uji
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Modal Konfirmasi Wipe Tenant */}
+      {wipeConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-xl border border-rose-500/50 bg-slate-950 p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-rose-950 text-rose-400 border border-rose-800">
+                <ShieldAlert className="h-5 w-5" />
+              </span>
+              <div>
+                <h4 className="font-mono text-sm font-bold text-white uppercase">
+                  Konfirmasi Hapus Toko
+                </h4>
+                <p className="text-2xs text-rose-400">Tindakan destruktif tidak dapat dibatalkan</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Anda akan menghapus seluruh data toko <strong>"{wipeConfirmModal.name}"</strong> termasuk semua katalog produk, percakapan, pesanan, dan sesi WhatsApp.
+            </p>
+
+            <div>
+              <label htmlFor="wipe-confirm-input" className="block font-mono text-2xs uppercase text-slate-400 mb-1">
+                Ketik <span className="text-rose-400 font-bold">HAPUS</span> untuk konfirmasi:
+              </label>
+              <input
+                id="wipe-confirm-input"
+                type="text"
+                placeholder="HAPUS"
+                value={wipeInput}
+                onChange={(e) => setWipeInput(e.target.value)}
+                className="w-full rounded-lg border border-slate-750 bg-slate-900 px-3 py-2 font-mono text-xs text-white uppercase focus:border-rose-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setWipeConfirmModal(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={wipeInput !== "HAPUS"}
+                loading={busy}
+                onClick={async () => {
+                  const id = wipeConfirmModal.id;
+                  setWipeConfirmModal(null);
+                  await act({ action: "wipe_tenant", tenant_id: id, confirm: "HAPUS" });
+                }}
+              >
+                Hapus Toko Permanen
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
