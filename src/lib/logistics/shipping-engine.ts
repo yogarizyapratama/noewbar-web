@@ -145,8 +145,8 @@ export async function calculateShippingRates(params: {
   weightKg?: number;
   courierFilter?: CourierCode;
 }): Promise<ShippingCalculationResult> {
-  const origin = params.originSubdistrict.trim();
-  const destination = params.destinationSubdistrict.trim();
+  const origin = (params.originSubdistrict || "Jakarta Selatan").trim();
+  const destination = (params.destinationSubdistrict || "").trim();
 
   if (!origin || !destination) {
     throw new Error("origin_subdistrict and destination_subdistrict are required");

@@ -239,16 +239,36 @@ export type OngkirResult = {
 
 export async function toolCekOngkir(
   ctx: ToolContext,
-  args: { subdistrict: string; courier?: string; weight_kg?: number; order_total?: number }
+  args: {
+    subdistrict?: string;
+    destination?: string;
+    destination_subdistrict?: string;
+    city?: string;
+    kota?: string;
+    tujuan?: string;
+    courier?: string;
+    weight_kg?: number;
+    order_total?: number;
+  }
 ): Promise<OngkirResult> {
+  const dest = (
+    args.subdistrict ||
+    args.destination ||
+    args.destination_subdistrict ||
+    args.city ||
+    args.kota ||
+    args.tujuan ||
+    ""
+  ).trim();
+
   const courierFilter =
     args.courier && ["JNT", "SICEPAT", "JNE"].includes(args.courier.toUpperCase())
       ? (args.courier.toUpperCase() as CourierCode)
       : undefined;
 
   const result = await calculateShippingRates({
-    originSubdistrict: ctx.originSubdistrict,
-    destinationSubdistrict: args.subdistrict,
+    originSubdistrict: ctx.originSubdistrict || "Jakarta Selatan",
+    destinationSubdistrict: dest || "Jakarta",
     orderTotalAmount: args.order_total ?? 0,
     weightKg: args.weight_kg ?? 1,
     courierFilter,
@@ -751,8 +771,9 @@ export async function executeTool(
   ctx: ToolContext,
   args: Record<string, unknown>
 ): Promise<DispatchOutcome> {
-  switch (name) {
-    case "tool_cari_produk": {
+  try {
+    switch (name) {
+      case "tool_cari_produk": {
       const data = await toolCariProduk(ctx, {
         query: String(args.query ?? ""),
         category: args.category ? String(args.category) : undefined,
@@ -910,6 +931,17 @@ export async function executeTool(
       };
     }
   }
+} catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      tool: name,
+      payload: { error: msg },
+      toolPayload: { error: msg },
+      summary: `Eksekusi ${name} gagal: ${msg}`,
+      media: [],
+      escalated: false,
+    };
+  }
 }
 
 /** Persists the tool trace onto the conversation timeline for the dashboard. */
@@ -918,6 +950,7 @@ export async function recordToolTraces(
   outcomes: ToolExecutionResult[]
 ): Promise<void> {
   if (outcomes.length === 0) return;
+  if (conversationId === "00000000-0000-0000-0000-000000000000") return;
   await prisma.chatMessage.create({
     data: {
       conversation_id: conversationId,

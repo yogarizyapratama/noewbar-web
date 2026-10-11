@@ -158,6 +158,24 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
   const totalAmount = subtotal + shippingTariff + uniqueCode;
   const reservationExpiresAt = new Date(Date.now() + RESERVATION_TTL_MINUTES * 60 * 1000);
 
+  if (input.tenantId === "00000000-0000-0000-0000-000000000000") {
+    const orderNumber = buildOrderNumber();
+    return {
+      ok: true,
+      orderId: "simulated-order-id",
+      orderNumber,
+      subtotal,
+      shippingTariff,
+      uniqueCode,
+      totalAmount,
+      courier: chosen.courier,
+      courierService: chosen.service_type,
+      shippingIsEstimate: chosen.is_estimate,
+      reservationExpiresAt: reservationExpiresAt.toISOString(),
+      lines: input.lines,
+    };
+  }
+
   const order = await prisma.order.create({
     data: {
       tenant_id: input.tenantId,

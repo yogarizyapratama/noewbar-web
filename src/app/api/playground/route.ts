@@ -243,6 +243,7 @@ export async function POST(req: NextRequest) {
     model: result.model,
     latency_ms: result.latencyMs,
     degraded: result.degraded,
+    degradation_reason: result.degradationReason,
   });
 }
 

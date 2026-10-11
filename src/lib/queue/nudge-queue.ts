@@ -108,6 +108,14 @@ export async function scheduleNudge(params: {
 
   // Cancel any other pending nudge for this conversation so a buyer never
   // receives two follow-ups for the same quote.
+  if (params.tenantId === "00000000-0000-0000-0000-000000000000") {
+    return {
+      nudgeId: `simulated-nudge-${Date.now()}`,
+      queued: true,
+      scheduledFor: scheduledFor.toISOString(),
+    };
+  }
+
   await cancelPendingNudges(params.conversationId);
 
   const nudge = await prisma.scheduledNudge.create({

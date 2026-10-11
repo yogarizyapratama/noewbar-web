@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import prisma from "@/lib/prisma";
 import { env } from "@/lib/env";
@@ -14,7 +13,7 @@ import type {
 } from "@/lib/ai/types";
 import { TOOL_NAMES } from "@/lib/ai/types";
 import { cancelPendingNudges } from "@/lib/queue/nudge-queue";
-import { modelChain, chatWithFallback, TOOL_REQUEST_DEFAULTS } from "@/lib/ai/gateway";
+import { modelChain, chatWithFallback, TOOL_REQUEST_DEFAULTS, aiClient } from "@/lib/ai/gateway";
 import { publicUrlFor } from "@/lib/storage/minio";
 import { getActiveKnowledgeText } from "@/lib/knowledge/knowledge-store";
 
@@ -26,12 +25,7 @@ import { getActiveKnowledgeText } from "@/lib/knowledge/knowledge-store";
  * fallback all happen inside 9router, so this code never changes when the pool does.
  */
 
-const client = new OpenAI({
-  apiKey: env.AI_API_KEY || "not-set",
-  baseURL: env.AI_GATEWAY_URL,
-  timeout: 45_000,
-  maxRetries: 1,
-});
+const client = aiClient;
 
 /**
  * True when a gateway error means "this model refuses batched tool calls".
@@ -330,9 +324,30 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
     });
 
     if (requested.length === 0) {
+      const rawContent = msg.content ?? "";
+      const isDangling =
+        round < 2 &&
+        /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)\s+(?:dulu|sebentar|stok|ongkir)|(?:tunggu|mohon tunggu)\s+sebentar|sebentar\s+ya\s+kak)/i.test(
+          rawContent
+        ) &&
+        !rawContent.includes("Rp");
+
+      if (isDangling) {
+        messages.push({
+          role: "assistant",
+          content: rawContent,
+        });
+        messages.push({
+          role: "user",
+          content:
+            "Jangan menunda atau membalas menggantung. Tolong langsung panggil tool_cek_ongkir dan/atau tool_cari_produk sekarang juga dan berikan rincian harga, ongkir, serta total yang harus dibayar kepada pembeli.",
+        });
+        continue;
+      }
+
       messages.push({
         role: "assistant",
-        content: msg.content ?? "",
+        content: rawContent,
       });
       break;
     }
@@ -399,6 +414,14 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
   const lastMsg = messages[messages.length - 1];
   if (lastMsg && lastMsg.role === "assistant" && typeof lastMsg.content === "string" && lastMsg.content.trim()) {
     replyText = lastMsg.content;
+  }
+
+  const isDangling =
+    /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)\s+(?:dulu|sebentar|stok|ongkir)|(?:tunggu|mohon tunggu)\s+sebentar|sebentar\s+ya\s+kak)/i.test(
+      replyText
+    ) && !replyText.includes("Rp");
+  if (isDangling && toolOutcomes.length > 0) {
+    replyText = "";
   }
 
   // 2. If tools were executed but no final text reply was produced, run composition turn
