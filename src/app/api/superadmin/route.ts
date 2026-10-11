@@ -3,7 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { ok, fail } from "@/lib/http";
-import { requireAdmin, loginSuperadmin, ADMIN_COOKIE, COOKIE_OPTIONS, superadminHashConfigured } from "@/lib/auth";
+import { requireAdmin, loginSuperadmin, registerTenant, ADMIN_COOKIE, COOKIE_OPTIONS, superadminHashConfigured } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { gatewayHealth } from "@/lib/ai/orchestrator";
 import { waDaemon } from "@/lib/wa/daemon-client";
@@ -40,6 +40,17 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("fleet") }),
   z.object({ action: z.literal("trigger_maintenance") }),
   z.object({ action: z.literal("test_telegram") }),
+  z.object({
+    action: z.literal("create_tenant"),
+    business_name: z.string().min(2),
+    owner_name: z.string().min(2),
+    email: z.string().email(),
+    password: z.string().min(6),
+    owner_whatsapp: z.string().min(8),
+    status: z.enum(["TRIAL", "ACTIVE"]).default("TRIAL"),
+    trial_days: z.number().int().min(1).max(365).default(14),
+  }),
+  z.object({ action: z.literal("test_ai_gateway") }),
 ]);
 
 export async function POST(req: NextRequest) {
@@ -193,6 +204,36 @@ export async function POST(req: NextRequest) {
     return ok({ action: "test_telegram", delivered: alert.delivered, error: alert.error ?? null });
   }
 
+  if (body.action === "create_tenant") {
+    const reg = await registerTenant({
+      email: body.email,
+      password: body.password,
+      businessName: body.business_name,
+      ownerName: body.owner_name,
+      ownerWhatsapp: body.owner_whatsapp,
+      sheetsUrl: "",
+      originSubdistrict: "",
+    });
+    if (!reg.ok) return fail(reg.error, 400);
+
+    const trialExpiresAt = new Date(Date.now() + body.trial_days * 86_400_000);
+    await prisma.tenant.update({
+      where: { id: reg.tenantId },
+      data: {
+        status: body.status,
+        trial_expires_at: trialExpiresAt,
+      },
+    });
+
+    notifyAdmin({ type: "fleet" });
+    return ok({ action: "create_tenant", tenant_id: reg.tenantId });
+  }
+
+  if (body.action === "test_ai_gateway") {
+    const health = await gatewayHealth();
+    return ok({ action: "test_ai_gateway", ...health });
+  }
+
   return fail("Unsupported action", 400);
 }
 
@@ -285,9 +326,11 @@ export async function GET() {
     tenants: tenants.map((t) => ({
       id: t.id,
       business_name: t.business_name,
+      owner_name: t.owner_name,
       email: t.email,
       owner_whatsapp: t.owner_whatsapp,
       status: t.status,
+      created_at: t.created_at.toISOString(),
       trial_expires_at: t.trial_expires_at.toISOString(),
       conversations: t._count.conversations,
       orders: t._count.orders,
