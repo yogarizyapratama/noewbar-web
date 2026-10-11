@@ -91,23 +91,32 @@ const envSchema = z.object({
   COURIER_PUBLIC_API_URL: z.string().default(""),
 });
 
-const parsed = envSchema.safeParse(process.env);
+const isBrowser = typeof window !== "undefined";
+const parsed = isBrowser ? null : envSchema.safeParse(process.env);
 
-if (!parsed.success) {
-  const detail = parsed.error.issues
+if (!isBrowser && (!parsed || !parsed.success)) {
+  const detail = parsed!.error.issues
     .map((i) => `${i.path.join(".")}: ${i.message}`)
     .join("; ");
   throw new Error(`Invalid environment configuration -> ${detail}`);
 }
 
-export const env = parsed.data;
+export const env: z.infer<typeof envSchema> = (
+  isBrowser ? ({} as z.infer<typeof envSchema>) : parsed!.data
+) as z.infer<typeof envSchema>;
 
-export const MINIO_BASE = `http${env.MINIO_USE_SSL ? "s" : ""}://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
+export const MINIO_BASE: string = isBrowser
+  ? ""
+  : `http${env.MINIO_USE_SSL ? "s" : ""}://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
 
 /** Public base for stored objects; falls back to the derived MinIO origin. */
-export const MINIO_PUBLIC_BASE = env.MINIO_PUBLIC_URL || `${MINIO_BASE}/${env.MINIO_BUCKET}`;
+export const MINIO_PUBLIC_BASE: string = isBrowser
+  ? ""
+  : env.MINIO_PUBLIC_URL || `${MINIO_BASE}/${env.MINIO_BUCKET}`;
 
-export const isProduction = env.MIDTRANS_IS_PRODUCTION;
+export const isProduction: boolean = isBrowser ? false : env.MIDTRANS_IS_PRODUCTION;
 
 /** True when a real argon2id hash is configured for the superadmin account. */
-export const hasValidSuperadminHash = env.SUPERADMIN_PASSWORD_HASH.startsWith("$argon2");
+export const hasValidSuperadminHash: boolean = isBrowser
+  ? false
+  : Boolean(env.SUPERADMIN_PASSWORD_HASH && env.SUPERADMIN_PASSWORD_HASH.startsWith("$argon2"));

@@ -43,7 +43,7 @@ import {
   InlineLoading,
   cn,
 } from "@/components/ui";
-import { TEMPLATES, type WebsiteSection, type WebsiteTemplate } from "@/lib/website/builder";
+import { TEMPLATES, type WebsiteSection, type WebsiteTemplate } from "@/lib/website/types";
 
 type WebsiteRecord = {
   id: string;
