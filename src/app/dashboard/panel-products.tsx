@@ -89,7 +89,7 @@ export function PanelProducts() {
   const [formDiscPrice, setFormDiscPrice] = useState("");
   const [formStock, setFormStock] = useState("");
   const [formDesc, setFormDesc] = useState("");
-  const [formImage, setFormImage] = useState("");
+  const [formImages, setFormImages] = useState<string[]>([]);
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -97,6 +97,7 @@ export function PanelProducts() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [manualUrl, setManualUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // CSV import state
@@ -131,29 +132,76 @@ export function PanelProducts() {
   }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const selectedFiles = Array.from(fileList);
+
+    if (formImages.length + selectedFiles.length > 5) {
+      setUploadError(
+        `Maksimal 5 foto produk (saat ini ${formImages.length} foto, mencoba menambah ${selectedFiles.length} foto).`
+      );
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+    for (const f of selectedFiles) {
+      if (f.size > MAX_SIZE) {
+        setUploadError(`Foto "${f.name}" melebihi batas ukuran maksimal 5 MB.`);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+    }
+
     setUploadingImage(true);
     setUploadError(null);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      for (const f of selectedFiles) {
+        fd.append("files", f);
+      }
       const res = await fetch("/api/products/upload", {
         method: "POST",
         body: fd,
       });
       const data = await res.json();
-      if (data.ok && data.url) {
-        setFormImage(data.url);
+      if (data.ok && Array.isArray(data.urls)) {
+        setFormImages((prev) => [...prev, ...data.urls].slice(0, 5));
+      } else if (data.ok && data.url) {
+        setFormImages((prev) => [...prev, data.url].slice(0, 5));
       } else {
         setUploadError(data.error || "Gagal mengunggah foto.");
       }
     } catch {
-      setUploadError("Gagal mengunggah gambar ke server.");
+      setUploadError("Gagal mengunggah foto ke server penyimpanan.");
     } finally {
       setUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  function handleAddManualUrl() {
+    if (!manualUrl.trim()) return;
+    if (formImages.length >= 5) {
+      setUploadError("Maksimal 5 foto produk telah tercapai.");
+      return;
+    }
+    setFormImages((prev) => [...prev, manualUrl.trim()].slice(0, 5));
+    setManualUrl("");
+    setShowUrlInput(false);
+  }
+
+  function removeImage(index: number) {
+    setFormImages((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function setAsPrimaryImage(index: number) {
+    if (index === 0) return;
+    setFormImages((prev) => {
+      const copy = [...prev];
+      const [item] = copy.splice(index, 1);
+      return [item, ...copy];
+    });
   }
 
   function openCreate() {
@@ -166,7 +214,8 @@ export function PanelProducts() {
     setFormDiscPrice("");
     setFormStock("10");
     setFormDesc("");
-    setFormImage("");
+    setFormImages([]);
+    setManualUrl("");
     setUploadError(null);
     setFormError(null);
     setShowUrlInput(false);
@@ -185,7 +234,11 @@ export function PanelProducts() {
     setFormDiscPrice(p.discount_price ? String(p.discount_price) : "");
     setFormStock(String(p.stock));
     setFormDesc(p.description || "");
-    setFormImage(Array.isArray(p.images) && p.images[0] ? p.images[0] : "");
+    const imgs = Array.isArray(p.images)
+      ? p.images.filter((x): x is string => typeof x === "string" && Boolean(x.trim()))
+      : [];
+    setFormImages(imgs.slice(0, 5));
+    setManualUrl("");
     setUploadError(null);
     setFormError(null);
     setShowUrlInput(false);
@@ -206,7 +259,7 @@ export function PanelProducts() {
         discount_price: formDiscPrice ? Number(formDiscPrice) : null,
         stock: parseInt(formStock || "0", 10),
         description: formDesc.trim(),
-        images: formImage.trim() ? [formImage.trim()] : [],
+        images: formImages.slice(0, 5),
       };
 
       const res = await fetch("/api/products", {
@@ -412,21 +465,33 @@ export function PanelProducts() {
                   {products.map((p) => {
                     const price = Number(p.price);
                     const disc = p.discount_price ? Number(p.discount_price) : null;
-                    const img = Array.isArray(p.images) && p.images[0] ? p.images[0] : null;
+                    const imgs = Array.isArray(p.images) ? (p.images as string[]) : [];
+                    const img = imgs[0] || null;
+                    const extraCount = imgs.length > 1 ? imgs.length - 1 : 0;
 
                     return (
                       <tr key={p.id} className="hover:bg-ink-50/50 transition-colors">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={img || "/placeholder-product.svg"}
-                              alt={p.name}
-                              className="h-9 w-9 rounded-md object-cover border border-ink-200 shrink-0 bg-ink-50"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = "/placeholder-product.svg";
-                              }}
-                            />
+                            <div className="relative shrink-0">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={img || "/placeholder-product.svg"}
+                                alt={p.name}
+                                className="h-9 w-9 rounded-md object-cover border border-ink-200 bg-ink-50"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = "/placeholder-product.svg";
+                                }}
+                              />
+                              {extraCount > 0 && (
+                                <span
+                                  title={`${imgs.length} foto tersedia`}
+                                  className="absolute -bottom-1 -right-1 rounded bg-ink-800 px-1 text-[9px] font-bold text-white shadow-sm ring-1 ring-white"
+                                >
+                                  +{extraCount}
+                                </span>
+                              )}
+                            </div>
                             <div>
                               <p className="font-semibold text-ink">{p.name}</p>
                               {p.description && (
@@ -600,47 +665,80 @@ export function PanelProducts() {
                 />
               </div>
 
-              {/* Direct Image Upload Field */}
+              {/* Direct Multi-Image Upload Field */}
               <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-600">
-                  Foto Produk
-                </label>
-                <div className="space-y-2">
-                  {formImage ? (
-                    <div className="relative inline-flex items-center gap-3 rounded-xl border border-ink-200 bg-ink-50/70 p-2.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={formImage}
-                        alt="Pratinjau"
-                        className="h-20 w-20 rounded-lg object-cover border border-ink-200 bg-white shrink-0"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "/placeholder-product.svg";
-                        }}
-                      />
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-ink">Foto Terpilih</p>
-                        <p className="text-2xs text-ink-500 max-w-[200px] truncate">{formImage}</p>
-                        <button
-                          type="button"
-                          onClick={() => setFormImage("")}
-                          className="inline-flex items-center gap-1 rounded bg-danger/10 px-2 py-0.5 text-2xs font-bold text-danger hover:bg-danger/20 transition-colors"
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-ink-600">
+                    Foto Produk ({formImages.length}/5)
+                  </label>
+                  <span className="text-2xs font-medium text-ink-500">
+                    Maks. 5 foto (maks. 5 MB per foto)
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Gallery of Uploaded Photos */}
+                  {formImages.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2.5">
+                      {formImages.map((imgUrl, idx) => (
+                        <div
+                          key={idx}
+                          className="group relative flex flex-col items-center rounded-xl border border-ink-200 bg-white p-1.5 shadow-sm"
                         >
-                          <Trash2 className="h-3 w-3" />
-                          Hapus Foto
-                        </button>
-                      </div>
+                          <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-ink-50">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={imgUrl}
+                              alt={`Foto ${idx + 1}`}
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src = "/placeholder-product.svg";
+                              }}
+                            />
+                            {idx === 0 ? (
+                              <span className="absolute left-1 top-1 rounded bg-signal px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                                Utama
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setAsPrimaryImage(idx)}
+                                title="Jadikan Foto Utama"
+                                className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white opacity-0 transition-opacity hover:bg-black/80 group-hover:opacity-100"
+                              >
+                                Set Utama
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeImage(idx)}
+                              title="Hapus foto ini"
+                              className="absolute right-1 top-1 rounded bg-danger/90 p-1 text-white opacity-0 transition-opacity hover:bg-danger group-hover:opacity-100"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <span className="mt-1 text-[10px] font-mono text-ink-500">
+                            Foto #{idx + 1}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ) : (
+                  )}
+
+                  {/* Upload Dropzone (visible if < 5 photos) */}
+                  {formImages.length < 5 ? (
                     <div
                       onClick={() => fileInputRef.current?.click()}
                       className={cn(
-                        "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-ink-200 p-5 text-center transition-colors hover:border-signal hover:bg-ink-50/50",
+                        "flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-ink-200 p-4 text-center transition-colors hover:border-signal hover:bg-ink-50/50",
                         uploadingImage && "pointer-events-none opacity-60"
                       )}
                     >
                       <input
                         ref={fileInputRef}
                         type="file"
+                        multiple
                         accept="image/jpeg,image/png,image/webp"
                         onChange={handleImageUpload}
                         className="hidden"
@@ -648,23 +746,31 @@ export function PanelProducts() {
                       {uploadingImage ? (
                         <div className="flex flex-col items-center gap-1.5 py-1">
                           <Loader2 className="h-6 w-6 animate-spin text-signal" />
-                          <p className="text-2xs font-semibold text-ink-600">Mengunggah foto ke penyimpanan...</p>
+                          <p className="text-2xs font-semibold text-ink-600">
+                            Mengunggah foto produk ke penyimpanan...
+                          </p>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center gap-1.5">
-                          <div className="grid h-10 w-10 place-items-center rounded-lg bg-ink-100 text-ink-600">
-                            <Upload className="h-5 w-5" />
+                          <div className="grid h-9 w-9 place-items-center rounded-lg bg-ink-100 text-ink-600">
+                            <Upload className="h-4 w-4" />
                           </div>
                           <div>
                             <p className="text-xs font-semibold text-ink">
-                              Pilih Foto Langsung dari Perangkat
+                              Pilih Foto dari Perangkat ({formImages.length}/5)
                             </p>
                             <p className="text-2xs text-ink-500">
-                              Format JPG, PNG, atau WebP (Maks. 5 MB)
+                              Bisa pilih beberapa sekaligus. JPG, PNG, atau WebP (Maks. 5 MB/foto)
                             </p>
                           </div>
                         </div>
                       )}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-ink-200 bg-ink-50/60 p-2.5 text-center">
+                      <p className="text-2xs font-semibold text-ink-600">
+                        Batas maksimal 5 foto tercapai. Hapus salah satu foto jika ingin mengganti.
+                      </p>
                     </div>
                   )}
 
@@ -672,34 +778,52 @@ export function PanelProducts() {
                     <p className="text-2xs font-medium text-danger">{uploadError}</p>
                   )}
 
-                  <div className="pt-0.5">
-                    {!showUrlInput ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowUrlInput(true)}
-                        className="text-2xs text-ink-500 hover:text-ink underline"
-                      >
-                        atau masukkan URL gambar manual
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-2 mt-1">
-                        <input
-                          type="text"
-                          placeholder="https://... URL gambar"
-                          value={formImage}
-                          onChange={(e) => setFormImage(e.target.value)}
-                          className="flex-1 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
-                        />
+                  {/* Option for manual image URL */}
+                  {formImages.length < 5 && (
+                    <div className="pt-0.5">
+                      {!showUrlInput ? (
                         <button
                           type="button"
-                          onClick={() => setShowUrlInput(false)}
-                          className="text-2xs text-ink-400 hover:text-ink"
+                          onClick={() => setShowUrlInput(true)}
+                          className="text-2xs text-ink-500 hover:text-ink underline"
                         >
-                          Tutup
+                          atau tambah via tautan URL gambar
                         </button>
-                      </div>
-                    )}
-                  </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          <input
+                            type="text"
+                            placeholder="https://... URL gambar"
+                            value={manualUrl}
+                            onChange={(e) => setManualUrl(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddManualUrl();
+                              }
+                            }}
+                            className="flex-1 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
+                          />
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            type="button"
+                            onClick={handleAddManualUrl}
+                            disabled={!manualUrl.trim()}
+                          >
+                            Tambah
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => setShowUrlInput(false)}
+                            className="text-2xs text-ink-400 hover:text-ink"
+                          >
+                            Tutup
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

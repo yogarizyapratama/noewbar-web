@@ -115,7 +115,9 @@ export async function POST(req: Request) {
         discount_price: discount_price ? Number(discount_price) : null,
         stock: Math.max(0, parseInt(stock || "0", 10)),
         status: body.status || "ACTIVE",
-        images: Array.isArray(images) ? images : [],
+        images: Array.isArray(images)
+          ? images.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).slice(0, 5)
+          : [],
         variants: Array.isArray(variants) ? variants : [],
         attributes: typeof attributes === "object" && attributes !== null ? attributes : {},
       },
@@ -151,7 +153,9 @@ export async function POST(req: Request) {
         ...(discount_price !== undefined && { discount_price: discount_price ? Number(discount_price) : null }),
         ...(stock !== undefined && { stock: Math.max(0, parseInt(stock, 10)) }),
         ...(status && { status }),
-        ...(Array.isArray(images) && { images }),
+        ...(Array.isArray(images) && {
+          images: images.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).slice(0, 5),
+        }),
         ...(Array.isArray(variants) && { variants }),
         ...(attributes && typeof attributes === "object" && { attributes }),
       },

@@ -11,6 +11,7 @@ import {
   Sparkles,
   Star,
 } from "lucide-react";
+import { ProductCard } from "./product-card";
 
 export const dynamic = "force-dynamic";
 
@@ -215,85 +216,9 @@ export default async function PublicStorePage({
                     </div>
                   ) : (
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                      {products.map((p) => {
-                        const price = Number(p.price);
-                        const disc = p.discount_price ? Number(p.discount_price) : null;
-                        const images = Array.isArray(p.images) ? (p.images as string[]) : [];
-                        const img = images[0] || null;
-
-                        return (
-                          <div
-                            key={p.id}
-                            className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-slate-300"
-                          >
-                            <div>
-                              {img ? (
-                                <div className="aspect-square w-full overflow-hidden rounded-lg bg-slate-100 mb-4 border border-slate-100">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={img}
-                                    alt={p.name}
-                                    className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="aspect-square w-full overflow-hidden rounded-lg bg-slate-100 mb-4 border border-slate-100">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src="/placeholder-product.svg"
-                                    alt={p.name}
-                                    className="h-full w-full object-cover"
-                                  />
-                                </div>
-                              )}
-
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <span className="font-mono text-2xs font-semibold text-slate-400">
-                                  {p.sku}
-                                </span>
-                                <span className="rounded bg-slate-100 px-2 py-0.5 text-2xs font-semibold text-slate-600">
-                                  {p.category}
-                                </span>
-                              </div>
-
-                              <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                                {p.name}
-                              </h3>
-
-                              {p.description && (
-                                <p className="mt-1 text-xs line-clamp-2 text-slate-500">
-                                  {p.description}
-                                </p>
-                              )}
-
-                              <div className="mt-3 flex items-baseline gap-2">
-                                <span className="text-lg font-extrabold text-slate-900">
-                                  Rp {(disc ?? price).toLocaleString("id-ID")}
-                                </span>
-                                {disc && (
-                                  <span className="text-xs text-slate-400 line-through">
-                                    Rp {price.toLocaleString("id-ID")}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="mt-5 pt-3 border-t border-slate-100">
-                              <a
-                                href={waLink(
-                                  `Halo kak, saya mau pesan produk ${p.name} (SKU: ${p.sku}) seharga Rp ${(disc ?? price).toLocaleString("id-ID")}. Apakah masih ready?`
-                                )}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-600 transition-all"
-                              >
-                                <MessageCircle className="h-3.5 w-3.5" />
-                                Pesan via WhatsApp
-                              </a>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {products.map((p) => (
+                        <ProductCard key={p.id} product={p} waLink={waLink} />
+                      ))}
                     </div>
                   )}
                 </div>
