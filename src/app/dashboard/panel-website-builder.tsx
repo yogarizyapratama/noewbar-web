@@ -15,7 +15,7 @@
  *   - Toggle as AI Customer Service Knowledge Source (USP 3).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -33,12 +33,15 @@ import {
   Layout,
   MessageCircle,
   Monitor,
+  Palette,
+  Plus,
+  QrCode,
   Save,
   Settings,
   Smartphone,
-  Plus,
   Sparkles,
   Trash2,
+  Upload,
   Video,
   Wand2,
   X,
@@ -80,6 +83,89 @@ type WebsiteRecord = {
   updated_at: string;
 };
 
+export const COLOR_THEMES = [
+  {
+    id: "emerald",
+    name: "Emerald WhatsApp",
+    badge: "Populer",
+    previewBg: "#ECFDF5",
+    previewAccent: "#059669",
+    heroBg: "#ECFDF5",
+    heroText: "#064E3B",
+    heroBtn: "#059669",
+    ctaBg: "#059669",
+    ctaText: "#FFFFFF",
+    announcementBg: "#065F46",
+    announcementText: "#FFFFFF",
+    footerBg: "#0F172A",
+    footerText: "#94A3B8",
+  },
+  {
+    id: "slate",
+    name: "Minimalist Slate",
+    badge: "Elegan",
+    previewBg: "#F8FAFC",
+    previewAccent: "#0F172A",
+    heroBg: "#F8FAFC",
+    heroText: "#0F172A",
+    heroBtn: "#0F172A",
+    ctaBg: "#0F172A",
+    ctaText: "#FFFFFF",
+    announcementBg: "#1E293B",
+    announcementText: "#FFFFFF",
+    footerBg: "#020617",
+    footerText: "#94A3B8",
+  },
+  {
+    id: "rose",
+    name: "Blush Rose",
+    badge: "Beauty",
+    previewBg: "#FFF1F2",
+    previewAccent: "#E11D48",
+    heroBg: "#FFF1F2",
+    heroText: "#881337",
+    heroBtn: "#E11D48",
+    ctaBg: "#E11D48",
+    ctaText: "#FFFFFF",
+    announcementBg: "#9F1239",
+    announcementText: "#FFFFFF",
+    footerBg: "#4C0519",
+    footerText: "#FECDD3",
+  },
+  {
+    id: "amber",
+    name: "Warm Amber",
+    badge: "Kuliner",
+    previewBg: "#FFFBEB",
+    previewAccent: "#D97706",
+    heroBg: "#FFFBEB",
+    heroText: "#78350F",
+    heroBtn: "#D97706",
+    ctaBg: "#D97706",
+    ctaText: "#FFFFFF",
+    announcementBg: "#B45309",
+    announcementText: "#FFFFFF",
+    footerBg: "#1C1917",
+    footerText: "#A8A29E",
+  },
+  {
+    id: "indigo",
+    name: "Modern Indigo",
+    badge: "Fashion",
+    previewBg: "#EEF2FF",
+    previewAccent: "#4F46E5",
+    heroBg: "#EEF2FF",
+    heroText: "#1E1B4B",
+    heroBtn: "#4F46E5",
+    ctaBg: "#4F46E5",
+    ctaText: "#FFFFFF",
+    announcementBg: "#3730A3",
+    announcementText: "#FFFFFF",
+    footerBg: "#0F172A",
+    footerText: "#94A3B8",
+  },
+];
+
 export function PanelWebsiteBuilder() {
   const [websites, setWebsites] = useState<WebsiteRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +197,11 @@ export function PanelWebsiteBuilder() {
   const [previewTemplate, setPreviewTemplate] = useState<WebsiteTemplate | null>(null);
   const [templatePreviewDevice, setTemplatePreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+
+  // Theme & Utility Modals
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
 
   // Site Settings Modal state
   const [showSiteSettingsModal, setShowSiteSettingsModal] = useState(false);
@@ -471,6 +562,100 @@ export function PanelWebsiteBuilder() {
     setSections((prev) =>
       prev.map((s) => (s.id === id ? { ...s, visibility: !s.visibility } : s))
     );
+  }
+
+  function handleApplyTheme(t: (typeof COLOR_THEMES)[0]) {
+    setSections((prev) =>
+      prev.map((sec) => {
+        if (sec.type === "hero") {
+          return {
+            ...sec,
+            style: {
+              ...sec.style,
+              bg_color: t.heroBg,
+              text_color: t.heroText,
+              btn_bg: t.heroBtn,
+              btn_text: "#FFFFFF",
+            },
+          };
+        }
+        if (sec.type === "whatsapp_cta") {
+          return {
+            ...sec,
+            style: {
+              ...sec.style,
+              bg_color: t.ctaBg,
+              text_color: t.ctaText,
+              btn_bg: "#FFFFFF",
+              btn_text: t.ctaBg,
+            },
+          };
+        }
+        if (sec.type === "announcement") {
+          return {
+            ...sec,
+            style: {
+              ...sec.style,
+              bg_color: t.announcementBg,
+              text_color: t.announcementText,
+            },
+          };
+        }
+        if (sec.type === "footer") {
+          return {
+            ...sec,
+            style: {
+              ...sec.style,
+              bg_color: t.footerBg,
+              text_color: t.footerText,
+            },
+          };
+        }
+        return sec;
+      })
+    );
+    setShowThemeModal(false);
+    setEditorMsg(`Tema warna "${t.name}" berhasil diterapkan ke seluruh section!`);
+  }
+
+  function handleExportLayoutJson() {
+    if (!currentSite) return;
+    const data = {
+      site_name: currentSite.name,
+      slug: currentSite.slug,
+      exported_at: new Date().toISOString(),
+      sections: sections,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `layout-toko-${currentSite.slug}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setEditorMsg("File layout JSON berhasil diunduh.");
+  }
+
+  function handleImportLayoutJson(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const json = JSON.parse(evt.target?.result as string);
+        if (Array.isArray(json.sections) && json.sections.length > 0) {
+          setSections(json.sections);
+          setSelectedSecId(json.sections[0]?.id || null);
+          setEditorMsg(`Layout berhasil diimpor (${json.sections.length} section dimuat).`);
+        } else {
+          setEditorMsg("File JSON tidak memiliki struktur section yang valid.");
+        }
+      } catch {
+        setEditorMsg("Gagal membaca file JSON.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   }
 
   function handleDownloadBackup(w: WebsiteRecord) {
@@ -1170,9 +1355,57 @@ export function PanelWebsiteBuilder() {
                 </button>
               </div>
 
+              <button
+                type="button"
+                onClick={() => setShowThemeModal(true)}
+                className="btn btn-secondary btn-sm"
+                title="Pilih Palet Tema Warna Toko"
+              >
+                <Palette className="mr-1.5 h-3.5 w-3.5 text-signal" />
+                Tema Warna
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowQrModal(true)}
+                className="btn btn-secondary btn-sm"
+                title="Scan QR untuk Pratinjau di HP"
+              >
+                <QrCode className="mr-1.5 h-3.5 w-3.5 text-ink-600" />
+                Tes di HP
+              </button>
+
+              <input
+                type="file"
+                ref={jsonInputRef}
+                onChange={handleImportLayoutJson}
+                accept=".json"
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={handleExportLayoutJson}
+                className="btn btn-secondary btn-sm"
+                title="Cadangkan layout halaman ke format JSON"
+              >
+                <Download className="mr-1 h-3.5 w-3.5 text-ink-500" />
+                Ekspor
+              </button>
+
+              <button
+                type="button"
+                onClick={() => jsonInputRef.current?.click()}
+                className="btn btn-secondary btn-sm"
+                title="Pulihkan layout halaman dari file JSON"
+              >
+                <Upload className="mr-1 h-3.5 w-3.5 text-ink-500" />
+                Impor
+              </button>
+
               <Button size="sm" variant="secondary" onClick={openSiteSettingsModal}>
                 <Settings className="mr-1.5 h-3.5 w-3.5" />
-                Pengaturan Toko
+                Pengaturan
               </Button>
 
               <Button size="sm" variant="secondary" onClick={handleSaveDraft} loading={savingDraft}>
@@ -1270,6 +1503,14 @@ export function PanelWebsiteBuilder() {
                           className="p-1 text-ink-400 hover:text-ink disabled:opacity-30"
                         >
                           <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDuplicateSection(sec.id)}
+                          title="Duplikat section ini"
+                          className="p-1 text-ink-400 hover:text-signal transition-colors"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
@@ -2252,6 +2493,123 @@ export function PanelWebsiteBuilder() {
               >
                 <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                 Ya, Timpa & Buat Baru
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* MODAL PALET TEMA WARNA BRAND */}
+      <Modal open={showThemeModal} onClose={() => setShowThemeModal(false)}>
+        <div
+          className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white shadow-2xl overflow-hidden p-5 space-y-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b border-ink-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-signal-wash text-signal-strong">
+                <Palette className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-ink">Palet Tema Warna Brand</h3>
+                <p className="text-2xs text-ink-500">
+                  Terapkan harmoni warna seketika ke seluruh hero, CTA, banner, dan footer
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowThemeModal(false)}
+              className="rounded-lg p-1 text-ink-400 hover:bg-ink-100 hover:text-ink"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+            {COLOR_THEMES.map((th) => (
+              <div
+                key={th.id}
+                onClick={() => handleApplyTheme(th)}
+                className="group cursor-pointer rounded-xl border border-ink-200 p-3 hover:border-signal hover:shadow-flat transition-all space-y-2.5 bg-white"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-ink group-hover:text-signal transition-colors">
+                    {th.name}
+                  </span>
+                  <span className="rounded bg-ink-100 px-1.5 py-0.5 text-[10px] font-semibold text-ink-600">
+                    {th.badge}
+                  </span>
+                </div>
+                {/* Visual Palette Swatch Preview */}
+                <div className="flex h-7 w-full overflow-hidden rounded-lg border border-ink-200">
+                  <div className="flex-1" style={{ backgroundColor: th.heroBg }} title="Warna Latar Hero" />
+                  <div className="w-12" style={{ backgroundColor: th.heroBtn }} title="Tombol Aksen" />
+                  <div className="w-8" style={{ backgroundColor: th.ctaBg }} title="Warna CTA WhatsApp" />
+                  <div className="w-8" style={{ backgroundColor: th.footerBg }} title="Footer Toko" />
+                </div>
+                <p className="text-[10px] text-ink-400">Klik untuk menyelaraskan warna toko</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-ink-100">
+            <Button size="sm" variant="ghost" onClick={() => setShowThemeModal(false)}>
+              Tutup
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* MODAL SCAN QR CODE UNTUK TES DI HP */}
+      <Modal open={showQrModal} onClose={() => setShowQrModal(false)}>
+        {currentSite && (
+          <div
+            className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white shadow-2xl overflow-hidden p-6 text-center space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-ink-100 pb-3">
+              <div className="flex items-center gap-2 text-left">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-signal-wash text-signal-strong">
+                  <QrCode className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-ink">Pratinjau di Smartphone</h3>
+                  <p className="text-2xs text-ink-500">Scan via kamera HP Anda</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQrModal(false)}
+                className="rounded-lg p-1 text-ink-400 hover:bg-ink-100 hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center justify-center p-4 bg-ink-50/70 rounded-xl border border-ink-100">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                  typeof window !== "undefined"
+                    ? `${window.location.origin}/store/${currentSite.slug}`
+                    : `https://noewbar.com/store/${currentSite.slug}`
+                )}`}
+                alt="QR Code Toko"
+                className="h-48 w-48 rounded-lg bg-white p-2 shadow-flat"
+              />
+              <p className="mt-3 font-mono text-2xs text-ink-600 break-all select-all">
+                /store/{currentSite.slug}
+              </p>
+            </div>
+
+            <p className="text-2xs text-ink-500 leading-relaxed">
+              Buka kamera ponsel Anda dan arahkan ke kode QR di atas untuk menguji alur checkout dan tata letak toko secara langsung di HP.
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-ink-100">
+              <Button size="sm" variant="ghost" onClick={() => setShowQrModal(false)}>
+                Tutup
               </Button>
             </div>
           </div>

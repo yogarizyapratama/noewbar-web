@@ -3,7 +3,8 @@
 /**
  * Superadmin Management Console (Enterprise Application Management Edition).
  *
- * Standar antislop:
+ * Standar Antislop & Noewbar Design System:
+ * - Menggunakan Noewbar Design System konsisten: bg-surface-sunken, bg-white, border-ink-200, text-ink, dan signal emerald accents.
  * - Layout konsol manajemen aplikasi lengkap dengan Sidebar Navigasi terstruktur.
  * - Tanpa klise hacker retro, tanpa ornamen sci-fi berlebihan, tanpa gradien generik AI.
  * - Kontras warna WCAG AA, navigasi keyboard penuh, zero em-dash.
@@ -19,7 +20,6 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Bell,
-  CheckCircle2,
   ChevronRight,
   Copy,
   Cpu,
@@ -40,7 +40,6 @@ import {
   Search,
   Server,
   ShieldAlert,
-  ShieldCheck,
   ShoppingBag,
   Trash2,
   TrendingUp,
@@ -49,7 +48,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { Badge, Button, StatusDot, cn, rupiah, timeAgo } from "@/components/ui";
+import { Badge, Button, Modal, StatusDot, cn, rupiah, timeAgo } from "@/components/ui";
 import { NotificationBell } from "@/components/notification-bell";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { AdminLogin } from "./admin-login";
@@ -450,10 +449,10 @@ export default function SuperadminPage() {
 
   if (authed === null || !data) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-950 px-4 text-slate-100">
+      <main className="min-h-screen flex items-center justify-center bg-surface-sunken px-4 text-ink">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-          <p className="text-xs font-medium text-slate-400">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-signal border-t-transparent" />
+          <p className="text-xs font-medium text-ink-500">
             Memuat Konsol Manajemen Sistem...
           </p>
         </div>
@@ -514,6 +513,8 @@ export default function SuperadminPage() {
       group: "IKHTISAR PLATFORM",
       items: [
         { id: "overview", label: "Ringkasan Platform", icon: <LayoutDashboard className="h-4 w-4" /> },
+        { id: "infrastructure", label: "Kesehatan Sistem", icon: <Server className="h-4 w-4" /> },
+        { id: "system_ops", label: "Operasi & Pemeliharaan", icon: <Cpu className="h-4 w-4" /> },
       ],
     },
     {
@@ -577,9 +578,9 @@ export default function SuperadminPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div className="min-h-screen bg-surface-sunken text-ink font-sans flex flex-col selection:bg-signal-wash selection:text-ink">
       {/* ==================================================== 1. GLOBAL TOP BAR */}
-      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md px-4 sm:px-6 py-2.5">
+      <header className="sticky top-0 z-40 border-b border-ink-200 bg-white/95 backdrop-blur-md px-4 sm:px-6 py-2.5">
         <div className="flex items-center justify-between gap-3 max-w-full mx-auto">
           {/* Brand & Sidebar Toggle */}
           <div className="flex items-center gap-3">
@@ -592,7 +593,7 @@ export default function SuperadminPage() {
                   setSidebarOpen(!sidebarOpen);
                 }
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-850 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:text-ink hover:bg-ink-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
               title="Buka atau tutup navigasi"
               aria-label="Toggle Sidebar"
             >
@@ -605,30 +606,30 @@ export default function SuperadminPage() {
             </button>
 
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600/20 border border-indigo-500/40 text-indigo-400">
-                <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-              </div>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink font-mono text-xs font-bold text-white shadow-raised">
+                N
+              </span>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white tracking-tight">
+                  <span className="text-xs font-bold text-ink tracking-tight">
                     Noewbar Platform
                   </span>
-                  <span className="rounded bg-indigo-950 border border-indigo-500/40 px-1.5 py-0.2 text-[10px] font-semibold text-indigo-300">
+                  <span className="rounded bg-ink-100 border border-ink-200 px-1.5 py-0.5 text-[10px] font-semibold text-ink-700">
                     Console
                   </span>
                   {ks.disabled ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/40 bg-rose-950/70 px-2 py-0.5 text-[10px] font-bold text-rose-300 animate-pulse">
-                      <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                    <span className="inline-flex items-center gap-1 rounded-full border border-danger/20 bg-danger-wash px-2 py-0.5 text-[10px] font-bold text-danger-strong animate-pulse">
+                      <span className="h-1.5 w-1.5 rounded-full bg-danger" />
                       Kill-Switch Aktif
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-950/60 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="inline-flex items-center gap-1 rounded-full border border-signal/20 bg-signal-wash px-2 py-0.5 text-[10px] font-medium text-signal-strong">
+                      <span className="h-1.5 w-1.5 rounded-full bg-signal" />
                       Sistem Stabil
                     </span>
                   )}
                   {liveEvent && (
-                    <span className="inline-flex items-center gap-1 rounded bg-indigo-950 border border-indigo-500/40 px-2 py-0.5 text-[10px] font-medium text-indigo-300">
+                    <span className="inline-flex items-center gap-1 rounded bg-ink-100 border border-ink-200 px-2 py-0.5 text-[10px] font-medium text-ink-700">
                       Sinyal: {liveEvent}
                     </span>
                   )}
@@ -638,35 +639,35 @@ export default function SuperadminPage() {
           </div>
 
           {/* Telemetry Pills Strip: Metrik Aplikasi SaaS Nyata */}
-          <div className="hidden xl:flex items-center gap-2.5 text-xs text-slate-300 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1">
+          <div className="hidden xl:flex items-center gap-2.5 text-xs text-ink-600 bg-white border border-ink-200 rounded-lg px-3 py-1 shadow-flat">
             <div className="flex items-center gap-1.5" title="Toko Terdaftar">
-              <Users className="h-3 w-3 text-indigo-400" />
-              <span className="text-slate-400 text-2xs">Toko:</span>
-              <span className="font-mono font-semibold text-xs text-slate-100">
+              <Users className="h-3 w-3 text-ink-700" />
+              <span className="text-ink-400 text-2xs">Toko:</span>
+              <span className="font-mono font-semibold text-xs text-ink">
                 {totalStores} ({activeTenantsCount} Aktif)
               </span>
             </div>
-            <span className="text-slate-800">&bull;</span>
+            <span className="text-ink-200">&bull;</span>
             <div className="flex items-center gap-1.5" title="Fleet WhatsApp Terhubung">
-              <MessageSquare className={cn("h-3 w-3", connectedFleetCount > 0 ? "text-emerald-400" : "text-amber-400")} />
-              <span className="text-slate-400 text-2xs">Fleet WA:</span>
-              <span className="font-mono font-semibold text-xs text-slate-100">
+              <MessageSquare className={cn("h-3 w-3", connectedFleetCount > 0 ? "text-signal-strong" : "text-warn-strong")} />
+              <span className="text-ink-400 text-2xs">Fleet WA:</span>
+              <span className="font-mono font-semibold text-xs text-ink">
                 {connectedFleetCount}/{totalStores} Siap
               </span>
             </div>
-            <span className="text-slate-800">&bull;</span>
+            <span className="text-ink-200">&bull;</span>
             <div className="flex items-center gap-1.5" title="Latency AI Gateway">
-              <Zap className={cn("h-3 w-3", data.gateway.ok ? "text-emerald-400" : "text-rose-400")} />
-              <span className="text-slate-400 text-2xs">AI Gateway:</span>
-              <span className="font-mono font-semibold text-xs text-slate-100">
+              <Zap className={cn("h-3 w-3", data.gateway.ok ? "text-signal-strong" : "text-danger-strong")} />
+              <span className="text-ink-400 text-2xs">AI Gateway:</span>
+              <span className="font-mono font-semibold text-xs text-ink">
                 {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "Gangguan"}
               </span>
             </div>
-            <span className="text-slate-800">&bull;</span>
+            <span className="text-ink-200">&bull;</span>
             <div className="flex items-center gap-1.5" title="Total Transaksi Toko">
-              <ShoppingBag className="h-3 w-3 text-amber-400" />
-              <span className="text-slate-400 text-2xs">Pesanan:</span>
-              <span className="font-mono font-semibold text-xs text-slate-100">{totalOrders}</span>
+              <ShoppingBag className="h-3 w-3 text-warn-strong" />
+              <span className="text-ink-400 text-2xs">Pesanan:</span>
+              <span className="font-mono font-semibold text-xs text-ink">{totalOrders}</span>
             </div>
           </div>
 
@@ -674,13 +675,13 @@ export default function SuperadminPage() {
           <div className="flex items-center gap-2 shrink-0">
             <PwaInstallPrompt
               variant="compact"
-              className="hidden md:flex border-slate-800 bg-slate-850 text-slate-300 hover:text-white"
+              className="hidden md:flex border-ink-200 bg-white text-ink-700 hover:bg-ink-50 shadow-flat"
             />
 
             <Button
               size="sm"
               variant="accent"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs border-none font-medium h-8 px-3"
+              className="bg-ink hover:bg-ink-800 text-white text-xs border-none font-medium h-8 px-3 shadow-flat"
               onClick={() => setCreateTenantModal(true)}
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -691,16 +692,16 @@ export default function SuperadminPage() {
               type="button"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-850 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:text-ink hover:bg-ink-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal disabled:opacity-50 shadow-flat"
               title="Perbarui data konsol"
               aria-label="Segarkan data konsol"
             >
-              <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin text-indigo-400")} />
+              <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin text-signal-strong")} />
             </button>
 
             <NotificationBell
               scope="admin"
-              theme="dark"
+              theme="light"
               onNavigate={(targetTab) => setActiveSection(targetTab as NavigationSection)}
             />
 
@@ -708,17 +709,17 @@ export default function SuperadminPage() {
               href="/dashboard"
               target="_blank"
               rel="noreferrer"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-850 px-2.5 py-1.5 text-xs text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 h-8"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-xs text-ink-700 hover:text-ink hover:bg-ink-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal h-8 shadow-flat"
               title="Buka panel toko tenant di tab baru"
             >
               <span>Dashboard Toko</span>
-              <ExternalLink className="h-3 w-3 text-slate-500" />
+              <ExternalLink className="h-3 w-3 text-ink-400" />
             </a>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 h-8 w-8 flex items-center justify-center"
+              className="p-2 rounded-lg text-ink-400 hover:text-danger-strong hover:bg-danger-wash transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger h-8 w-8 flex items-center justify-center"
               title="Keluar dari Konsol Superadmin"
               aria-label="Logout"
             >
@@ -733,7 +734,7 @@ export default function SuperadminPage() {
         {/* Mobile Backdrop Overlay */}
         {mobileMenuOpen && (
           <div
-            className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm lg:hidden animate-fade-in"
+            className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-[2px] lg:hidden animate-fade-in"
             onClick={() => setMobileMenuOpen(false)}
             aria-hidden="true"
           />
@@ -742,29 +743,29 @@ export default function SuperadminPage() {
         {/* SIDEBAR NAVIGATION */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 lg:static flex flex-col border-r border-slate-800 bg-slate-900 transition-all duration-200 ease-in-out shrink-0 w-72 lg:w-auto",
+            "fixed inset-y-0 left-0 z-50 lg:static flex flex-col border-r border-ink-200 bg-white transition-all duration-200 ease-in-out shrink-0 w-72 lg:w-auto",
             sidebarOpen ? "lg:w-64" : "lg:w-16",
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
         >
           {/* Mobile Header in Drawer */}
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between lg:hidden">
-            <span className="text-xs font-bold text-white">Menu Navigasi Platform</span>
+          <div className="p-4 border-b border-ink-200 flex items-center justify-between lg:hidden">
+            <span className="text-xs font-bold text-ink">Menu Navigasi Platform</span>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-1 rounded text-slate-400 hover:text-white"
+              className="p-1 rounded text-ink-400 hover:text-ink"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
           {/* Navigation Links Scrollable */}
-          <nav className="flex-1 overflow-y-auto p-3 space-y-5">
+          <nav className="flex-1 overflow-y-auto p-3 space-y-4">
             {navGroups.map((grp) => (
               <div key={grp.group} className="space-y-1">
                 {sidebarOpen && (
-                  <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-ink-400">
                     {grp.group}
                   </p>
                 )}
@@ -780,14 +781,14 @@ export default function SuperadminPage() {
                           setMobileMenuOpen(false);
                         }}
                         className={cn(
-                          "w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                          "w-full flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
                           active
-                            ? "bg-indigo-600 text-white font-semibold shadow-sm"
-                            : "text-slate-400 hover:text-slate-100 hover:bg-slate-850"
+                            ? "bg-ink-100 text-ink font-semibold shadow-flat"
+                            : "text-ink-600 hover:text-ink hover:bg-ink-50"
                         )}
                         title={item.label}
                       >
-                        <span className={cn(active ? "text-white" : "text-slate-400")}>
+                        <span className={cn(active ? "text-ink" : "text-ink-400")}>
                           {item.icon}
                         </span>
                         {sidebarOpen && (
@@ -796,12 +797,12 @@ export default function SuperadminPage() {
                             {"badge" in item && (
                               <span
                                 className={cn(
-                                  "ml-2 rounded px-1.5 py-0.2 text-[10px] font-mono",
+                                  "ml-2 rounded px-1.5 py-0.5 text-[10px] font-mono",
                                   active
-                                    ? "bg-indigo-700 text-white"
+                                    ? "bg-ink-200 text-ink font-semibold"
                                     : item.badgeTone === "danger"
-                                    ? "bg-rose-950 text-rose-300 border border-rose-800"
-                                    : "bg-slate-800 text-slate-300"
+                                    ? "bg-danger-wash text-danger-strong border border-danger/20 font-bold"
+                                    : "bg-ink-100 text-ink-600 border border-ink-200"
                                 )}
                               >
                                 {item.badge}
@@ -819,39 +820,39 @@ export default function SuperadminPage() {
 
           {/* Sidebar Footer */}
           {sidebarOpen ? (
-            <div className="p-3 border-t border-slate-800 bg-slate-950/60 text-2xs space-y-2">
+            <div className="p-3 border-t border-ink-200 bg-surface-sunken/60 text-2xs space-y-2">
               <PwaInstallPrompt
                 variant="compact"
-                className="w-full justify-center border-slate-800 bg-slate-850 text-slate-300"
+                className="w-full justify-center border-ink-200 bg-white text-ink-700 hover:bg-ink-50"
               />
-              <div className="flex items-center justify-between text-slate-400">
+              <div className="flex items-center justify-between text-ink-500">
                 <span>Noewbar Console:</span>
-                <span className="font-mono text-indigo-300 font-semibold">v1.0.0</span>
+                <span className="font-mono text-ink font-semibold">v1.0.0</span>
               </div>
-              <div className="flex items-center justify-between text-slate-400">
+              <div className="flex items-center justify-between text-ink-500">
                 <span>Multi-tenant SaaS:</span>
-                <span className="text-emerald-400 font-medium flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <span className="text-signal-strong font-medium flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-signal" />
                   Operasional
                 </span>
               </div>
             </div>
           ) : (
-            <div className="p-2 border-t border-slate-800 flex justify-center text-slate-500">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" title="Multi-tenant Operasional" />
+            <div className="p-2 border-t border-ink-200 flex justify-center text-ink-400">
+              <span className="h-2 w-2 rounded-full bg-signal" title="Multi-tenant Operasional" />
             </div>
           )}
         </aside>
 
         {/* WORKSPACE CONTENT AREA */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 bg-surface-sunken">
           {/* Breadcrumbs & Active Title Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ink-200 pb-4">
             <div>
-              <div className="flex items-center gap-2 text-2xs text-slate-400">
+              <div className="flex items-center gap-2 text-2xs text-ink-400">
                 <span>Konsol Manajemen</span>
-                <ChevronRight className="h-3 w-3 text-slate-600" />
-                <span className="text-indigo-400 font-medium capitalize">
+                <ChevronRight className="h-3 w-3 text-ink-300" />
+                <span className="text-signal-strong font-medium capitalize">
                   {activeSection === "overview"
                     ? "Ringkasan Platform"
                     : activeSection === "tenants"
@@ -871,7 +872,7 @@ export default function SuperadminPage() {
                     : activeSection.replace("_", " ")}
                 </span>
               </div>
-              <h1 className="text-lg font-bold text-white tracking-tight mt-0.5">
+              <h1 className="text-lg font-bold text-ink tracking-tight mt-0.5">
                 {activeSection === "overview" && "Ringkasan Platform & Operasional Toko"}
                 {activeSection === "tenants" && "Direktori & Manajemen Toko (Tenant)"}
                 {activeSection === "financials" && "Analisis Finansial & Langganan Toko"}
@@ -892,7 +893,7 @@ export default function SuperadminPage() {
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="h-8 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200"
+                    className="h-8 text-xs bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 shadow-flat"
                     onClick={() => exportTenantsToCSV(data.tenants)}
                     title="Unduh seluruh data toko ke file CSV"
                   >
@@ -902,7 +903,7 @@ export default function SuperadminPage() {
                   <Button
                     size="sm"
                     variant="primary"
-                    className="h-8 text-xs bg-indigo-600 hover:bg-indigo-500 text-white border-none"
+                    className="h-8 text-xs bg-ink hover:bg-ink-800 text-white border-none shadow-flat"
                     onClick={() => setCreateTenantModal(true)}
                   >
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -914,7 +915,7 @@ export default function SuperadminPage() {
                 <Button
                   size="sm"
                   variant="primary"
-                  className="h-8 text-xs bg-indigo-600 hover:bg-indigo-500 text-white border-none"
+                  className="h-8 text-xs bg-ink hover:bg-ink-800 text-white border-none shadow-flat"
                   loading={busy}
                   onClick={handleTestAIGateway}
                 >
@@ -926,7 +927,7 @@ export default function SuperadminPage() {
                 <Button
                   size="sm"
                   variant="primary"
-                  className="h-8 text-xs bg-indigo-600 hover:bg-indigo-500 text-white border-none"
+                  className="h-8 text-xs bg-ink hover:bg-ink-800 text-white border-none shadow-flat"
                   loading={busy}
                   onClick={() => act({ action: "trigger_maintenance" })}
                 >
@@ -944,22 +945,22 @@ export default function SuperadminPage() {
               className={cn(
                 "rounded-xl border p-3.5 text-xs flex items-center justify-between transition-all",
                 msg.tone === "success"
-                  ? "border-emerald-500/30 bg-emerald-950/40 text-emerald-200"
-                  : "border-rose-500/30 bg-rose-950/40 text-rose-200"
+                  ? "border-signal/30 bg-signal-wash text-signal-strong"
+                  : "border-danger/30 bg-danger-wash text-danger-strong"
               )}
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 {msg.tone === "success" ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <StatusDot ok={true} pulse={false} />
                 ) : (
-                  <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                  <AlertCircle className="h-4 w-4 text-danger-strong shrink-0" />
                 )}
                 <span>{msg.text}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setMsg(null)}
-                className="text-slate-400 hover:text-white p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                className="text-ink-400 hover:text-ink p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                 aria-label="Tutup notifikasi"
               >
                 <X className="h-4 w-4" />
@@ -971,15 +972,15 @@ export default function SuperadminPage() {
           {ks.disabled && activeSection !== "killswitch" && (
             <div
               role="alert"
-              className="rounded-xl border border-rose-500/40 bg-rose-950/40 p-4 shadow-md flex items-center justify-between gap-4"
+              className="rounded-xl border border-danger/30 bg-danger-wash p-4 shadow-flat flex items-center justify-between gap-4"
             >
               <div className="flex items-center gap-3">
-                <ShieldAlert className="h-6 w-6 text-rose-400 shrink-0" aria-hidden="true" />
+                <ShieldAlert className="h-6 w-6 text-danger-strong shrink-0" aria-hidden="true" />
                 <div>
-                  <p className="text-xs font-bold text-rose-200 uppercase tracking-wide">
+                  <p className="text-xs font-bold text-danger-strong uppercase tracking-wide">
                     Global Kill Switch Sedang Aktif
                   </p>
-                  <p className="text-xs text-rose-300 mt-0.5 leading-relaxed">
+                  <p className="text-xs text-danger-strong/90 mt-0.5 leading-relaxed">
                     Semua balasan otomatis bot dihentikan sejak {ts(ks.disabledAt)}
                     {ks.disabledBy ? ` oleh ${ks.disabledBy}` : ""}. Pesan dari pembeli tetap tersimpan namun tidak dibalas bot.
                   </p>
@@ -988,7 +989,7 @@ export default function SuperadminPage() {
               <Button
                 size="sm"
                 variant="accent"
-                className="bg-rose-600 hover:bg-rose-500 text-white text-xs border-none shrink-0"
+                className="bg-danger hover:bg-danger-strong text-white text-xs border-none shrink-0"
                 onClick={() => act({ action: "kill_switch", disabled: false })}
               >
                 Nyalakan Kembali
@@ -1001,83 +1002,83 @@ export default function SuperadminPage() {
             <div className="space-y-6">
               {/* 4 Financial & Scale KPI Cards */}
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-400">
+                    <span className="text-xs font-medium text-ink-500">
                       Pendapatan Bulanan (MRR)
                     </span>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-950/60 border border-emerald-800/40 text-emerald-400">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-signal-wash border border-signal/20 text-signal-strong">
                       <TrendingUp className="h-4 w-4" />
                     </div>
                   </div>
-                  <p className="mt-3 text-2xl font-bold tracking-tight text-white font-mono">
+                  <p className="mt-3 text-2xl font-bold tracking-tight text-ink font-mono">
                     Rp {rupiah(totalMRR)}
                   </p>
-                  <p className="mt-1 text-2xs text-emerald-400 font-medium">
+                  <p className="mt-1 text-2xs text-signal-strong font-medium">
                     {data.subscription_counts["ACTIVE"] ?? 0} Toko Berlangganan Aktif
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-400">
+                    <span className="text-xs font-medium text-ink-500">
                       Total Toko (Tenant)
                     </span>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-950/60 border border-indigo-800/40 text-indigo-400">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-100 border border-ink-200 text-ink">
                       <Users className="h-4 w-4" />
                     </div>
                   </div>
-                  <p className="mt-3 text-2xl font-bold tracking-tight text-white font-mono">
-                    {totalStores} <span className="text-sm font-normal text-slate-400">tenant</span>
+                  <p className="mt-3 text-2xl font-bold tracking-tight text-ink font-mono">
+                    {totalStores} <span className="text-sm font-normal text-ink-500">tenant</span>
                   </p>
-                  <p className="mt-1 text-2xs text-indigo-300 font-medium">
+                  <p className="mt-1 text-2xs text-ink-600 font-medium">
                     {activeTenantsCount} Aktif &bull; {trialTenantsCount} Trial &bull; {suspendedTenantsCount} Suspend
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-400">
+                    <span className="text-xs font-medium text-ink-500">
                       Total Pesanan Transaksi
                     </span>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-950/60 border border-amber-800/40 text-amber-400">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-warn-wash border border-warn/20 text-warn-strong">
                       <ShoppingBag className="h-4 w-4" />
                     </div>
                   </div>
-                  <p className="mt-3 text-2xl font-bold tracking-tight text-white font-mono">
-                    {totalOrders} <span className="text-sm font-normal text-slate-400">pesanan</span>
+                  <p className="mt-3 text-2xl font-bold tracking-tight text-ink font-mono">
+                    {totalOrders} <span className="text-sm font-normal text-ink-500">pesanan</span>
                   </p>
-                  <p className="mt-1 text-2xs text-slate-400">
+                  <p className="mt-1 text-2xs text-ink-500">
                     Total {stats?.total_products ?? 0} SKU produk terdaftar
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-slate-400">
+                    <span className="text-xs font-medium text-ink-500">
                       Percakapan Bot WhatsApp
                     </span>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-950/60 border border-sky-800/40 text-sky-400">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-100 border border-ink-200 text-ink-700">
                       <MessageSquare className="h-4 w-4" />
                     </div>
                   </div>
-                  <p className="mt-3 text-2xl font-bold tracking-tight text-white font-mono">
-                    {totalConversations} <span className="text-sm font-normal text-slate-400">chat</span>
+                  <p className="mt-3 text-2xl font-bold tracking-tight text-ink font-mono">
+                    {totalConversations} <span className="text-sm font-normal text-ink-500">chat</span>
                   </p>
-                  <p className="mt-1 text-2xs text-sky-300 font-mono">
+                  <p className="mt-1 text-2xs text-ink-600 font-mono">
                     Est. {rupiah(totalConversations * 450)} token terproses
                   </p>
                 </div>
               </div>
 
               {/* Ringkasan Status Layanan SaaS & Kesiapan Toko */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-4">
+              <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-4 shadow-flat">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-ink">
                       Kesiapan Layanan SaaS & Gateway Toko
                     </h2>
-                    <p className="text-2xs text-slate-400 mt-0.5">
+                    <p className="text-2xs text-ink-500 mt-0.5">
                       Status operasional saluran WhatsApp, mesin AI, dan penagihan langganan multi-tenant.
                     </p>
                   </div>
@@ -1089,26 +1090,24 @@ export default function SuperadminPage() {
 
                 <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 text-xs">
                   {/* Card 1: WhatsApp Fleet */}
-                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-surface-sunken border border-ink-200 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between text-slate-400 text-2xs">
-                        <span className="font-semibold text-slate-300">Fleet WhatsApp</span>
+                      <div className="flex items-center justify-between text-ink-500 text-2xs">
+                        <span className="font-semibold text-ink-700">Fleet WhatsApp</span>
                         <StatusDot ok={connectedFleetCount > 0} />
                       </div>
-                      <p className="font-mono text-lg font-bold text-white mt-1.5">
-                        {connectedFleetCount} <span className="text-xs font-normal text-slate-400">/ {totalStores} Toko</span>
+                      <p className="font-mono text-lg font-bold text-ink mt-1.5">
+                        {connectedFleetCount} <span className="text-xs font-normal text-ink-500">/ {totalStores} Toko</span>
                       </p>
-                      <p className="text-2xs text-slate-400 mt-1">
-                        {connectedFleetCount === totalStores
-                          ? "Semua nomor toko aktif terhubung"
-                          : `${totalStores - connectedFleetCount} nomor menunggu pairing/scan QR`}
+                      <p className="text-2xs text-ink-500 mt-1">
+                        {data.daemon.active_instances ?? 0} sesi aktif terhubung
                       </p>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-slate-850">
+                    <div className="mt-3 pt-2.5 border-t border-ink-200">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        className="w-full text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                         onClick={() => setActiveSection("fleet")}
                       >
                         Buka Fleet WA
@@ -1118,24 +1117,24 @@ export default function SuperadminPage() {
                   </div>
 
                   {/* Card 2: AI Gateway */}
-                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-surface-sunken border border-ink-200 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between text-slate-400 text-2xs">
-                        <span className="font-semibold text-slate-300">AI Gateway CS</span>
+                      <div className="flex items-center justify-between text-ink-500 text-2xs">
+                        <span className="font-semibold text-ink-700">AI Gateway CS</span>
                         <StatusDot ok={data.gateway.ok} />
                       </div>
-                      <p className="font-mono text-lg font-bold text-white mt-1.5">
+                      <p className="font-mono text-lg font-bold text-ink mt-1.5">
                         {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "Aktif"}
                       </p>
-                      <p className="text-2xs text-slate-400 mt-1 truncate" title={data.gateway.model}>
+                      <p className="text-2xs text-ink-500 mt-1 truncate" title={data.gateway.model}>
                         Model: {data.gateway.model}
                       </p>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-slate-850">
+                    <div className="mt-3 pt-2.5 border-t border-ink-200">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        className="w-full text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                         onClick={() => setActiveSection("ai_models")}
                       >
                         Kelola Model AI
@@ -1145,24 +1144,24 @@ export default function SuperadminPage() {
                   </div>
 
                   {/* Card 3: Billing & Langganan */}
-                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-surface-sunken border border-ink-200 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between text-slate-400 text-2xs">
-                        <span className="font-semibold text-slate-300">Langganan Toko</span>
+                      <div className="flex items-center justify-between text-ink-500 text-2xs">
+                        <span className="font-semibold text-ink-700">Langganan Toko</span>
                         <StatusDot ok={activeTenantsCount > 0} />
                       </div>
-                      <p className="font-mono text-lg font-bold text-white mt-1.5">
-                        {activeTenantsCount} <span className="text-xs font-normal text-slate-400">Aktif</span>
+                      <p className="font-mono text-lg font-bold text-ink mt-1.5">
+                        {activeTenantsCount} <span className="text-xs font-normal text-ink-500">Aktif</span>
                       </p>
-                      <p className="text-2xs text-slate-400 mt-1">
+                      <p className="text-2xs text-ink-500 mt-1">
                         {trialTenantsCount} toko masa trial 14 hari
                       </p>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-slate-850">
+                    <div className="mt-3 pt-2.5 border-t border-ink-200">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        className="w-full text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                         onClick={() => setActiveSection("financials")}
                       >
                         Kelola Langganan
@@ -1172,28 +1171,28 @@ export default function SuperadminPage() {
                   </div>
 
                   {/* Card 4: Keamanan & Status Bot */}
-                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 flex flex-col justify-between">
+                  <div className="p-4 rounded-xl bg-surface-sunken border border-ink-200 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between text-slate-400 text-2xs">
-                        <span className="font-semibold text-slate-300">Status Bot AI</span>
+                      <div className="flex items-center justify-between text-ink-500 text-2xs">
+                        <span className="font-semibold text-ink-700">Status Bot AI</span>
                         <StatusDot ok={!ks.disabled} />
                       </div>
-                      <p className="font-mono text-lg font-bold text-white mt-1.5">
+                      <p className="font-mono text-lg font-bold text-ink mt-1.5">
                         {ks.disabled ? (
-                          <span className="text-rose-400">Dimatikan</span>
+                          <span className="text-danger-strong">Dimatikan</span>
                         ) : (
-                          <span className="text-emerald-400">Aktif Normal</span>
+                          <span className="text-signal-strong">Aktif Normal</span>
                         )}
                       </p>
-                      <p className="text-2xs text-slate-400 mt-1">
+                      <p className="text-2xs text-ink-500 mt-1">
                         {ks.disabled ? "Emergency kill-switch aktif" : "Semua bot AI melayani pembeli"}
                       </p>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-slate-850">
+                    <div className="mt-3 pt-2.5 border-t border-ink-200">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        className="w-full text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                         onClick={() => setActiveSection("killswitch")}
                       >
                         Kontrol Darurat
@@ -1205,47 +1204,47 @@ export default function SuperadminPage() {
               </div>
 
               {/* Recent Platform Orders Feed */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
-                <div className="border-b border-slate-800 px-5 py-4 flex items-center justify-between">
+              <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden shadow-flat">
+                <div className="border-b border-ink-100 px-5 py-4 flex items-center justify-between">
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
                       Pesanan Masuk Terkini Seluruh Toko
                     </h3>
-                    <p className="text-2xs text-slate-400 mt-0.5">
+                    <p className="text-2xs text-ink-500 mt-0.5">
                       Aktivitas transaksi live dari pembeli di seluruh tenant.
                     </p>
                   </div>
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="h-7 text-xs px-2.5 bg-slate-800 text-slate-300"
+                    className="h-7 text-xs px-2.5 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                     onClick={() => setActiveSection("orders")}
                   >
                     Lihat Semua
                     <ArrowUpRight className="ml-1 h-3 w-3" />
                   </Button>
                 </div>
-                <div className="divide-y divide-slate-800/80">
+                <div className="divide-y divide-ink-100">
                   {data.recent_orders.length === 0 ? (
-                    <p className="p-6 text-center text-xs text-slate-500">
+                    <p className="p-6 text-center text-xs text-ink-500">
                       Belum ada catatan pesanan di platform.
                     </p>
                   ) : (
                     data.recent_orders.slice(0, 5).map((o) => (
                       <div
                         key={o.id}
-                        className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 text-xs"
+                        className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 text-xs hover:bg-ink-50/60 transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="font-mono font-semibold text-indigo-400">{o.order_number}</span>
-                          <span className="text-slate-400">
-                            Toko: <strong className="text-slate-200">{o.tenant}</strong>
+                          <span className="font-mono font-semibold text-ink">{o.order_number}</span>
+                          <span className="text-ink-500">
+                            Toko: <strong className="text-ink">{o.tenant}</strong>
                           </span>
-                          <span className="text-slate-600">&bull;</span>
-                          <span className="text-slate-400 text-2xs">{timeAgo(o.created_at)}</span>
+                          <span className="text-ink-300">&bull;</span>
+                          <span className="text-ink-400 text-2xs">{timeAgo(o.created_at)}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="font-mono font-semibold text-emerald-400">
+                          <span className="font-mono font-semibold text-signal-strong">
                             Rp {rupiah(o.total)}
                           </span>
                           <Badge
@@ -1268,37 +1267,37 @@ export default function SuperadminPage() {
             <div className="space-y-6">
               <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                 {/* 1. AI Gateway */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-3 shadow-flat">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <Zap className="h-4 w-4 text-indigo-400" />
-                      <h3 className="text-xs font-bold text-white">AI Gateway (9router)</h3>
+                      <Zap className="h-4 w-4 text-signal-strong" />
+                      <h3 className="text-xs font-bold text-ink">AI Gateway (9router)</h3>
                     </div>
                     <Badge tone={data.gateway.ok ? "signal" : "danger"}>
                       <StatusDot ok={data.gateway.ok} />
                       {data.gateway.ok ? "Aktif" : "Gangguan"}
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="space-y-1.5 text-xs text-ink-600">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Model Default:</span>
-                      <span className="font-mono text-2xs font-semibold text-indigo-300">{data.gateway.model}</span>
+                      <span className="text-ink-500">Model Default:</span>
+                      <span className="font-mono text-2xs font-semibold text-ink">{data.gateway.model}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Latency Round-trip:</span>
-                      <span className="font-mono text-2xs font-semibold text-white">
+                      <span className="text-ink-500">Latency Round-trip:</span>
+                      <span className="font-mono text-2xs font-semibold text-ink">
                         {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "-"}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Model Terdaftar:</span>
-                      <span className="text-slate-300 text-2xs">{data.gateway.models.length} model siap</span>
+                      <span className="text-ink-500">Model Terdaftar:</span>
+                      <span className="text-ink-700 text-2xs font-medium">{data.gateway.models.length} model siap</span>
                     </div>
-                    <div className="pt-2 border-t border-slate-800">
+                    <div className="pt-2 border-t border-ink-100">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        className="w-full text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                         loading={busy}
                         onClick={handleTestAIGateway}
                       >
@@ -1309,37 +1308,37 @@ export default function SuperadminPage() {
                 </div>
 
                 {/* 2. WhatsApp Daemon */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-3 shadow-flat">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <Server className="h-4 w-4 text-emerald-400" />
-                      <h3 className="text-xs font-bold text-white">WhatsMeow Daemon</h3>
+                      <Server className="h-4 w-4 text-signal-strong" />
+                      <h3 className="text-xs font-bold text-ink">WhatsMeow Daemon</h3>
                     </div>
                     <Badge tone={data.daemon.ok ? "signal" : "danger"}>
                       <StatusDot ok={data.daemon.ok} />
                       {data.daemon.ok ? "Terhubung" : "Terputus"}
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="space-y-1.5 text-xs text-ink-600">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Sesi Soket Aktif:</span>
-                      <span className="font-mono text-2xs font-bold text-emerald-400">{data.daemon.active_instances ?? 0} instance</span>
+                      <span className="text-ink-500">Sesi Soket Aktif:</span>
+                      <span className="font-mono text-2xs font-bold text-signal-strong">{data.daemon.active_instances ?? 0} instance</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Daemon URL:</span>
-                      <span className="font-mono text-2xs text-slate-400 truncate max-w-[150px]" title={data.daemon.url}>
+                      <span className="text-ink-500">Daemon URL:</span>
+                      <span className="font-mono text-2xs text-ink-500 truncate max-w-[150px]" title={data.daemon.url}>
                         {data.daemon.url}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Ping Terakhir:</span>
-                      <span className="text-2xs text-slate-300">{ts(data.daemon.uptime_reported_at)}</span>
+                      <span className="text-ink-500">Ping Terakhir:</span>
+                      <span className="text-2xs text-ink-600">{ts(data.daemon.uptime_reported_at)}</span>
                     </div>
-                    <div className="pt-2 border-t border-slate-800">
+                    <div className="pt-2 border-t border-ink-100">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        className="w-full text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                         onClick={() => setActiveSection("fleet")}
                       >
                         Kelola Fleet WhatsApp
@@ -1349,37 +1348,37 @@ export default function SuperadminPage() {
                 </div>
 
                 {/* 3. Redis & BullMQ Queue */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-3 shadow-flat">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <Cpu className="h-4 w-4 text-amber-400" />
-                      <h3 className="text-xs font-bold text-white">Redis &amp; BullMQ</h3>
+                      <Cpu className="h-4 w-4 text-warn-strong" />
+                      <h3 className="text-xs font-bold text-ink">Redis &amp; BullMQ</h3>
                     </div>
                     <Badge tone={data.queue.redis ? "signal" : "danger"}>
                       <StatusDot ok={data.queue.redis} />
                       {data.queue.redis ? "Normal" : "Gangguan"}
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="space-y-1.5 text-xs text-ink-600">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Antrean Menunggu:</span>
-                      <span className="font-mono text-2xs font-semibold text-amber-300">{data.queue.waiting} tugas</span>
+                      <span className="text-ink-500">Antrean Menunggu:</span>
+                      <span className="font-mono text-2xs font-semibold text-warn-strong">{data.queue.waiting} tugas</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Anti-Ghosting Nudge:</span>
-                      <span className="font-mono text-2xs text-slate-300">{data.queue.delayed} tertunda</span>
+                      <span className="text-ink-500">Anti-Ghosting Nudge:</span>
+                      <span className="font-mono text-2xs text-ink-600">{data.queue.delayed} tertunda</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Gagal / Fallback:</span>
-                      <span className={cn("font-mono text-2xs", data.queue.failed > 0 ? "text-rose-400 font-bold" : "text-slate-400")}>
+                      <span className="text-ink-500">Gagal / Fallback:</span>
+                      <span className={cn("font-mono text-2xs", data.queue.failed > 0 ? "text-danger-strong font-bold" : "text-ink-500")}>
                         {data.queue.failed} gagal / {data.queue.pendingInDb} db
                       </span>
                     </div>
-                    <div className="pt-2 border-t border-slate-800">
+                    <div className="pt-2 border-t border-ink-100">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        className="w-full text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                         onClick={() => act({ action: "trigger_maintenance" })}
                       >
                         Bersihkan Antrean Tertunda
@@ -1389,62 +1388,62 @@ export default function SuperadminPage() {
                 </div>
 
                 {/* 4. PostgreSQL Cluster */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-3 shadow-flat">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <Database className="h-4 w-4 text-purple-400" />
-                      <h3 className="text-xs font-bold text-white">Database PostgreSQL</h3>
+                      <Database className="h-4 w-4 text-ink-700" />
+                      <h3 className="text-xs font-bold text-ink">Database PostgreSQL</h3>
                     </div>
                     <Badge tone="signal">
                       <StatusDot ok />
                       Terkoneksi
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="space-y-1.5 text-xs text-ink-600">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Total Toko (Tenant):</span>
-                      <span className="font-mono text-2xs font-bold text-white">{stats?.total_tenants ?? data.tenants.length}</span>
+                      <span className="text-ink-500">Total Transaksi:</span>
+                      <span className="font-mono text-2xs font-semibold text-ink">{totalOrders} pesanan</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Total Transaksi:</span>
-                      <span className="font-mono text-2xs font-bold text-white">{stats?.total_orders ?? totalOrders}</span>
+                      <span className="text-ink-500">Total Percakapan:</span>
+                      <span className="font-mono text-2xs font-semibold text-ink">{totalConversations} sesi</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Total SKU Produk:</span>
-                      <span className="font-mono text-2xs font-bold text-white">{stats?.total_products ?? 0} SKU</span>
+                      <span className="text-ink-500">Total SKU Produk:</span>
+                      <span className="font-mono text-2xs font-bold text-ink">{stats?.total_products ?? 0} SKU</span>
                     </div>
-                    <div className="pt-2 border-t border-slate-800">
-                      <p className="text-2xs text-slate-500">Prisma Connection Pool Aktif</p>
+                    <div className="pt-2 border-t border-ink-100">
+                      <p className="text-2xs text-ink-400">Prisma Connection Pool Aktif</p>
                     </div>
                   </div>
                 </div>
 
                 {/* 5. Telegram Alert Bot */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-3 shadow-flat">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <Bell className="h-4 w-4 text-sky-400" />
-                      <h3 className="text-xs font-bold text-white">Saluran Bot Telegram</h3>
+                      <Bell className="h-4 w-4 text-ink-700" />
+                      <h3 className="text-xs font-bold text-ink">Saluran Bot Telegram</h3>
                     </div>
                     <Badge tone={data.telegram.ok ? "signal" : "warn"}>
                       <StatusDot ok={data.telegram.ok} />
                       {data.telegram.ok ? "Siap" : "Belum Konfigurasi"}
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="space-y-1.5 text-xs text-ink-600">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Akun Bot:</span>
-                      <span className="font-mono text-2xs text-sky-300">@{data.telegram.username || "belum_diatur"}</span>
+                      <span className="text-ink-500">Akun Bot:</span>
+                      <span className="font-mono text-2xs text-ink-700">@{data.telegram.username || "belum_diatur"}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Status Alert:</span>
-                      <span className="text-2xs text-slate-300">{data.telegram.ok ? "Aktif" : "Menunggu API Key"}</span>
+                      <span className="text-ink-500">Status Alert:</span>
+                      <span className="text-2xs text-ink-600">{data.telegram.ok ? "Aktif" : "Menunggu API Key"}</span>
                     </div>
-                    <div className="pt-2 border-t border-slate-800">
+                    <div className="pt-2 border-t border-ink-100">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        className="w-full text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                         onClick={() => act({ action: "test_telegram" })}
                       >
                         Kirim Notifikasi Uji
@@ -1454,36 +1453,36 @@ export default function SuperadminPage() {
                 </div>
 
                 {/* 6. Runtime Server Node */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-3">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-3 shadow-flat">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <HardDrive className="h-4 w-4 text-slate-300" />
-                      <h3 className="text-xs font-bold text-white">Runtime Node.js &amp; V8</h3>
+                      <HardDrive className="h-4 w-4 text-ink-700" />
+                      <h3 className="text-xs font-bold text-ink">Runtime Node.js &amp; V8</h3>
                     </div>
                     <Badge tone="signal">
                       <StatusDot ok />
                       V8 Stabil
                     </Badge>
                   </div>
-                  <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="space-y-1.5 text-xs text-ink-600">
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Versi Mesin:</span>
-                      <span className="font-mono text-2xs font-semibold text-slate-200">
+                      <span className="text-ink-500">Versi Mesin:</span>
+                      <span className="font-mono text-2xs font-semibold text-ink">
                         {stats?.node_version ?? process.version}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Memori Heap / RSS:</span>
+                      <span className="text-ink-500">Memori Heap / RSS:</span>
                       <span className="font-mono text-2xs">{stats?.memory_heap_used_mb ?? 0} MB / {stats?.memory_rss_mb ?? 0} MB</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Waktu Aktif:</span>
-                      <span className="text-2xs text-emerald-400 font-medium font-mono">
+                      <span className="text-ink-500">Waktu Aktif:</span>
+                      <span className="text-2xs text-signal-strong font-medium font-mono">
                         {stats ? formatSeconds(stats.uptime_seconds) : "-"}
                       </span>
                     </div>
-                    <div className="pt-2 border-t border-slate-800">
-                      <p className="text-2xs text-slate-500">Platform macOS Darwin x64/arm64</p>
+                    <div className="pt-2 border-t border-ink-100">
+                      <p className="text-2xs text-ink-400">Platform macOS Darwin x64/arm64</p>
                     </div>
                   </div>
                 </div>
@@ -1495,7 +1494,7 @@ export default function SuperadminPage() {
           {activeSection === "tenants" && (
             <div className="space-y-4">
               {/* Filter and Search Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-ink-200 p-4 rounded-2xl shadow-flat">
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
                   {(["all", "ACTIVE", "TRIAL", "SUSPENDED"] as const).map((st) => (
                     <button
@@ -1503,10 +1502,10 @@ export default function SuperadminPage() {
                       type="button"
                       onClick={() => setTenantFilter(st)}
                       className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
                         tenantFilter === st
-                          ? "bg-indigo-600 text-white font-semibold shadow-sm"
-                          : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-750"
+                          ? "bg-ink text-white font-semibold shadow-flat"
+                          : "bg-ink-100 text-ink-600 hover:text-ink hover:bg-ink-200"
                       )}
                     >
                       {st === "all" && `Semua Status (${data.tenants.length})`}
@@ -1518,22 +1517,22 @@ export default function SuperadminPage() {
                 </div>
 
                 <div className="relative min-w-[280px]">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-ink-400" />
                   <input
                     type="text"
                     placeholder="Cari nama bisnis, email, WA, ID..."
                     value={tenantQuery}
                     onChange={(e) => setTenantQuery(e.target.value)}
-                    className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="w-full rounded-lg border border-ink-200 bg-white pl-9 pr-3.5 py-2 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
                   />
                 </div>
               </div>
 
               {/* Tenants Data Table */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden">
+              <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden shadow-flat">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                    <thead className="bg-ink-50 text-2xs uppercase text-ink-500 border-b border-ink-200 tracking-wider">
                       <tr>
                         <th className="px-5 py-3.5 font-semibold">Toko &amp; Kontak</th>
                         <th className="px-5 py-3.5 font-semibold">Status Langganan</th>
@@ -1542,29 +1541,28 @@ export default function SuperadminPage() {
                         <th className="px-5 py-3.5 font-semibold text-right">Aksi Operator</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                    <tbody className="divide-y divide-ink-100 text-ink">
                       {filteredTenants.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="p-8 text-center text-slate-500 text-xs">
+                          <td colSpan={5} className="p-8 text-center text-ink-500 text-xs">
                             Tidak ada tenant toko yang sesuai dengan filter pencarian.
                           </td>
                         </tr>
                       ) : (
                         filteredTenants.map((t) => (
-                          <tr key={t.id} className="hover:bg-slate-850/40 transition-colors">
+                          <tr key={t.id} className="hover:bg-ink-50/60 transition-colors">
                             <td className="px-5 py-4">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedTenant(t)}
-                                className="font-semibold text-white text-sm hover:text-indigo-400 transition-colors text-left flex items-center gap-1.5"
-                              >
-                                <span>{t.business_name}</span>
-                                <ChevronRight className="h-3.5 w-3.5 text-slate-500" />
-                              </button>
-                              <p className="text-2xs text-slate-400 mt-0.5">
-                                {t.owner_name ? `${t.owner_name} &bull; ` : ""}{t.email}
-                              </p>
-                              <p className="font-mono text-2xs text-indigo-400 mt-0.5">{t.owner_whatsapp}</p>
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-ink text-sm">
+                                  {t.business_name}
+                                </span>
+                                <span className="text-2xs text-ink-500 mt-0.5">
+                                  Owner: {t.owner_name || "Belum diatur"} &bull; {t.email}
+                                </span>
+                                <span className="text-2xs font-mono text-ink-600 mt-0.5">
+                                  WA: {t.owner_whatsapp}
+                                </span>
+                              </div>
                             </td>
                             <td className="px-5 py-4">
                               <Badge
@@ -1573,26 +1571,26 @@ export default function SuperadminPage() {
                               >
                                 {t.status === "ACTIVE" ? "Aktif" : t.status === "TRIAL" ? "Trial" : "Ditangguhkan"}
                               </Badge>
-                              <p className="mt-1 text-2xs text-slate-400">
+                              <p className="mt-1 text-2xs text-ink-500">
                                 Batas: {new Date(t.trial_expires_at).toLocaleDateString("id-ID")}
                               </p>
                               {t.subscription && (
-                                <p className="text-2xs text-emerald-400 font-semibold font-mono mt-0.5">
+                                <p className="text-2xs text-signal-strong font-semibold font-mono mt-0.5">
                                   {t.subscription.plan} &bull; Rp {rupiah(t.subscription.amount)}
                                 </p>
                               )}
                             </td>
                             <td className="px-5 py-4 text-center">
                               <div className="inline-flex flex-col items-center">
-                                <span className="font-semibold text-slate-200">
+                                <span className="font-semibold text-ink">
                                   {t.conversations} chat / {t.orders} order
                                 </span>
-                                <span className="text-[11px] text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40 mt-1 font-mono">
+                                <span className="text-[11px] text-ink-700 bg-ink-100 px-2 py-0.5 rounded border border-ink-200 mt-1 font-mono">
                                   Est. {t.conversations * 450} Token
                                 </span>
                               </div>
                             </td>
-                            <td className="px-5 py-4 text-center text-2xs text-slate-400">
+                            <td className="px-5 py-4 text-center text-2xs text-ink-500">
                               <div>{t.products ?? 0} SKU Produk</div>
                               <div>{t.knowledge_docs ?? 0} SOP Bisnis</div>
                               <div>{t.websites ?? 0} Website Aktif</div>
@@ -1602,7 +1600,7 @@ export default function SuperadminPage() {
                                 <Button
                                   size="sm"
                                   variant="secondary"
-                                  className="h-7 text-xs px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                                  className="h-7 text-xs px-2.5 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 shadow-flat"
                                   onClick={() => setSelectedTenant(t)}
                                 >
                                   Detail
@@ -1610,7 +1608,7 @@ export default function SuperadminPage() {
                                 <Button
                                   size="sm"
                                   variant="secondary"
-                                  className="h-7 text-xs px-2 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                                  className="h-7 text-xs px-2 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 shadow-flat"
                                   onClick={() => act({ action: "extend_trial", tenant_id: t.id, days: 14 })}
                                   title="Perpanjang masa trial selama 14 hari"
                                 >
@@ -1622,8 +1620,8 @@ export default function SuperadminPage() {
                                   className={cn(
                                     "h-7 text-xs px-2",
                                     t.status === "SUSPENDED"
-                                      ? "bg-emerald-600 hover:bg-emerald-500 text-white"
-                                      : "bg-amber-950/60 hover:bg-amber-900 border border-amber-800/60 text-amber-300"
+                                      ? "bg-signal hover:bg-signal/90 text-white"
+                                      : "bg-warn-wash hover:bg-warn-wash/80 border border-warn/30 text-warn-strong"
                                   )}
                                   onClick={() =>
                                     act({
@@ -1641,7 +1639,7 @@ export default function SuperadminPage() {
                                     setWipeConfirmModal({ id: t.id, name: t.business_name });
                                     setWipeInput("");
                                   }}
-                                  className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                                  className="p-1.5 rounded-lg text-ink-400 hover:text-danger-strong hover:bg-danger-wash transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
                                   title="Hapus seluruh data toko permanen"
                                   aria-label={`Hapus toko ${t.business_name}`}
                                 >
@@ -1663,36 +1661,36 @@ export default function SuperadminPage() {
           {activeSection === "financials" && (
             <div className="space-y-6">
               <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
-                  <span className="text-xs font-medium text-slate-400">Total MRR Aktif</span>
-                  <p className="mt-2 text-2xl font-bold font-mono text-emerald-400">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
+                  <span className="text-xs font-medium text-ink-500">Total MRR Aktif</span>
+                  <p className="mt-2 text-2xl font-bold font-mono text-signal-strong">
                     Rp {rupiah(totalMRR)}
                   </p>
-                  <p className="text-2xs text-slate-400 mt-1">
+                  <p className="text-2xs text-ink-500 mt-1">
                     Dari {activeTenantsCount} tenant aktif
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
-                  <span className="text-xs font-medium text-slate-400">Rata-rata Nilai per Toko (ARPU)</span>
-                  <p className="mt-2 text-2xl font-bold font-mono text-indigo-400">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
+                  <span className="text-xs font-medium text-ink-500">Rata-rata Nilai per Toko (ARPU)</span>
+                  <p className="mt-2 text-2xl font-bold font-mono text-ink">
                     Rp {rupiah(activeTenantsCount > 0 ? Math.round(totalMRR / activeTenantsCount) : 0)}
                   </p>
-                  <p className="text-2xs text-slate-400 mt-1">Berdasarkan paket berlangganan</p>
+                  <p className="text-2xs text-ink-500 mt-1">Berdasarkan paket berlangganan</p>
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
-                  <span className="text-xs font-medium text-slate-400">Status Langganan Berjalan</span>
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
+                  <span className="text-xs font-medium text-ink-500">Status Langganan Berjalan</span>
                   <div className="mt-2 flex items-center gap-3 text-xs font-mono">
-                    <span className="text-emerald-400">{data.subscription_counts["ACTIVE"] ?? 0} Aktif</span>
-                    <span className="text-slate-600">&bull;</span>
-                    <span className="text-amber-400">{data.subscription_counts["TRIAL"] ?? 0} Trial</span>
-                    <span className="text-slate-600">&bull;</span>
-                    <span className="text-rose-400">{data.subscription_counts["EXPIRED"] ?? 0} Expired</span>
+                    <span className="text-signal-strong">{data.subscription_counts["ACTIVE"] ?? 0} Aktif</span>
+                    <span className="text-ink-300">&bull;</span>
+                    <span className="text-warn-strong">{data.subscription_counts["TRIAL"] ?? 0} Trial</span>
+                    <span className="text-ink-300">&bull;</span>
+                    <span className="text-danger-strong">{data.subscription_counts["EXPIRED"] ?? 0} Expired</span>
                   </div>
                   <div className="mt-3">
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="text-2xs h-6 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                      className="text-2xs h-6 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                       onClick={() => act({ action: "reconcile" })}
                     >
                       Pindai Status Midtrans
@@ -1702,18 +1700,18 @@ export default function SuperadminPage() {
               </div>
 
               {/* Tabel Tenant Subscription Detail */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 overflow-hidden">
-                <div className="border-b border-slate-800 px-5 py-4 flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden shadow-flat">
+                <div className="border-b border-ink-100 px-5 py-4 flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
                     Rincian Paket &amp; Siklus Penagihan Tenant
                   </h3>
-                  <span className="text-2xs text-slate-400 font-mono">
+                  <span className="text-2xs text-ink-500 font-mono">
                     {data.tenants.length} Tenant Terdaftar
                   </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                    <thead className="bg-ink-50 text-2xs uppercase text-ink-500 border-b border-ink-200 tracking-wider">
                       <tr>
                         <th className="px-5 py-3.5 font-semibold">Toko Klien</th>
                         <th className="px-5 py-3.5 font-semibold">Paket Langganan</th>
@@ -1722,18 +1720,18 @@ export default function SuperadminPage() {
                         <th className="px-5 py-3.5 font-semibold text-right">Tanggal Berakhir</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                    <tbody className="divide-y divide-ink-100 text-ink">
                       {data.tenants.map((t) => (
-                        <tr key={t.id} className="hover:bg-slate-850/40">
-                          <td className="px-5 py-4 font-semibold text-white">{t.business_name}</td>
+                        <tr key={t.id} className="hover:bg-ink-50/60 transition-colors">
+                          <td className="px-5 py-4 font-semibold text-ink">{t.business_name}</td>
                           <td className="px-5 py-4">
                             {t.subscription ? (
-                              <span className="font-semibold text-indigo-300">{t.subscription.plan}</span>
+                              <span className="font-semibold text-ink-700">{t.subscription.plan}</span>
                             ) : (
-                              <span className="text-slate-500">Masa Uji Coba Gratis</span>
+                              <span className="text-ink-400">Masa Uji Coba Gratis</span>
                             )}
                           </td>
-                          <td className="px-5 py-4 font-mono font-semibold text-slate-200">
+                          <td className="px-5 py-4 font-mono font-semibold text-ink">
                             Rp {rupiah(t.subscription?.amount ?? 0)}
                           </td>
                           <td className="px-5 py-4">
@@ -1743,7 +1741,7 @@ export default function SuperadminPage() {
                               {t.status === "ACTIVE" ? "Lunas" : t.status === "TRIAL" ? "Trial" : "Tertunda"}
                             </Badge>
                           </td>
-                          <td className="px-5 py-4 text-right font-mono text-2xs text-slate-400">
+                          <td className="px-5 py-4 text-right font-mono text-2xs text-ink-500">
                             {new Date(t.trial_expires_at).toLocaleDateString("id-ID")}
                           </td>
                         </tr>
@@ -1758,23 +1756,23 @@ export default function SuperadminPage() {
           {/* ==================================================== SECTION: WHATSAPP FLEET */}
           {activeSection === "fleet" && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden">
-                <div className="border-b border-slate-800 px-5 py-4 flex items-center justify-between">
+              <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden shadow-flat">
+                <div className="border-b border-ink-100 px-5 py-4 flex items-center justify-between">
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
                       Fleet Sesi Soket WhatsApp Toko
                     </h3>
-                    <p className="text-2xs text-slate-400 mt-0.5">
+                    <p className="text-2xs text-ink-500 mt-0.5">
                       Monitoring koneksi soket real-time WhatsMeow untuk setiap tenant toko.
                     </p>
                   </div>
-                  <span className="text-2xs text-slate-400 font-mono">
+                  <span className="text-2xs text-ink-500 font-mono">
                     {data.fleet.length} Sesi Terhubung
                   </span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                    <thead className="bg-ink-50 text-2xs uppercase text-ink-500 border-b border-ink-200 tracking-wider">
                       <tr>
                         <th className="px-5 py-3.5 font-semibold">Instance Key</th>
                         <th className="px-5 py-3.5 font-semibold">Toko Terkait</th>
@@ -1784,18 +1782,18 @@ export default function SuperadminPage() {
                         <th className="px-5 py-3.5 font-semibold text-right">Aksi Soket</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                    <tbody className="divide-y divide-ink-100 text-ink">
                       {data.fleet.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="p-8 text-center text-slate-500">
+                          <td colSpan={6} className="p-8 text-center text-ink-500">
                             Belum ada instance WhatsApp yang terdaftar pada sistem daemon.
                           </td>
                         </tr>
                       ) : (
                         data.fleet.map((inst) => (
-                          <tr key={inst.instance_key} className="hover:bg-slate-850/40">
-                            <td className="px-5 py-4 font-mono font-semibold text-indigo-300">{inst.instance_key}</td>
-                            <td className="px-5 py-4 font-semibold text-white">{inst.tenant}</td>
+                          <tr key={inst.instance_key} className="hover:bg-ink-50/60 transition-colors">
+                            <td className="px-5 py-4 font-mono font-semibold text-ink">{inst.instance_key}</td>
+                            <td className="px-5 py-4 font-semibold text-ink">{inst.tenant}</td>
                             <td className="px-5 py-4">
                               <Badge
                                 tone={
@@ -1815,17 +1813,17 @@ export default function SuperadminPage() {
                                   : "Terputus"}
                               </Badge>
                             </td>
-                            <td className="px-5 py-4 font-mono text-slate-200">
+                            <td className="px-5 py-4 font-mono text-ink">
                               {inst.phone_number || "Belum Tersambung"}
                             </td>
-                            <td className="px-5 py-4 text-2xs text-slate-400">
+                            <td className="px-5 py-4 text-2xs text-ink-500">
                               {inst.last_seen ? timeAgo(inst.last_seen) : "-"}
                             </td>
                             <td className="px-5 py-4 text-right">
                               <Button
                                 size="sm"
                                 variant="secondary"
-                                className="h-7 text-xs px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                                className="h-7 text-xs px-2.5 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 shadow-flat"
                                 onClick={() =>
                                   act(
                                     { action: "restart_instance", instance_key: inst.instance_key },
@@ -1849,20 +1847,21 @@ export default function SuperadminPage() {
           {/* ==================================================== SECTION: AI MODELS & GATEWAY */}
           {activeSection === "ai_models" && (
             <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              {/* Active Model Status Box */}
+              <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-4 shadow-flat">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
                       Konfigurasi Gateway AI &amp; Model Orchestrator
                     </h3>
-                    <p className="text-2xs text-slate-400 mt-0.5">
+                    <p className="text-2xs text-ink-500 mt-0.5">
                       Sistem routing LLM terpusat dengan rotasi kunci otomatis dan fallback upstream.
                     </p>
                   </div>
                   <Button
                     size="sm"
                     variant="primary"
-                    className="h-8 text-xs bg-indigo-600 hover:bg-indigo-500 text-white border-none"
+                    className="h-8 text-xs bg-ink hover:bg-ink-800 text-white border-none shadow-flat"
                     loading={busy}
                     onClick={handleTestAIGateway}
                   >
@@ -1872,52 +1871,52 @@ export default function SuperadminPage() {
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-                    <span className="text-slate-400 text-2xs">Model Aktif Utama:</span>
-                    <p className="font-mono font-bold text-indigo-300 text-sm mt-0.5">{data.gateway.model}</p>
-                    <p className="text-2xs text-slate-500 mt-1">Dipakai oleh semua bot toko</p>
+                  <div className="p-3.5 rounded-xl bg-surface-sunken border border-ink-200">
+                    <span className="text-ink-500 text-2xs">Model Aktif Utama:</span>
+                    <p className="font-mono font-bold text-ink text-sm mt-0.5">{data.gateway.model}</p>
+                    <p className="text-2xs text-ink-400 mt-1">Dipakai oleh semua bot toko</p>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-                    <span className="text-slate-400 text-2xs">Latensi Respon Terakhir:</span>
-                    <p className="font-mono font-bold text-emerald-400 text-sm mt-0.5">
+                  <div className="p-3.5 rounded-xl bg-surface-sunken border border-ink-200">
+                    <span className="text-ink-500 text-2xs">Latensi Respon Terakhir:</span>
+                    <p className="font-mono font-bold text-signal-strong text-sm mt-0.5">
                       {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "Belum diuji"}
                     </p>
-                    <p className="text-2xs text-slate-500 mt-1">Uji round-trip gateway</p>
+                    <p className="text-2xs text-ink-400 mt-1">Uji round-trip gateway</p>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
-                    <span className="text-slate-400 text-2xs">Model Siap Pakai:</span>
-                    <p className="font-mono font-bold text-white text-sm mt-0.5">{data.gateway.models.length} Model</p>
-                    <p className="text-2xs text-slate-500 mt-1">Mendukung multi-turn tool calls</p>
+                  <div className="p-3.5 rounded-xl bg-surface-sunken border border-ink-200">
+                    <span className="text-ink-500 text-2xs">Model Siap Pakai:</span>
+                    <p className="font-mono font-bold text-ink text-sm mt-0.5">{data.gateway.models.length} Model</p>
+                    <p className="text-2xs text-ink-400 mt-1">Mendukung multi-turn tool calls</p>
                   </div>
                 </div>
               </div>
 
               {/* Model Catalog Grid */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 space-y-4">
+              <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-4 shadow-flat">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
                       Katalog Model Terdaftar pada Gateway
                     </h3>
-                    <p className="text-2xs text-slate-400 mt-0.5">
+                    <p className="text-2xs text-ink-500 mt-0.5">
                       Daftar model yang tersedia untuk failover chain dan routing cerdas.
                     </p>
                   </div>
                   <div className="relative w-64">
-                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-500" />
+                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-ink-400" />
                     <input
                       type="text"
                       placeholder="Cari model..."
                       value={modelSearch}
                       onChange={(e) => setModelSearch(e.target.value)}
-                      className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none"
+                      className="w-full rounded-lg border border-ink-200 bg-white pl-8 pr-3 py-1.5 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 max-h-96 overflow-y-auto">
                   {filteredModels.length === 0 ? (
-                    <p className="col-span-4 text-center py-6 text-xs text-slate-500">
+                    <p className="col-span-4 text-center py-6 text-xs text-ink-500">
                       Tidak ada model yang cocok dengan pencarian.
                     </p>
                   ) : (
@@ -1927,15 +1926,15 @@ export default function SuperadminPage() {
                         className={cn(
                           "p-2.5 rounded-xl border text-xs flex items-center justify-between transition-colors",
                           m === data.gateway.model
-                            ? "border-indigo-500/50 bg-indigo-950/40 text-indigo-200"
-                            : "border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-750"
+                            ? "border-signal/30 bg-signal-wash text-signal-strong font-semibold"
+                            : "border-ink-200 bg-surface-sunken text-ink-700 hover:border-ink-300"
                         )}
                       >
                         <span className="font-mono text-2xs truncate" title={m}>
                           {m}
                         </span>
                         {m === data.gateway.model && (
-                          <span className="shrink-0 text-[10px] bg-indigo-600 text-white px-1.5 py-0.2 rounded font-semibold">
+                          <span className="shrink-0 text-[10px] bg-signal text-white px-1.5 py-0.5 rounded font-semibold">
                             Utama
                           </span>
                         )}
@@ -1950,7 +1949,7 @@ export default function SuperadminPage() {
           {/* ==================================================== SECTION: ORDERS FEED */}
           {activeSection === "orders" && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-4 rounded-2xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-ink-200 p-4 rounded-2xl shadow-flat">
                 <div className="flex items-center gap-1.5 text-xs">
                   {(["all", "VERIFIED", "PENDING"] as const).map((st) => (
                     <button
@@ -1958,10 +1957,10 @@ export default function SuperadminPage() {
                       type="button"
                       onClick={() => setOrderFilter(st)}
                       className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
                         orderFilter === st
-                          ? "bg-indigo-600 text-white font-semibold shadow-sm"
-                          : "bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-750"
+                          ? "bg-ink text-white font-semibold shadow-flat"
+                          : "bg-ink-100 text-ink-600 hover:text-ink hover:bg-ink-200"
                       )}
                     >
                       {st === "all" ? "Semua Status" : st === "VERIFIED" ? "Terbayar" : "Menunggu"}
@@ -1971,19 +1970,19 @@ export default function SuperadminPage() {
 
                 <div className="flex items-center gap-2">
                   <div className="relative min-w-[220px]">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-ink-400" />
                     <input
                       type="text"
                       placeholder="Cari order number atau toko..."
                       value={orderQuery}
                       onChange={(e) => setOrderQuery(e.target.value)}
-                      className="w-full rounded-lg border border-slate-750 bg-slate-950 pl-9 pr-3.5 py-2 text-xs text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none"
+                      className="w-full rounded-lg border border-ink-200 bg-white pl-9 pr-3.5 py-2 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
                     />
                   </div>
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="border-slate-800 bg-slate-850 hover:bg-slate-800 text-slate-200 text-xs shrink-0 flex items-center gap-1.5 h-8"
+                    className="border-ink-200 bg-white hover:bg-ink-50 text-ink-700 text-xs shrink-0 flex items-center gap-1.5 h-8 shadow-flat"
                     onClick={() => exportOrdersToCSV(filteredOrders)}
                   >
                     <Download className="h-3.5 w-3.5" />
@@ -1992,32 +1991,32 @@ export default function SuperadminPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden">
+              <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden shadow-flat">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                    <thead className="bg-ink-50 text-2xs uppercase text-ink-500 border-b border-ink-200 tracking-wider">
                       <tr>
                         <th className="px-5 py-3.5 font-semibold">Nomor Pesanan</th>
                         <th className="px-5 py-3.5 font-semibold">Toko Klien</th>
-                        <th className="px-5 py-3.5 font-semibold">Total Pembayaran</th>
-                        <th className="px-5 py-3.5 font-semibold">Status Bayar</th>
-                        <th className="px-5 py-3.5 font-semibold">Waktu Transaksi</th>
+                        <th className="px-5 py-3.5 font-semibold">Total Nominal</th>
+                        <th className="px-5 py-3.5 font-semibold">Status Pembayaran</th>
+                        <th className="px-5 py-3.5 font-semibold">Waktu Pesan</th>
                         <th className="px-5 py-3.5 font-semibold text-right">Aksi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                    <tbody className="divide-y divide-ink-100 text-ink">
                       {filteredOrders.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="p-8 text-center text-slate-500">
+                          <td colSpan={6} className="p-8 text-center text-ink-500">
                             Tidak ada data pesanan yang sesuai filter.
                           </td>
                         </tr>
                       ) : (
                         filteredOrders.map((o) => (
-                          <tr key={o.id} className="hover:bg-slate-850/40">
-                            <td className="px-5 py-4 font-mono font-semibold text-indigo-400">{o.order_number}</td>
-                            <td className="px-5 py-4 font-semibold text-white">{o.tenant}</td>
-                            <td className="px-5 py-4 font-mono font-bold text-emerald-400">
+                          <tr key={o.id} className="hover:bg-ink-50/60 transition-colors">
+                            <td className="px-5 py-4 font-mono font-semibold text-ink">{o.order_number}</td>
+                            <td className="px-5 py-4 font-semibold text-ink">{o.tenant}</td>
+                            <td className="px-5 py-4 font-mono font-bold text-signal-strong">
                               Rp {rupiah(o.total)}
                             </td>
                             <td className="px-5 py-4">
@@ -2025,14 +2024,14 @@ export default function SuperadminPage() {
                                 {o.payment_status === "VERIFIED" ? "Terbayar" : "Menunggu"}
                               </Badge>
                             </td>
-                            <td className="px-5 py-4 text-2xs text-slate-400 font-mono">
+                            <td className="px-5 py-4 text-2xs text-ink-500 font-mono">
                               {ts(o.created_at)}
                             </td>
                             <td className="px-5 py-4 text-right">
                               <Button
                                 size="sm"
                                 variant="secondary"
-                                className="h-7 text-xs px-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                                className="h-7 text-xs px-2.5 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 shadow-flat"
                                 onClick={() => act({ action: "sync_midtrans", order_id: o.order_number })}
                               >
                                 Cek Midtrans
@@ -2052,12 +2051,12 @@ export default function SuperadminPage() {
           {activeSection === "webhooks" && (
             <div className="space-y-4">
               {/* Quick Midtrans Sync Tool */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="rounded-2xl border border-ink-200 bg-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-flat">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
                     Sinkronisasi Transaksi Midtrans Manual
                   </h3>
-                  <p className="text-2xs text-slate-400 mt-0.5">
+                  <p className="text-2xs text-ink-500 mt-0.5">
                     Verifikasi dan mutakhirkan status pembayaran instan jika terjadi keterlambatan webhook pihak ketiga.
                   </p>
                 </div>
@@ -2067,12 +2066,12 @@ export default function SuperadminPage() {
                     placeholder="Order ID Midtrans..."
                     value={orderIdSync}
                     onChange={(e) => setOrderIdSync(e.target.value)}
-                    className="rounded-lg border border-slate-750 bg-slate-950 px-3 py-2 text-xs font-mono text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:outline-none w-52"
+                    className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs font-mono text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none w-52"
                   />
                   <Button
                     size="sm"
                     variant="primary"
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs border-none"
+                    className="bg-ink hover:bg-ink-800 text-white text-xs border-none shadow-flat"
                     disabled={!orderIdSync.trim()}
                     onClick={() => act({ action: "sync_midtrans", order_id: orderIdSync.trim() })}
                   >
@@ -2082,13 +2081,13 @@ export default function SuperadminPage() {
               </div>
 
               {/* Webhook Ledger Audit Table */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden">
-                <div className="border-b border-slate-800 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden shadow-flat">
+                <div className="border-b border-ink-100 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
                       Buku Besar Audit Webhook Masuk
                     </h3>
-                    <p className="text-2xs text-slate-400 mt-0.5">
+                    <p className="text-2xs text-ink-500 mt-0.5">
                       Log event yang masuk dengan perlindungan idempotensi untuk mencegah duplikasi pesanan.
                     </p>
                   </div>
@@ -2102,8 +2101,8 @@ export default function SuperadminPage() {
                           className={cn(
                             "px-2.5 py-1 rounded text-2xs font-medium transition-colors",
                             webhookProviderFilter === prov
-                              ? "bg-indigo-600 text-white font-semibold"
-                              : "bg-slate-800 text-slate-400 hover:text-white"
+                              ? "bg-ink text-white font-semibold shadow-flat"
+                              : "bg-ink-100 text-ink-600 hover:text-ink hover:bg-ink-200"
                           )}
                         >
                           {prov === "all" ? "Semua Provider" : prov}
@@ -2113,7 +2112,7 @@ export default function SuperadminPage() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="border-slate-800 bg-slate-850 hover:bg-slate-800 text-slate-200 text-xs shrink-0 flex items-center gap-1.5 h-7 px-2.5"
+                      className="border-ink-200 bg-white hover:bg-ink-50 text-ink-700 text-xs shrink-0 flex items-center gap-1.5 h-7 px-2.5 shadow-flat"
                       onClick={() => exportWebhooksToCSV(filteredWebhooks)}
                     >
                       <Download className="h-3 w-3" />
@@ -2123,7 +2122,7 @@ export default function SuperadminPage() {
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950 text-2xs uppercase text-slate-400 border-b border-slate-800 tracking-wider">
+                    <thead className="bg-ink-50 text-2xs uppercase text-ink-500 border-b border-ink-200 tracking-wider">
                       <tr>
                         <th className="px-5 py-3.5 font-semibold">Provider</th>
                         <th className="px-5 py-3.5 font-semibold">Event Key</th>
@@ -2132,41 +2131,41 @@ export default function SuperadminPage() {
                         <th className="px-5 py-3.5 font-semibold text-right">Waktu Masuk</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                    <tbody className="divide-y divide-ink-100 text-ink">
                       {filteredWebhooks.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="p-8 text-center text-slate-500">
+                          <td colSpan={5} className="p-8 text-center text-ink-500">
                             Belum ada catatan event webhook yang terekam.
                           </td>
                         </tr>
                       ) : (
                         filteredWebhooks.map((w) => (
-                          <tr key={w.id} className="hover:bg-slate-850/40">
+                          <tr key={w.id} className="hover:bg-ink-50/60 transition-colors">
                             <td className="px-5 py-4">
                               <span
                                 className={cn(
                                   "inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold font-mono",
                                   w.provider === "MIDTRANS"
-                                    ? "bg-emerald-950 text-emerald-300 border border-emerald-800/60"
-                                    : "bg-indigo-950 text-indigo-300 border border-indigo-800/60"
+                                    ? "bg-signal-wash text-signal-strong border border-signal/20"
+                                    : "bg-ink-100 text-ink border border-ink-200"
                                 )}
                               >
                                 {w.provider}
                               </span>
                             </td>
-                            <td className="px-5 py-4 font-mono font-medium text-slate-200">{w.event_key}</td>
-                            <td className="px-5 py-4 text-slate-400 text-2xs">{w.event_type || "-"}</td>
+                            <td className="px-5 py-4 font-mono font-medium text-ink">{w.event_key}</td>
+                            <td className="px-5 py-4 text-ink-500 text-2xs">{w.event_type || "-"}</td>
                             <td className="px-5 py-4">
                               <span
                                 className={cn(
                                   "text-2xs font-semibold",
-                                  w.processed ? "text-emerald-400" : "text-amber-400"
+                                  w.processed ? "text-signal-strong" : "text-warn-strong"
                                 )}
                               >
                                 {w.processed ? "Selesai" : "Pending"}
                               </span>
                             </td>
-                            <td className="px-5 py-4 text-right text-2xs text-slate-400 font-mono">
+                            <td className="px-5 py-4 text-right text-2xs text-ink-500 font-mono">
                               {ts(w.created_at)}
                             </td>
                           </tr>
@@ -2184,21 +2183,21 @@ export default function SuperadminPage() {
             <div className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {/* Op 1: Maintenance Sweep */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 flex flex-col justify-between shadow-flat">
                   <div>
                     <div className="flex items-center gap-2.5">
-                      <Cpu className="h-4 w-4 text-indigo-400" />
-                      <h3 className="text-xs font-bold text-white">Maintenance Sweep 3-in-1</h3>
+                      <Cpu className="h-4 w-4 text-ink-700" />
+                      <h3 className="text-xs font-bold text-ink">Maintenance Sweep 3-in-1</h3>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+                    <p className="mt-2 text-xs text-ink-500 leading-relaxed">
                       Jalankan siklus sweep berkala: kadaluarsakan pesanan tanpa pembayaran lebih dari 2 jam, kirim antrean nudge WhatsApp anti-ghosting, dan rekonsiliasi masa langganan.
                     </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-800">
+                  <div className="mt-4 pt-3 border-t border-ink-100">
                     <Button
                       size="sm"
                       variant="primary"
-                      className="w-full justify-center bg-indigo-600 hover:bg-indigo-500 text-white text-xs border-none"
+                      className="w-full justify-center bg-ink hover:bg-ink-800 text-white text-xs border-none shadow-flat"
                       loading={busy}
                       onClick={() => act({ action: "trigger_maintenance" })}
                     >
@@ -2208,21 +2207,21 @@ export default function SuperadminPage() {
                 </div>
 
                 {/* Op 2: Midtrans Force Reconcile */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 flex flex-col justify-between shadow-flat">
                   <div>
                     <div className="flex items-center gap-2.5">
-                      <Webhook className="h-4 w-4 text-emerald-400" />
-                      <h3 className="text-xs font-bold text-white">Rekonsiliasi Langganan</h3>
+                      <Webhook className="h-4 w-4 text-signal-strong" />
+                      <h3 className="text-xs font-bold text-ink">Rekonsiliasi Langganan</h3>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+                    <p className="mt-2 text-xs text-ink-500 leading-relaxed">
                       Pindai transaksi pembayaran Midtrans untuk memastikan toko yang telah menyelesaikan transfer langganan otomatis aktif tanpa menunggu intervensi admin.
                     </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-800">
+                  <div className="mt-4 pt-3 border-t border-ink-100">
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="w-full justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs"
+                      className="w-full justify-center bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 text-xs shadow-flat"
                       loading={busy}
                       onClick={() => act({ action: "reconcile" })}
                     >
@@ -2232,21 +2231,21 @@ export default function SuperadminPage() {
                 </div>
 
                 {/* Op 3: Telegram Alert Ping */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 flex flex-col justify-between">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 flex flex-col justify-between shadow-flat">
                   <div>
                     <div className="flex items-center gap-2.5">
-                      <Bell className="h-4 w-4 text-sky-400" />
-                      <h3 className="text-xs font-bold text-white">Tes Notifikasi Telegram</h3>
+                      <Bell className="h-4 w-4 text-ink-700" />
+                      <h3 className="text-xs font-bold text-ink">Tes Notifikasi Telegram</h3>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+                    <p className="mt-2 text-xs text-ink-500 leading-relaxed">
                       Kirim pesan pengujian alert darurat ke kanal Telegram pengawas untuk memastikan notifikasi sistem berjalan semestinya.
                     </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-800">
+                  <div className="mt-4 pt-3 border-t border-ink-100">
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="w-full justify-center bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs"
+                      className="w-full justify-center bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 text-xs shadow-flat"
                       loading={busy}
                       onClick={() => act({ action: "test_telegram" })}
                     >
@@ -2263,10 +2262,10 @@ export default function SuperadminPage() {
             <div className="space-y-6 max-w-3xl">
               <div
                 className={cn(
-                  "rounded-2xl border p-6 space-y-4",
+                  "rounded-2xl border p-6 space-y-4 shadow-flat",
                   ks.disabled
-                    ? "border-rose-500/50 bg-rose-950/30"
-                    : "border-slate-800 bg-slate-900/80"
+                    ? "border-danger/30 bg-danger-wash"
+                    : "border-ink-200 bg-white"
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -2274,35 +2273,35 @@ export default function SuperadminPage() {
                     className={cn(
                       "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border",
                       ks.disabled
-                        ? "bg-rose-950 text-rose-400 border-rose-800"
-                        : "bg-slate-800 text-slate-300 border-slate-700"
+                        ? "bg-danger-wash text-danger-strong border-danger/30"
+                        : "bg-ink-100 text-ink border-ink-200"
                     )}
                   >
                     <Power className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white">
+                    <h3 className="text-sm font-bold text-ink">
                       Global Emergency Kill-Switch
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-ink-500 mt-0.5">
                       Status Saat Ini:{" "}
-                      <strong className={ks.disabled ? "text-rose-400" : "text-emerald-400"}>
+                      <strong className={ks.disabled ? "text-danger-strong" : "text-signal-strong"}>
                         {ks.disabled ? "BOT DIMATIKAN (KILL SWITCH AKTIF)" : "NORMAL (BOT AKTIF)"}
                       </strong>
                     </p>
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-300 space-y-2 leading-relaxed bg-slate-950/70 p-4 rounded-xl border border-slate-850">
-                  <p className="font-semibold text-slate-200">Dampak Operasional Saklar Darurat:</p>
-                  <ul className="list-disc list-inside space-y-1 text-slate-400">
+                <div className="text-xs text-ink-700 space-y-2 leading-relaxed bg-surface-sunken p-4 rounded-xl border border-ink-200">
+                  <p className="font-semibold text-ink">Dampak Operasional Saklar Darurat:</p>
+                  <ul className="list-disc list-inside space-y-1 text-ink-600">
                     <li>Menghentikan seluruh balasan otomatis bot AI WhatsApp di setiap toko di platform.</li>
                     <li>Pesan pembeli yang masuk tetap tersimpan di database dan tidak akan hilang.</li>
                     <li>Admin toko tetap dapat membalas pesan secara manual melalui antarmuka live chat.</li>
                     <li>Gunakan tombol ini saat terjadi gangguan upstream AI yang kritis atau banjir spam anomali.</li>
                   </ul>
                   {ks.disabled && (
-                    <p className="text-rose-300 font-mono text-2xs pt-2 border-t border-rose-900/40">
+                    <p className="text-danger-strong font-mono text-2xs pt-2 border-t border-danger/20">
                       Dimatikan sejak {ts(ks.disabledAt)} {ks.disabledBy ? `oleh ${ks.disabledBy}` : ""}
                     </p>
                   )}
@@ -2313,7 +2312,7 @@ export default function SuperadminPage() {
                     <Button
                       size="sm"
                       variant="accent"
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs border-none px-4 py-2"
+                      className="bg-signal hover:bg-signal/90 text-white text-xs border-none px-4 py-2 shadow-flat"
                       loading={busy}
                       onClick={() => act({ action: "kill_switch", disabled: false })}
                     >
@@ -2324,7 +2323,7 @@ export default function SuperadminPage() {
                     <Button
                       size="sm"
                       variant="danger"
-                      className="bg-rose-900 hover:bg-rose-800 border border-rose-700 text-rose-100 text-xs px-4 py-2"
+                      className="bg-danger hover:bg-danger-strong text-white text-xs px-4 py-2 shadow-flat border-none"
                       loading={busy}
                       onClick={() =>
                         act(
@@ -2333,7 +2332,7 @@ export default function SuperadminPage() {
                         )
                       }
                     >
-                      <Power className="mr-1.5 h-3.5 w-3.5 text-rose-300" />
+                      <Power className="mr-1.5 h-3.5 w-3.5 text-white" />
                       Aktifkan Emergency Kill-Switch
                     </Button>
                   )}
@@ -2345,172 +2344,163 @@ export default function SuperadminPage() {
       </div>
 
       {/* ==================================================== MODAL: CREATE TENANT */}
-      {createTenantModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-        >
-          <div className="w-full max-w-lg rounded-2xl border border-slate-750 bg-slate-900 p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
-                  <Plus className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Tambah Toko Klien Baru</h3>
-                  <p className="text-2xs text-slate-400">Onboarding manual langsung dari konsol Superadmin</p>
-                </div>
+      <Modal open={createTenantModal} onClose={() => setCreateTenantModal(false)}>
+        <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-6 space-y-5 shadow-overlay text-ink">
+          <div className="flex items-center justify-between border-b border-ink-100 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-white">
+                <Plus className="h-4 w-4" />
               </div>
-              <button
-                type="button"
-                onClick={() => setCreateTenantModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div>
+                <h3 className="text-sm font-bold text-ink">Tambah Toko Klien Baru</h3>
+                <p className="text-2xs text-ink-500">Onboarding manual langsung dari konsol Superadmin</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCreateTenantModal(false)}
+              className="text-ink-400 hover:text-ink p-1 rounded"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <form onSubmit={handleCreateTenant} className="space-y-3.5 text-xs">
+            <div>
+              <label className="block text-2xs font-semibold text-ink-700 mb-1">
+                Nama Bisnis / Toko:
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Contoh: Hijab Cantik Official"
+                value={newTenant.business_name}
+                onChange={(e) => setNewTenant({ ...newTenant, business_name: e.target.value })}
+                className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2 text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
+              />
             </div>
 
-            <form onSubmit={handleCreateTenant} className="space-y-3.5 text-xs">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-2xs font-medium text-slate-400 mb-1">
-                  Nama Bisnis / Toko:
+                <label className="block text-2xs font-semibold text-ink-700 mb-1">
+                  Nama Pemilik Toko:
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Hijab Cantik Official"
-                  value={newTenant.business_name}
-                  onChange={(e) => setNewTenant({ ...newTenant, business_name: e.target.value })}
-                  className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2 text-white focus:border-indigo-500 focus:outline-none"
+                  placeholder="Contoh: Rina Sari"
+                  value={newTenant.owner_name}
+                  onChange={(e) => setNewTenant({ ...newTenant, owner_name: e.target.value })}
+                  className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2 text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-2xs font-medium text-slate-400 mb-1">
-                    Nama Pemilik Toko:
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Rina Sari"
-                    value={newTenant.owner_name}
-                    onChange={(e) => setNewTenant({ ...newTenant, owner_name: e.target.value })}
-                    className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2 text-white focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-2xs font-medium text-slate-400 mb-1">
-                    Nomor WhatsApp Pemilik:
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="081234567890"
-                    value={newTenant.owner_whatsapp}
-                    onChange={(e) => setNewTenant({ ...newTenant, owner_whatsapp: e.target.value })}
-                    className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2 text-white font-mono focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-2xs font-semibold text-ink-700 mb-1">
+                  WhatsApp Pemilik (62xxx):
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="628123456789"
+                  value={newTenant.owner_whatsapp}
+                  onChange={(e) => setNewTenant({ ...newTenant, owner_whatsapp: e.target.value })}
+                  className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2 text-ink font-mono placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
+                />
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-2xs font-medium text-slate-400 mb-1">
-                    Email Login Toko:
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="rina@hijabcantik.com"
-                    value={newTenant.email}
-                    onChange={(e) => setNewTenant({ ...newTenant, email: e.target.value })}
-                    className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2 text-white focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-2xs font-medium text-slate-400 mb-1">
-                    Password Awal:
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Minimal 6 karakter"
-                    value={newTenant.password}
-                    onChange={(e) => setNewTenant({ ...newTenant, password: e.target.value })}
-                    className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2 text-white focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-2xs font-semibold text-ink-700 mb-1">
+                  Email Login Akun:
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="owner@toko.com"
+                  value={newTenant.email}
+                  onChange={(e) => setNewTenant({ ...newTenant, email: e.target.value })}
+                  className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2 text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
+                />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-2xs font-medium text-slate-400 mb-1">
-                    Status Akun:
-                  </label>
-                  <select
-                    value={newTenant.status}
-                    onChange={(e) =>
-                      setNewTenant({ ...newTenant, status: e.target.value as "TRIAL" | "ACTIVE" })
-                    }
-                    className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3 py-2 text-white focus:border-indigo-500 focus:outline-none"
-                  >
-                    <option value="TRIAL">Masa Uji Coba (Trial)</option>
-                    <option value="ACTIVE">Langsung Aktif (Active)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-2xs font-medium text-slate-400 mb-1">
-                    Durasi Masa Trial (Hari):
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={90}
-                    value={newTenant.trial_days}
-                    onChange={(e) => setNewTenant({ ...newTenant, trial_days: parseInt(e.target.value, 10) || 14 })}
-                    className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2 text-white font-mono focus:border-indigo-500 focus:outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-2xs font-semibold text-ink-700 mb-1">
+                  Kata Sandi Awal:
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Minimal 8 karakter"
+                  value={newTenant.password}
+                  onChange={(e) => setNewTenant({ ...newTenant, password: e.target.value })}
+                  className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2 text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
+                />
               </div>
+            </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  type="button"
-                  onClick={() => setCreateTenantModal(false)}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-2xs font-semibold text-ink-700 mb-1">
+                  Status Akun:
+                </label>
+                <select
+                  value={newTenant.status}
+                  onChange={(e) =>
+                    setNewTenant({ ...newTenant, status: e.target.value as "TRIAL" | "ACTIVE" })
+                  }
+                  className="w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-ink focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
                 >
-                  Batal
-                </Button>
-                <Button
-                  size="sm"
-                  variant="primary"
-                  type="submit"
-                  loading={busy}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white border-none"
-                >
-                  Buat Toko Sekarang
-                </Button>
+                  <option value="TRIAL">Masa Uji Coba (Trial)</option>
+                  <option value="ACTIVE">Langsung Aktif (Active)</option>
+                </select>
               </div>
-            </form>
-          </div>
+              <div>
+                <label className="block text-2xs font-semibold text-ink-700 mb-1">
+                  Durasi Masa Trial (Hari):
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={newTenant.trial_days}
+                  onChange={(e) => setNewTenant({ ...newTenant, trial_days: parseInt(e.target.value, 10) || 14 })}
+                  className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2 text-ink font-mono focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-ink-100">
+              <Button
+                size="sm"
+                variant="secondary"
+                type="button"
+                className="bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
+                onClick={() => setCreateTenantModal(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                type="submit"
+                loading={busy}
+                className="bg-ink hover:bg-ink-800 text-white border-none shadow-flat"
+              >
+                Buat Toko Sekarang
+              </Button>
+            </div>
+          </form>
         </div>
-      )}
+      </Modal>
 
       {/* ==================================================== MODAL: TENANT DETAIL INSPECTOR */}
-      {selectedTenant && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-        >
-          <div className="w-full max-w-xl rounded-2xl border border-slate-750 bg-slate-900 p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <Modal open={!!selectedTenant} onClose={() => setSelectedTenant(null)}>
+        {selectedTenant && (
+          <div className="w-full max-w-xl rounded-2xl border border-ink-200 bg-white p-6 space-y-5 shadow-overlay text-ink">
+            <div className="flex items-center justify-between border-b border-ink-100 pb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-white">{selectedTenant.business_name}</h3>
+                  <h3 className="text-base font-bold text-ink">{selectedTenant.business_name}</h3>
                   <Badge
                     tone={
                       selectedTenant.status === "ACTIVE"
@@ -2523,34 +2513,34 @@ export default function SuperadminPage() {
                     {selectedTenant.status}
                   </Badge>
                 </div>
-                <p className="text-2xs text-slate-400 mt-0.5">
-                  ID: <span className="font-mono text-indigo-300">{selectedTenant.id}</span>
+                <p className="text-2xs text-ink-500 mt-0.5">
+                  ID: <span className="font-mono text-ink-700">{selectedTenant.id}</span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedTenant(null)}
-                className="text-slate-400 hover:text-white p-1 rounded"
+                className="text-ink-400 hover:text-ink p-1 rounded"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-slate-400 text-2xs">Kontak Email:</span>
-                <p className="font-medium text-slate-200">{selectedTenant.email}</p>
-                <span className="text-slate-400 text-2xs block pt-1">WhatsApp Pemilik:</span>
-                <p className="font-mono text-indigo-400">{selectedTenant.owner_whatsapp}</p>
+              <div className="p-3 rounded-xl bg-surface-sunken border border-ink-200 space-y-1">
+                <span className="text-ink-500 text-2xs">Kontak Email:</span>
+                <p className="font-medium text-ink">{selectedTenant.email}</p>
+                <span className="text-ink-500 text-2xs block pt-1">WhatsApp Pemilik:</span>
+                <p className="font-mono text-ink font-semibold">{selectedTenant.owner_whatsapp}</p>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                <span className="text-slate-400 text-2xs">Status Masa Trial:</span>
-                <p className="text-slate-200">
+              <div className="p-3 rounded-xl bg-surface-sunken border border-ink-200 space-y-1">
+                <span className="text-ink-500 text-2xs">Status Masa Trial:</span>
+                <p className="text-ink">
                   Hingga {new Date(selectedTenant.trial_expires_at).toLocaleDateString("id-ID")}
                 </p>
-                <span className="text-slate-400 text-2xs block pt-1">Paket Berlangganan:</span>
-                <p className="font-mono text-emerald-400 font-semibold">
+                <span className="text-ink-500 text-2xs block pt-1">Paket Berlangganan:</span>
+                <p className="font-mono text-signal-strong font-semibold">
                   {selectedTenant.subscription
                     ? `${selectedTenant.subscription.plan} (Rp ${rupiah(selectedTenant.subscription.amount)})`
                     : "Masa Uji Coba"}
@@ -2558,26 +2548,26 @@ export default function SuperadminPage() {
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-2">
-              <span className="text-2xs font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="p-3.5 rounded-xl bg-surface-sunken border border-ink-200 text-xs space-y-2">
+              <span className="text-2xs font-semibold text-ink-500 uppercase tracking-wider">
                 Penggunaan Kapasitas &amp; Beban AI
               </span>
               <div className="grid grid-cols-4 gap-2 text-center pt-1">
-                <div className="p-2 rounded bg-slate-900">
-                  <span className="text-slate-400 text-2xs block">Percakapan</span>
-                  <span className="font-mono font-bold text-white">{selectedTenant.conversations}</span>
+                <div className="p-2 rounded bg-white border border-ink-100">
+                  <span className="text-ink-500 text-2xs block">Percakapan</span>
+                  <span className="font-mono font-bold text-ink">{selectedTenant.conversations}</span>
                 </div>
-                <div className="p-2 rounded bg-slate-900">
-                  <span className="text-slate-400 text-2xs block">Pesanan</span>
-                  <span className="font-mono font-bold text-white">{selectedTenant.orders}</span>
+                <div className="p-2 rounded bg-white border border-ink-100">
+                  <span className="text-ink-500 text-2xs block">Pesanan</span>
+                  <span className="font-mono font-bold text-ink">{selectedTenant.orders}</span>
                 </div>
-                <div className="p-2 rounded bg-slate-900">
-                  <span className="text-slate-400 text-2xs block">SKU Produk</span>
-                  <span className="font-mono font-bold text-white">{selectedTenant.products ?? 0}</span>
+                <div className="p-2 rounded bg-white border border-ink-100">
+                  <span className="text-ink-500 text-2xs block">SKU Produk</span>
+                  <span className="font-mono font-bold text-ink">{selectedTenant.products ?? 0}</span>
                 </div>
-                <div className="p-2 rounded bg-slate-900">
-                  <span className="text-slate-400 text-2xs block">Est. Token</span>
-                  <span className="font-mono font-bold text-indigo-400">
+                <div className="p-2 rounded bg-white border border-ink-100">
+                  <span className="text-ink-500 text-2xs block">Est. Token</span>
+                  <span className="font-mono font-bold text-signal-strong">
                     {selectedTenant.conversations * 450}
                   </span>
                 </div>
@@ -2585,17 +2575,17 @@ export default function SuperadminPage() {
             </div>
 
             {selectedTenant.sheet && (
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1">
-                <span className="text-2xs text-slate-400">Google Sheet Katalog:</span>
+              <div className="p-3 rounded-xl bg-surface-sunken border border-ink-200 text-xs space-y-1">
+                <span className="text-2xs text-ink-500">Google Sheet Katalog:</span>
                 <a
                   href={selectedTenant.sheet.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="block font-mono text-2xs text-indigo-400 truncate hover:underline"
+                  className="block font-mono text-2xs text-ink hover:text-signal-strong truncate hover:underline"
                 >
                   {selectedTenant.sheet.url}
                 </a>
-                <p className="text-2xs text-slate-500">
+                <p className="text-2xs text-ink-400">
                   Asal Pengiriman: {selectedTenant.sheet.origin || "-"} &bull; Sinkron Terakhir:{" "}
                   {selectedTenant.sheet.last_synced_at ? timeAgo(selectedTenant.sheet.last_synced_at) : "-"}
                 </p>
@@ -2603,12 +2593,12 @@ export default function SuperadminPage() {
             )}
 
             {/* Quick Actions Footer inside Modal */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-ink-100">
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="text-xs h-7 bg-slate-800 text-slate-200"
+                  className="text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                   onClick={() => copyToClipboard(selectedTenant.id, "ID Toko")}
                 >
                   <Copy className="h-3 w-3 mr-1" />
@@ -2617,7 +2607,7 @@ export default function SuperadminPage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="text-xs h-7 bg-slate-800 text-slate-200"
+                  className="text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                   onClick={async () => {
                     await act({ action: "extend_trial", tenant_id: selectedTenant.id, days: 14 });
                     setSelectedTenant(null);
@@ -2634,8 +2624,8 @@ export default function SuperadminPage() {
                   className={cn(
                     "text-xs h-7",
                     selectedTenant.status === "SUSPENDED"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-amber-950 text-amber-300 border border-amber-800"
+                      ? "bg-signal hover:bg-signal/90 text-white"
+                      : "bg-warn-wash text-warn-strong border border-warn/30 hover:bg-warn-wash/80"
                   )}
                   onClick={async () => {
                     await act({
@@ -2651,7 +2641,7 @@ export default function SuperadminPage() {
                 <Button
                   size="sm"
                   variant="danger"
-                  className="text-xs h-7 bg-rose-950 text-rose-300 border border-rose-800"
+                  className="text-xs h-7 bg-danger-wash text-danger-strong border border-danger/30 hover:bg-danger hover:text-white"
                   onClick={() => {
                     const t = selectedTenant;
                     setSelectedTenant(null);
@@ -2664,36 +2654,32 @@ export default function SuperadminPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* ==================================================== MODAL: WIPE TENANT CONFIRMATION */}
-      {wipeConfirmModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-        >
-          <div className="w-full max-w-md rounded-2xl border border-rose-500/40 bg-slate-900 p-6 space-y-4 shadow-2xl">
+      <Modal open={!!wipeConfirmModal} onClose={() => setWipeConfirmModal(null)}>
+        {wipeConfirmModal && (
+          <div className="w-full max-w-md rounded-2xl border border-danger/30 bg-white p-6 space-y-4 shadow-overlay text-ink">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-950 text-rose-400 border border-rose-800">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-danger-wash text-danger-strong border border-danger/30">
                 <AlertTriangle className="h-5 w-5" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">
+                <h3 className="text-sm font-bold text-ink">
                   Konfirmasi Penghapusan Toko
                 </h3>
-                <p className="text-2xs text-rose-300">Tindakan ini bersifat permanen dan tidak dapat dibatalkan</p>
+                <p className="text-2xs text-danger-strong">Tindakan ini bersifat permanen dan tidak dapat dibatalkan</p>
               </div>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-ink-600 leading-relaxed">
               Anda akan menghapus seluruh data toko <strong>&ldquo;{wipeConfirmModal.name}&rdquo;</strong> beserta seluruh katalog produk, riwayat percakapan, pesanan, dan instance WhatsApp terkait.
             </p>
 
             <div>
-              <label htmlFor="wipe-confirm-input" className="block text-2xs font-medium text-slate-400 mb-1.5">
-                Ketik <span className="text-rose-400 font-bold">HAPUS</span> untuk melanjutkan:
+              <label htmlFor="wipe-confirm-input" className="block text-2xs font-semibold text-ink-700 mb-1.5">
+                Ketik <span className="text-danger-strong font-bold">HAPUS</span> untuk melanjutkan:
               </label>
               <input
                 id="wipe-confirm-input"
@@ -2702,14 +2688,15 @@ export default function SuperadminPage() {
                 placeholder="HAPUS"
                 value={wipeInput}
                 onChange={(e) => setWipeInput(e.target.value)}
-                className="w-full rounded-lg border border-slate-750 bg-slate-950 px-3.5 py-2 text-xs text-white uppercase focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
+                className="w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2 text-xs text-ink uppercase focus:border-danger focus:ring-1 focus:ring-danger font-mono"
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex justify-end gap-2 pt-2 border-t border-ink-100">
               <Button
                 size="sm"
                 variant="secondary"
+                className="bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
                 onClick={() => setWipeConfirmModal(null)}
               >
                 Batal
@@ -2719,6 +2706,7 @@ export default function SuperadminPage() {
                 variant="danger"
                 disabled={wipeInput !== "HAPUS"}
                 loading={busy}
+                className="bg-danger hover:bg-danger-strong text-white border-none"
                 onClick={async () => {
                   const id = wipeConfirmModal.id;
                   setWipeConfirmModal(null);
@@ -2729,8 +2717,8 @@ export default function SuperadminPage() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

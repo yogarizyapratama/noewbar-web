@@ -124,9 +124,53 @@ const NAV: NavItem<TabId>[] = [
   },
 ];
 
+const VALID_TABS: TabId[] = [
+  "status",
+  "products",
+  "website",
+  "simulator",
+  "promos",
+  "katalog",
+  "pesanan",
+  "chat",
+  "whatsapp",
+  "billing",
+];
+
 export default function DashboardPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [tab, setTab] = useState<TabId>("status");
+  const [tab, setTabState] = useState<TabId>(() => {
+    if (typeof window !== "undefined") {
+      const q = new URLSearchParams(window.location.search).get("tab");
+      if (q && VALID_TABS.includes(q as TabId)) return q as TabId;
+    }
+    return "status";
+  });
+
+  const setTab = useCallback((nextTab: TabId) => {
+    setTabState(nextTab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("tab") !== nextTab) {
+        url.searchParams.set("tab", nextTab);
+        window.history.pushState({ tab: nextTab }, "", url.toString());
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    function onPopState() {
+      const q = new URLSearchParams(window.location.search).get("tab");
+      if (q && VALID_TABS.includes(q as TabId)) {
+        setTabState(q as TabId);
+      } else {
+        setTabState("status");
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   const [live, setLive] = useState<string | null>(null);
 
   const [health, setHealth] = useState<Health | null>(null);
