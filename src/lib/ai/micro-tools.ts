@@ -35,6 +35,8 @@ const STOPWORDS = new Set([
   "berapa","brp","harga","hrg","stok","stock","ready","masih","lagi",
   "saya","aku","mau","minta","dong","ya","yaa","min","tolong","cek","coba",
   "nya","di","ke","dari","itu","ini","kalo","kalau","bisa","boleh","nya",
+  "aja","saja","produk","barang","katalog","catalog","jual","daftar","list",
+  "semua","item","dagangan","koleksi","pilihan",
 ]);
 
 function tokenize(query: string): string[] {
@@ -90,14 +92,21 @@ export async function toolCariProduk(
   if (tokens.length === 0) {
     // No usable keywords: return a small spread of the catalog instead of dumping
     // the whole thing into the model context (chapter 14.1).
-    candidates = activeCatalog.slice(0, 3);
+    candidates = activeCatalog.slice(0, 4);
   } else {
     candidates = activeCatalog
       .map((row) => ({ row, score: scoreRow(row, tokens) }))
       .filter((s) => s.score > 0)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 3)
+      .slice(0, 4)
       .map((s) => s.row);
+
+    if (
+      candidates.length === 0 &&
+      /\b(produk|barang|katalog|catalog|jual|semua|koleksi|item|dagangan)\b/i.test(args.query)
+    ) {
+      candidates = activeCatalog.slice(0, 4);
+    }
   }
 
   const matches: ProductMatch[] = [];

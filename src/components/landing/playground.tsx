@@ -12,8 +12,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Send, Sparkles } from "lucide-react";
 import { Badge, Button, cn } from "@/components/ui";
 
-type ChatTurn = { role: "user" | "assistant"; text: string; meta?: string[] };
-type ToolCall = { tool: string; summary: string; simulated: boolean };
+type ChatTurn = {
+  role: "user" | "assistant";
+  text: string;
+  media?: { url: string; caption?: string; kind: "image" | "video" }[];
+};
 
 const QUICK_PROMPTS = [
   "Kak, masih ada stok?",
@@ -55,9 +58,6 @@ export function PlaygroundPanel() {
     catalogSize: number | null;
   }>({ configured: false, catalogAvailable: false, note: null, catalogSize: null });
 
-  const [probe, setProbe] = useState<{ ok: boolean; latency: number | null; text: string } | null>(
-    null
-  );
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // First paint: ask the API whether a real catalog is wired up.
@@ -107,8 +107,6 @@ export function PlaygroundPanel() {
       setInput("");
       setPending(true);
 
-      const started = performance.now();
-
       try {
         const res = await fetch("/api/playground", {
           method: "POST",
@@ -116,8 +114,6 @@ export function PlaygroundPanel() {
           body: JSON.stringify({ message, history }),
         });
         const json = await res.json();
-        const elapsed = Math.round(performance.now() - started);
-        setProbe({ ok: res.ok, latency: elapsed, text: `Respons diterima dalam ${elapsed} ms` });
 
         if (!json.configured) {
           setTurns((prev) => [
@@ -125,7 +121,6 @@ export function PlaygroundPanel() {
             {
               role: "assistant",
               text: json.note ?? "Simulator belum dikonfigurasi.",
-              meta: ["Katalog belum dihubungkan"],
             },
           ]);
           return;
@@ -137,30 +132,23 @@ export function PlaygroundPanel() {
             {
               role: "assistant",
               text: json.note ?? "Katalog belum tersedia.",
-              meta: ["Tanpa data katalog"],
             },
           ]);
           return;
         }
 
-        const meta: string[] = [];
-        if (Array.isArray(json.tool_calls) && json.tool_calls.length > 0) {
-          for (const t of json.tool_calls as ToolCall[]) {
-            meta.push(`${t.tool} ${t.simulated ? "(simulasi)" : ""} - ${t.summary}`);
-          }
-        } else {
-          meta.push("Tanpa pemanggilan tool");
-        }
-        meta.push(`Latensi ${json.latency_ms} ms${json.degraded ? " - degraded" : ""}`);
-
         setTurns((prev) => [
           ...prev,
-          { role: "assistant", text: cleanAiText(json.reply) || "(Tidak ada balasan teks)", meta },
+          {
+            role: "assistant",
+            text: cleanAiText(json.reply) || "(Tidak ada balasan teks)",
+            media: json.media ?? [],
+          },
         ]);
       } catch {
         setTurns((prev) => [
           ...prev,
-          { role: "assistant", text: "Koneksi ke simulator gagal. Coba lagi.", meta: ["Error jaringan"] },
+          { role: "assistant", text: "Koneksi ke simulator gagal. Coba lagi." },
         ]);
       } finally {
         setPending(false);
@@ -205,15 +193,11 @@ export function PlaygroundPanel() {
         </div>
       </div>
 
-      {/* empty state (R-27) */}
+      {/* empty state */}
       {turns.length === 0 && (
         <div className="border-b border-ink-200 bg-ink-50 px-4 py-6">
           <p className="text-sm leading-relaxed text-ink-600">
-            {status.configured
-              ? status.catalogAvailable
-                ? "Ketik pesan seperti pembeli sungguhan. Balasan dibuat model combo-ai memakai katalog asli toko."
-                : status.note ?? "Katalog tidak tersedia."
-              : "Simulator belum dihubungkan ke katalog Google Sheets. Setel PLAYGROUND_SHEET_URL untuk mengaktifkannya. Tidak ada produk contoh yang ditampilkan."}
+            Ketik pesan seperti pembeli sungguhan atau klik opsi pertanyaan cepat di bawah untuk mencoba simulasi AI Customer Service.
           </p>
         </div>
       )}
@@ -231,14 +215,24 @@ export function PlaygroundPanel() {
               )}
             >
               <p className="whitespace-pre-wrap leading-relaxed">{t.text}</p>
-              {t.meta && t.meta.length > 0 && (
-                <ul className="mt-2.5 space-y-0.5 border-t border-signal/20 pt-2">
-                  {t.meta.map((m, j) => (
-                    <li key={j} className="font-mono text-2xs leading-relaxed text-ink-600">
-                      {m}
-                    </li>
+              {t.media && t.media.length > 0 && (
+                <div className="mt-2.5 grid grid-cols-2 gap-2">
+                  {t.media.map((m, idx) => (
+                    <div key={idx} className="overflow-hidden rounded-md border border-ink-200 bg-white">
+                      {m.kind === "video" ? (
+                        <video src={m.url} controls className="aspect-square w-full object-cover" />
+                      ) : (
+                        <img
+                          src={m.url}
+                          alt={m.caption || "Foto produk"}
+                          className="aspect-square w-full object-cover"
+                          loading="lazy"
+                        />
+                      )}
+                      {m.caption && <p className="truncate p-1 text-2xs text-ink-600">{m.caption}</p>}
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </div>
           </div>
@@ -303,13 +297,6 @@ export function PlaygroundPanel() {
             <span className="hidden sm:inline">{pending ? "Mengirim" : "Kirim"}</span>
           </Button>
         </form>
-
-        {probe && (
-          <p className="meta mt-2">
-            {probe.text}
-            {probe.ok ? "" : " (permintaan gagal)"}
-          </p>
-        )}
       </div>
     </div>
   );

@@ -216,10 +216,6 @@ export default function LandingPage() {
 
             <div id="simulasi" className="lg:pt-1">
               <PlaygroundPanel />
-              <p className="mt-3 text-xs leading-relaxed text-ink-500">
-                Balasan di atas dihasilkan oleh model <span className="font-mono">combo-ai</span>{" "}
-                memakai katalog asli. Tidak ada produk contoh, tidak ada tangkapan layar palsu.
-              </p>
             </div>
           </div>
         </div>
