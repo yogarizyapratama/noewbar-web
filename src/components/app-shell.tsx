@@ -260,29 +260,31 @@ export function AppShell<T extends string>({
       </aside>
 
       <div className="flex min-h-screen flex-col lg:min-w-0 lg:flex-1">
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-ink-200 bg-white/85 px-4 backdrop-blur sm:px-6">
-          <IconButton
-            label="Buka menu"
-            className="lg:hidden"
-            onClick={() => setDrawerOpen(true)}
-          >
-            <Menu className="h-4 w-4" aria-hidden="true" />
-          </IconButton>
+        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-ink-200 bg-white/85 px-4 backdrop-blur sm:px-6">
+          <div className="flex flex-1 items-center gap-3 min-w-0">
+            <IconButton
+              label="Buka menu"
+              className="lg:hidden"
+              onClick={() => setDrawerOpen(true)}
+            >
+              <Menu className="h-4 w-4" aria-hidden="true" />
+            </IconButton>
 
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            className="flex min-h-[44px] flex-1 items-center gap-2 rounded border border-ink-200 bg-ink-50 px-3 text-left text-sm text-ink-400 transition-colors hover:border-ink-300 hover:bg-white sm:max-w-xs"
-          >
-            <Search className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span className="flex-1 truncate">Cari atau jalankan perintah</span>
-            <span className="hidden shrink-0 items-center gap-0.5 sm:flex">
-              <Kbd>⌘</Kbd>
-              <Kbd>K</Kbd>
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="flex min-h-[40px] w-full max-w-xs items-center gap-2 rounded-lg border border-ink-200 bg-ink-50 px-3 text-left text-sm text-ink-400 transition-colors hover:border-ink-300 hover:bg-white"
+            >
+              <Search className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span className="flex-1 truncate">Cari atau jalankan perintah</span>
+              <span className="hidden shrink-0 items-center gap-0.5 sm:flex">
+                <Kbd>⌘</Kbd>
+                <Kbd>K</Kbd>
+              </span>
+            </button>
+          </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-3">
             {headerActions}
             {status && (
               <Badge tone={status.ok ? "signal" : "danger"} className="hidden sm:inline-flex">

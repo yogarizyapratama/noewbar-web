@@ -395,7 +395,7 @@ export default function DashboardPage() {
         label: waOk ? (health?.ai?.gateway_ok ? "Sistem siap" : "AI gangguan") : "WA belum tertaut",
       }}
       headerActions={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {live && (
             <Badge tone="signal" aria-live="polite">
               <StatusDot ok />
