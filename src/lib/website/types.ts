@@ -15,6 +15,10 @@ export type SectionType =
   | "testimonials"
   | "faq"
   | "whatsapp_cta"
+  | "video_showcase"
+  | "gallery_media"
+  | "text_banner"
+  | "countdown_promo"
   | "footer";
 
 export type WebsiteSection = {
@@ -329,5 +333,312 @@ export const TEMPLATES: WebsiteTemplate[] = [
         visibility: true,
       },
     ],
+  },
+];
+
+/**
+ * Converts YouTube, Vimeo, or MP4 URLs into responsive embed player URLs.
+ */
+export function getEmbedVideoUrl(url?: string): { isEmbed: boolean; url: string | null; isMp4: boolean } {
+  if (!url || typeof url !== "string") {
+    return { isEmbed: false, url: null, isMp4: false };
+  }
+  const trimmed = url.trim();
+
+  // YouTube match
+  const ytMatch = trimmed.match(
+    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i
+  );
+  if (ytMatch && ytMatch[1]) {
+    return {
+      isEmbed: true,
+      url: `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`,
+      isMp4: false,
+    };
+  }
+
+  // Vimeo match
+  const vimeoMatch = trimmed.match(
+    /vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|video\/|)(\d+)/i
+  );
+  if (vimeoMatch && vimeoMatch[3]) {
+    return {
+      isEmbed: true,
+      url: `https://player.vimeo.com/video/${vimeoMatch[3]}`,
+      isMp4: false,
+    };
+  }
+
+  // Already embed url
+  if (trimmed.includes("/embed/")) {
+    return { isEmbed: true, url: trimmed, isMp4: false };
+  }
+
+  // MP4 or WebM video file
+  if (trimmed.match(/\.(mp4|webm|ogg)(\?.*)?$/i)) {
+    return { isEmbed: false, url: trimmed, isMp4: true };
+  }
+
+  return { isEmbed: false, url: trimmed, isMp4: false };
+}
+
+export type SectionBlueprint = {
+  type: SectionType;
+  title: string;
+  category: "Header & Hero" | "Media & Galeri" | "Promosi & Penawaran" | "Konten & Informasi" | "Pemesanan & Kontak";
+  description: string;
+  defaultSection: () => WebsiteSection;
+};
+
+export const AVAILABLE_SECTION_TEMPLATES: SectionBlueprint[] = [
+  {
+    type: "hero",
+    title: "Hero Banner",
+    category: "Header & Hero",
+    description: "Banner utama toko dengan headline memikat, foto/video produk, dan tombol beli.",
+    defaultSection: () => ({
+      id: `sec-hero-${Date.now()}`,
+      type: "hero",
+      position: 0,
+      content: {
+        badge: "Koleksi Terbaru 2026",
+        headline: "Produk Berkualitas Terbaik untuk Anda",
+        subheadline: "Belanja praktis, aman, dan bergaransi resmi dengan konfirmasi pesanan cepat via WhatsApp.",
+        cta_primary_text: "Pesan Sekarang via WA",
+        cta_secondary_text: "Lihat Katalog Produk",
+        image_url: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80",
+        video_url: "",
+      },
+      style: { bg_color: "#F8FAFC", padding: "lg", accent_color: "#059669" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "video_showcase",
+    title: "Video Showcase",
+    category: "Media & Galeri",
+    description: "Tampilkan video review, unboxing, atau demonstrasi produk dari YouTube atau file MP4.",
+    defaultSection: () => ({
+      id: `sec-video-${Date.now()}`,
+      type: "video_showcase",
+      position: 0,
+      content: {
+        badge: "Tonton Review Produk",
+        title: "Lihat Kualitas Nyata Produk Kami Secara Langsung",
+        description: "Simak video unboxing dan panduan pemakaian produk unggulan kami untuk melihat detail aslinya.",
+        video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        button_text: "Pesan Produk di Video Ini",
+      },
+      style: { bg_color: "#0F172A", text_color: "#FFFFFF", padding: "lg" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "gallery_media",
+    title: "Galeri Foto & Media",
+    category: "Media & Galeri",
+    description: "Koleksi foto produk, lookbook, suasana toko, atau hasil pemakaian nyata pembeli.",
+    defaultSection: () => ({
+      id: `sec-gal-${Date.now()}`,
+      type: "gallery_media",
+      position: 0,
+      content: {
+        title: "Galeri Foto Produk Nyata",
+        subtitle: "Foto produk asli tanpa filter berlebih dari sesi pemotretan kami",
+        items: [
+          {
+            image_url: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=600&q=80",
+            caption: "Tampilan Elegan",
+          },
+          {
+            image_url: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=600&q=80",
+            caption: "Kemasan Eksklusif",
+          },
+          {
+            image_url: "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&w=600&q=80",
+            caption: "Bahan Pilihan",
+          },
+        ],
+      },
+      style: { bg_color: "#FFFFFF", padding: "md" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "text_banner",
+    title: "Tentang Toko & Cerita Brand",
+    category: "Konten & Informasi",
+    description: "Ceritakan kisah brand Anda dengan foto pemilik/toko, visi produk, dan alasan memilih Anda.",
+    defaultSection: () => ({
+      id: `sec-story-${Date.now()}`,
+      type: "text_banner",
+      position: 0,
+      content: {
+        badge: "Cerita Kami",
+        title: "Dibuat Sepenuh Hati untuk Kebutuhan Sehari-hari Anda",
+        paragraph: "Kami memulai usaha ini dengan satu komitmen sederhana: menghadirkan produk berkualitas premium dengan harga yang masuk akal dan pelayanan jujur. Setiap produk telah melalui uji kualitas ketat sebelum sampai ke tangan Anda.",
+        image_url: "https://images.unsplash.com/photo-1556742049-0a67c5574f73?auto=format&fit=crop&w=800&q=80",
+        bullet_points: [
+          "Bahan baku pilihan berstandar tinggi",
+          "Pengiriman aman dengan garansi penggantian jika rusak",
+          "Dukungan konsultasi langsung via WhatsApp",
+        ],
+        button_text: "Hubungi Owner Toko",
+      },
+      style: { bg_color: "#F8FAFC", padding: "lg" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "countdown_promo",
+    title: "Promo Flash Sale & Countdown",
+    category: "Promosi & Penawaran",
+    description: "Ciptakan urgensi tinggi dengan promo potongan harga terbatas dan ajakan beli cepat.",
+    defaultSection: () => ({
+      id: `sec-promo-${Date.now()}`,
+      type: "countdown_promo",
+      position: 0,
+      content: {
+        badge: "FLASH SALE TERBATAS HARI INI",
+        title: "Diskon Spesial Hingga 35% Hanya Pekan Ini!",
+        subtitle: "Stok promo sangat terbatas. Amankan pesanan Anda sekarang sebelum kuota habis.",
+        discount_tag: "HEMAT RP 50.000",
+        countdown_hours: 12,
+        button_text: "Klaim Promo via WhatsApp Sekarang",
+      },
+      style: { bg_color: "#065F46", text_color: "#FFFFFF", padding: "md" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "benefits",
+    title: "Keunggulan & Layanan",
+    category: "Konten & Informasi",
+    description: "3 kartu keunggulan seperti garansi, pengiriman cepat, dan produk original.",
+    defaultSection: () => ({
+      id: `sec-ben-${Date.now()}`,
+      type: "benefits",
+      position: 0,
+      content: {
+        title: "Mengapa Berbelanja di Toko Kami?",
+        subtitle: "Kenyamanan dan kepuasan Anda adalah prioritas utama kami",
+        items: [
+          { title: "100% Produk Asli", desc: "Jaminan original dengan garansi uang kembali jika terbukti tiruan." },
+          { title: "Pengiriman Tercepat", desc: "Dipacking rapi dan dikirim pada hari yang sama untuk order sebelum jam 15.00." },
+          { title: "Bisa Bayar COD", desc: "Tersedia pilihan bayar di tempat untuk kemudahan transaksi Anda." },
+        ],
+      },
+      style: { bg_color: "#FFFFFF", padding: "md" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "product_grid",
+    title: "Katalog Produk Pilihan",
+    category: "Header & Hero",
+    description: "Grid katalog produk terhubung database dengan tombol pesan WhatsApp otomatis.",
+    defaultSection: () => ({
+      id: `sec-prod-${Date.now()}`,
+      type: "product_grid",
+      position: 0,
+      content: {
+        title: "Katalog Produk Pilihan",
+        subtitle: "Pilih produk favorit Anda dan pesan dengan respon otomatis 24 jam",
+        limit: 6,
+      },
+      style: { bg_color: "#F8FAFC", padding: "md" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "testimonials",
+    title: "Ulasan & Testimoni Pembeli",
+    category: "Promosi & Penawaran",
+    description: "Tampilkan kata pembeli puas untuk meningkatkan kepercayaan pengunjung.",
+    defaultSection: () => ({
+      id: `sec-testi-${Date.now()}`,
+      type: "testimonials",
+      position: 0,
+      content: {
+        title: "Apa Kata Pelanggan Setia Kami?",
+        items: [
+          { name: "Anisa Rahmawati", role: "Pelanggan Terverifikasi", text: "Barang sampai dengan cepat dan packingnya super aman berlapis bubble wrap. Kualitasnya juara!", rating: 5 },
+          { name: "Budi Pratama", role: "Pelanggan Terverifikasi", text: "Pelayanan admin WhatsApp ramah sekali dan sangat responsif menjawab pertanyaan. Recommended seller!", rating: 5 },
+        ],
+      },
+      style: { bg_color: "#FFFFFF", padding: "md" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "faq",
+    title: "Tanya Jawab (FAQ)",
+    category: "Konten & Informasi",
+    description: "Daftar pertanyaan dan jawaban umum tentang pengiriman, retur, dan pembayaran.",
+    defaultSection: () => ({
+      id: `sec-faq-${Date.now()}`,
+      type: "faq",
+      position: 0,
+      content: {
+        title: "Pertanyaan yang Sering Diajukan",
+        items: [
+          { q: "Bagaimana cara memesan produk?", a: "Klik tombol Pesan via WhatsApp di produk yang diinginkan, admin kami akan langsung memproses pesanan Anda." },
+          { q: "Berapa lama estimasi pengiriman?", a: "Pesanan diproses dalam 1x24 jam dengan estimasi tiba 2-4 hari kerja tergantung alamat tujuan." },
+          { q: "Apakah ada garansi jika barang rusak?", a: "Ya! Kami memberikan garansi ganti baru jika barang yang Anda terima rusak atau tidak sesuai." },
+        ],
+      },
+      style: { bg_color: "#F8FAFC", padding: "md" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "whatsapp_cta",
+    title: "Ajakan Bertindak WhatsApp (CTA)",
+    category: "Pemesanan & Kontak",
+    description: "Banner penutup dengan tombol WhatsApp besar untuk konversi maksimal.",
+    defaultSection: () => ({
+      id: `sec-cta-${Date.now()}`,
+      type: "whatsapp_cta",
+      position: 0,
+      content: {
+        title: "Punya Pertanyaan atau Siap Memesan?",
+        subtitle: "Konsultasikan kebutuhan Anda sekarang dengan tim kami melalui WhatsApp.",
+        button_text: "Hubungi Kami via WhatsApp",
+      },
+      style: { bg_color: "#065F46", text_color: "#FFFFFF", padding: "lg" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "announcement",
+    title: "Pengumuman Promo (Top Bar)",
+    category: "Header & Hero",
+    description: "Bar tipis di paling atas untuk mengabarkan gratis ongkir atau diskon musiman.",
+    defaultSection: () => ({
+      id: `sec-ann-${Date.now()}`,
+      type: "announcement",
+      position: 0,
+      content: { text: "Gratis Ongkir ke seluruh Pulau Jawa untuk pembelian hari ini!" },
+      style: { bg_color: "#065F46", text_color: "#ECFDF5", padding: "sm" },
+      visibility: true,
+    }),
+  },
+  {
+    type: "footer",
+    title: "Footer Toko",
+    category: "Pemesanan & Kontak",
+    description: "Bagian bawah halaman berisi identitas brand, slogan, dan hak cipta.",
+    defaultSection: () => ({
+      id: `sec-foot-${Date.now()}`,
+      type: "footer",
+      position: 0,
+      content: {
+        brand_name: "Toko Resmi Official",
+        tagline: "Kualitas terbaik untuk kepuasan pelanggan setia.",
+        copyright: "Hak Cipta Dilindungi Undang-Undang.",
+      },
+      style: { bg_color: "#0F172A", text_color: "#94A3B8", padding: "sm" },
+      visibility: true,
+    }),
   },
 ];

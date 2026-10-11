@@ -12,6 +12,7 @@ import {
   Star,
 } from "lucide-react";
 import { ProductCard } from "./product-card";
+import { getEmbedVideoUrl } from "@/lib/website/types";
 
 export const dynamic = "force-dynamic";
 
@@ -301,6 +302,236 @@ export default async function PublicStorePage({
                         </p>
                       </details>
                     ))}
+                  </div>
+                </div>
+              </section>
+            );
+          }
+
+          // VIDEO SHOWCASE
+          if (section.type === "video_showcase") {
+            const vid = getEmbedVideoUrl(section.content?.video_url);
+            return (
+              <section
+                key={section.id}
+                style={{
+                  backgroundColor: section.style?.bg_color || "#0F172A",
+                  color: section.style?.text_color || "#FFFFFF",
+                }}
+                className="py-16 sm:py-24 border-b border-slate-800"
+              >
+                <div className="mx-auto max-w-4xl px-5 text-center">
+                  {section.content?.badge && (
+                    <span className="inline-block rounded-full bg-emerald-500/20 text-emerald-400 px-3 py-1 text-xs font-bold mb-3 border border-emerald-500/30">
+                      {section.content.badge}
+                    </span>
+                  )}
+                  <h2 className="text-2xl font-extrabold sm:text-3xl max-w-2xl mx-auto">
+                    {section.content?.title || "Video Produk"}
+                  </h2>
+                  {section.content?.description && (
+                    <p className="mt-3 text-xs sm:text-sm opacity-80 max-w-xl mx-auto leading-relaxed">
+                      {section.content.description}
+                    </p>
+                  )}
+
+                  <div className="mt-8 overflow-hidden rounded-2xl shadow-2xl border border-slate-700 bg-black aspect-video max-w-3xl mx-auto">
+                    {vid.isEmbed && vid.url ? (
+                      <iframe
+                        src={vid.url}
+                        title={section.content?.title || "Video Player"}
+                        className="h-full w-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : vid.isMp4 && vid.url ? (
+                      <video
+                        src={vid.url}
+                        controls
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full flex-col items-center justify-center p-6 text-center text-slate-400">
+                        <p className="text-sm font-semibold">Video Siap Diputar</p>
+                        <p className="mt-1 text-xs">Masukkan tautan YouTube atau berkas video pada editor.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {section.content?.button_text && (
+                    <div className="mt-8">
+                      <a
+                        href={waLink(`Halo ${tenant.business_name}, saya tertarik dengan produk di video ${section.content?.title || ""}.`)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-xs font-bold text-white shadow-lg hover:bg-emerald-700 transition-all"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        {section.content.button_text}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          }
+
+          // GALLERY MEDIA
+          if (section.type === "gallery_media") {
+            const items = section.content?.items || [];
+            return (
+              <section
+                key={section.id}
+                style={{ backgroundColor: section.style?.bg_color || "#FFFFFF" }}
+                className="py-16 sm:py-20 border-b border-slate-100"
+              >
+                <div className="mx-auto max-w-5xl px-5 sm:px-8">
+                  <div className="text-center max-w-2xl mx-auto mb-10">
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                      {section.content?.title || "Galeri Foto"}
+                    </h2>
+                    {section.content?.subtitle && (
+                      <p className="mt-2 text-sm text-slate-500">{section.content.subtitle}</p>
+                    )}
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+                    {items.map((item: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm transition-all hover:shadow-md"
+                      >
+                        <div className="aspect-square w-full overflow-hidden bg-slate-100">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.image_url || "/placeholder-product.svg"}
+                            alt={item.caption || `Foto Galeri ${idx + 1}`}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                        {item.caption && (
+                          <div className="p-3 text-center bg-white border-t border-slate-100">
+                            <p className="text-xs font-semibold text-slate-800">{item.caption}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            );
+          }
+
+          // TEXT BANNER / ABOUT
+          if (section.type === "text_banner") {
+            return (
+              <section
+                key={section.id}
+                style={{ backgroundColor: section.style?.bg_color || "#F8FAFC" }}
+                className="py-16 sm:py-24 border-b border-slate-100"
+              >
+                <div className="mx-auto max-w-5xl px-5 sm:px-8">
+                  <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+                    <div>
+                      {section.content?.badge && (
+                        <span className="inline-block rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 mb-3">
+                          {section.content.badge}
+                        </span>
+                      )}
+                      <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                        {section.content?.title || "Tentang Brand Kami"}
+                      </h2>
+                      <p className="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
+                        {section.content?.paragraph || ""}
+                      </p>
+
+                      {Array.isArray(section.content?.bullet_points) && section.content.bullet_points.length > 0 && (
+                        <ul className="mt-6 space-y-2.5 text-xs text-slate-700">
+                          {section.content.bullet_points.map((pt: string, idx: number) => (
+                            <li key={idx} className="flex items-start gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                              <span>{pt}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {section.content?.button_text && (
+                        <div className="mt-8">
+                          <a
+                            href={waLink(`Halo ${tenant.business_name}, saya ingin tahu lebih banyak tentang toko Anda.`)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-600 transition-all"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            {section.content.button_text}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    {section.content?.image_url && (
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-md">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={section.content.image_url}
+                          alt={section.content?.title || "Foto Cerita"}
+                          className="h-full w-full object-cover max-h-[400px]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            );
+          }
+
+          // COUNTDOWN PROMO
+          if (section.type === "countdown_promo") {
+            return (
+              <section
+                key={section.id}
+                style={{
+                  backgroundColor: section.style?.bg_color || "#065F46",
+                  color: section.style?.text_color || "#FFFFFF",
+                }}
+                className="py-12 sm:py-16"
+              >
+                <div className="mx-auto max-w-4xl px-5 text-center">
+                  {section.content?.badge && (
+                    <span className="inline-block rounded-full bg-amber-400 text-slate-950 px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider mb-3 shadow-sm">
+                      {section.content.badge}
+                    </span>
+                  )}
+                  <h2 className="text-2xl font-extrabold sm:text-4xl tracking-tight">
+                    {section.content?.title || "Promo Kilat Terbatas"}
+                  </h2>
+                  <p className="mt-3 text-xs sm:text-sm opacity-90 max-w-lg mx-auto leading-relaxed">
+                    {section.content?.subtitle || "Dapatkan harga promo terbaik sebelum penawaran berakhir."}
+                  </p>
+
+                  <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                    {section.content?.discount_tag && (
+                      <span className="rounded-xl border border-white/30 bg-white/10 px-4 py-2 font-mono text-sm font-bold backdrop-blur-xs">
+                        {section.content.discount_tag}
+                      </span>
+                    )}
+                    <span className="rounded-xl bg-white px-5 py-2 font-mono text-sm font-extrabold text-slate-900 shadow-sm">
+                      Sisa Waktu: {section.content?.countdown_hours || 12} Jam
+                    </span>
+                  </div>
+
+                  <div className="mt-8">
+                    <a
+                      href={waLink(`Halo ${tenant.business_name}, saya ingin klaim ${section.content?.title || "promo flash sale"} sekarang!`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-7 py-3.5 text-xs font-bold text-slate-950 shadow-xl hover:bg-amber-300 transition-all hover:scale-105"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      {section.content?.button_text || "Klaim Promo via WhatsApp"}
+                    </a>
                   </div>
                 </div>
               </section>

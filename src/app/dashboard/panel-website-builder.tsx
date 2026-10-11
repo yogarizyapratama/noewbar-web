@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Copy,
   ExternalLink,
   Eye,
   Globe,
@@ -32,7 +33,10 @@ import {
   Monitor,
   Save,
   Smartphone,
+  Plus,
   Sparkles,
+  Trash2,
+  Video,
   Wand2,
   X,
 } from "lucide-react";
@@ -46,7 +50,14 @@ import {
   InlineLoading,
   cn,
 } from "@/components/ui";
-import { TEMPLATES, type WebsiteSection, type WebsiteTemplate } from "@/lib/website/types";
+import {
+  TEMPLATES,
+  getEmbedVideoUrl,
+  type WebsiteSection,
+  type WebsiteTemplate,
+} from "@/lib/website/types";
+import { WebsiteInspector } from "./website-inspector";
+import { WebsiteSectionModal } from "./website-section-modal";
 
 type WebsiteRecord = {
   id: string;
@@ -81,7 +92,6 @@ export function PanelWebsiteBuilder() {
   const [aiGenError, setAiGenError] = useState<string | null>(null);
 
   // Per-block AI editing state
-  const [blockAiPrompt, setBlockAiPrompt] = useState("");
   const [blockAiBusy, setBlockAiBusy] = useState(false);
   const [blockAiMsg, setBlockAiMsg] = useState<string | null>(null);
 
@@ -93,6 +103,7 @@ export function PanelWebsiteBuilder() {
   // Template Preview Modal state
   const [previewTemplate, setPreviewTemplate] = useState<WebsiteTemplate | null>(null);
   const [templatePreviewDevice, setTemplatePreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [showAddSectionModal, setShowAddSectionModal] = useState(false);
 
   useEffect(() => {
     loadWebsites();
@@ -228,8 +239,8 @@ export function PanelWebsiteBuilder() {
     }
   }
 
-  async function handleEditBlockWithAi() {
-    if (!currentSite || !selectedSecId || !blockAiPrompt.trim()) return;
+  async function handleRunSectionAi(promptText: string) {
+    if (!currentSite || !selectedSecId || !promptText.trim()) return;
     const target = sections.find((s) => s.id === selectedSecId);
     if (!target) return;
 
@@ -243,7 +254,7 @@ export function PanelWebsiteBuilder() {
           action: "edit_section_ai",
           website_id: currentSite.id,
           section: target,
-          prompt: blockAiPrompt.trim(),
+          prompt: promptText.trim(),
         }),
       });
       const json = await res.json();
@@ -252,7 +263,6 @@ export function PanelWebsiteBuilder() {
           prev.map((s) => (s.id === selectedSecId ? json.updatedSection : s))
         );
         setBlockAiMsg("Section berhasil diperbarui oleh AI!");
-        setBlockAiPrompt("");
       } else {
         setBlockAiMsg(json.error || "Gagal mengubah section dengan AI.");
       }
@@ -261,6 +271,59 @@ export function PanelWebsiteBuilder() {
     } finally {
       setBlockAiBusy(false);
     }
+  }
+
+  function handleUpdateSectionContent(newContent: Record<string, any>) {
+    if (!selectedSecId) return;
+    setSections((prev) =>
+      prev.map((s) =>
+        s.id === selectedSecId ? { ...s, content: { ...s.content, ...newContent } } : s
+      )
+    );
+  }
+
+  function handleUpdateSectionStyle(newStyle: Record<string, any>) {
+    if (!selectedSecId) return;
+    setSections((prev) =>
+      prev.map((s) =>
+        s.id === selectedSecId ? { ...s, style: { ...s.style, ...newStyle } } : s
+      )
+    );
+  }
+
+  function handleDuplicateSection(id: string) {
+    const idx = sections.findIndex((s) => s.id === id);
+    if (idx === -1) return;
+    const target = sections[idx];
+    const clone: WebsiteSection = {
+      ...target,
+      id: `sec-${target.type}-${Date.now()}`,
+      position: idx + 1,
+      content: JSON.parse(JSON.stringify(target.content)),
+      style: JSON.parse(JSON.stringify(target.style)),
+    };
+    const next = [...sections];
+    next.splice(idx + 1, 0, clone);
+    setSections(next);
+    setSelectedSecId(clone.id);
+  }
+
+  function handleDeleteSection(id: string) {
+    if (sections.length <= 1) {
+      alert("Halaman harus memiliki minimal 1 section.");
+      return;
+    }
+    if (!confirm("Hapus section ini dari halaman?")) return;
+    const next = sections.filter((s) => s.id !== id);
+    setSections(next);
+    if (selectedSecId === id) {
+      setSelectedSecId(next[0]?.id || null);
+    }
+  }
+
+  function handleAddSection(newSec: WebsiteSection) {
+    setSections((prev) => [...prev, newSec]);
+    setSelectedSecId(newSec.id);
   }
 
   function moveSection(idx: number, dir: "up" | "down") {
@@ -947,23 +1010,35 @@ export function PanelWebsiteBuilder() {
             </div>
           )}
 
-          {/* Editor Grid: Left = Section Tree & AI Editor, Right = Live Canvas Preview */}
-          <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
-            {/* Panel Kiri: Section List & Block AI Editor */}
+          {/* Editor Grid: Left = Section Tree & Elementor Inspector, Right = Live Canvas Preview */}
+          <div className="grid gap-4 lg:grid-cols-[360px_1fr] items-start">
+            {/* Panel Kiri: Section List & Elementor Inspector */}
             <div className="space-y-4">
+              {/* Card Section Tree */}
               <Card>
-                <CardHeader
-                  icon={<Layers className="h-4 w-4" />}
-                  title="Daftar Section"
-                  description="Pilih section untuk diedit atau diubah instruksi AI-nya."
-                />
-                <CardBody className="p-2 space-y-1">
+                <div className="flex items-center justify-between border-b border-ink-100 p-3 bg-ink-50/50">
+                  <div className="flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-signal-strong" />
+                    <span className="text-xs font-bold text-ink">Struktur Halaman</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    onClick={() => setShowAddSectionModal(true)}
+                    className="text-2xs font-bold"
+                  >
+                    <Plus className="mr-1 h-3 w-3" />
+                    Tambah Section
+                  </Button>
+                </div>
+                <CardBody className="p-2 space-y-1 max-h-56 overflow-y-auto">
                   {sections.map((sec, idx) => (
                     <div
                       key={sec.id}
                       onClick={() => setSelectedSecId(sec.id)}
                       className={cn(
-                        "flex items-center justify-between rounded-lg p-2.5 text-xs font-semibold cursor-pointer transition-all border",
+                        "flex items-center justify-between rounded-lg p-2 text-xs font-semibold cursor-pointer transition-all border",
                         selectedSecId === sec.id
                           ? "border-signal bg-signal-wash text-signal-strong shadow-flat"
                           : "border-transparent hover:bg-ink-50 text-ink"
@@ -971,17 +1046,18 @@ export function PanelWebsiteBuilder() {
                     >
                       <div className="flex items-center gap-2 truncate">
                         <span className="font-mono text-2xs text-ink-400 w-4">{idx + 1}</span>
-                        <span className="capitalize">{sec.type.replace("_", " ")}</span>
+                        <span className="capitalize text-2xs">{sec.type.replace("_", " ")}</span>
                         {!sec.visibility && (
-                          <span className="text-[10px] text-ink-400 font-normal">(tersembunyi)</span>
+                          <span className="text-[9px] text-ink-400 font-normal">(sembunyi)</span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => moveSection(idx, "up")}
                           disabled={idx === 0}
+                          title="Naikkan"
                           className="p-1 text-ink-400 hover:text-ink disabled:opacity-30"
                         >
                           <ChevronUp className="h-3.5 w-3.5" />
@@ -990,6 +1066,7 @@ export function PanelWebsiteBuilder() {
                           type="button"
                           onClick={() => moveSection(idx, "down")}
                           disabled={idx === sections.length - 1}
+                          title="Turunkan"
                           className="p-1 text-ink-400 hover:text-ink disabled:opacity-30"
                         >
                           <ChevronDown className="h-3.5 w-3.5" />
@@ -1000,57 +1077,38 @@ export function PanelWebsiteBuilder() {
                 </CardBody>
               </Card>
 
-              {/* Edit Block dengan AI */}
+              {/* Elementor-Style Inspector Panel */}
               {selectedSection && (
-                <Card className="border-signal/30 bg-signal-wash/20">
-                  <CardHeader
-                    icon={<Wand2 className="h-4 w-4 text-signal-strong" />}
-                    title={`Edit ${selectedSection.type.toUpperCase()} dengan AI`}
-                    description="Instruksikan AI untuk mengubah copywriting, keunggulan, atau headline pada section terpilih."
-                  />
-                  <CardBody className="space-y-3">
-                    <textarea
-                      rows={3}
-                      placeholder={`Misal: Ubah headline agar lebih ramah, gunakan kata sapaan Kak, dan sebutkan gratis ongkir.`}
-                      value={blockAiPrompt}
-                      onChange={(e) => setBlockAiPrompt(e.target.value)}
-                      className="w-full rounded-lg border border-ink-200 bg-white p-2.5 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
-                    />
-
-                    {blockAiMsg && (
-                      <p className="text-2xs font-semibold text-signal-strong">{blockAiMsg}</p>
-                    )}
-
-                    <div className="flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggleSectionVisibility(selectedSection.id)}
-                        className="text-2xs font-semibold text-ink-600 hover:underline"
-                      >
-                        {selectedSection.visibility ? "Sembunyikan Section" : "Tampilkan Section"}
-                      </button>
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        onClick={handleEditBlockWithAi}
-                        loading={blockAiBusy}
-                        disabled={!blockAiPrompt.trim()}
-                      >
-                        <Sparkles className="mr-1 h-3 w-3" />
-                        Terapkan Perubahan
-                      </Button>
-                    </div>
-                  </CardBody>
-                </Card>
+                <WebsiteInspector
+                  section={selectedSection}
+                  onUpdateContent={handleUpdateSectionContent}
+                  onUpdateStyle={handleUpdateSectionStyle}
+                  onMoveUp={() => {
+                    const idx = sections.findIndex((s) => s.id === selectedSecId);
+                    if (idx > 0) moveSection(idx, "up");
+                  }}
+                  onMoveDown={() => {
+                    const idx = sections.findIndex((s) => s.id === selectedSecId);
+                    if (idx < sections.length - 1) moveSection(idx, "down");
+                  }}
+                  onDuplicate={() => handleDuplicateSection(selectedSection.id)}
+                  onDelete={() => handleDeleteSection(selectedSection.id)}
+                  onToggleVisibility={() => toggleSectionVisibility(selectedSection.id)}
+                  isFirst={sections.findIndex((s) => s.id === selectedSecId) === 0}
+                  isLast={sections.findIndex((s) => s.id === selectedSecId) === sections.length - 1}
+                  onRunAi={handleRunSectionAi}
+                  aiBusy={blockAiBusy}
+                  aiMsg={blockAiMsg}
+                />
               )}
             </div>
 
             {/* Panel Kanan: Canvas Live Preview */}
-            <div className="rounded-xl border border-ink-200 bg-ink-100/60 p-4 min-h-[600px] flex items-start justify-center overflow-x-auto">
+            <div className="rounded-xl border border-ink-200 bg-ink-100/60 p-4 min-h-[640px] flex flex-col items-center justify-start overflow-x-auto space-y-4">
               <div
                 className={cn(
-                  "bg-white shadow-overlay transition-all duration-300 rounded-xl overflow-hidden border border-ink-200",
-                  previewDevice === "desktop" ? "w-full max-w-4xl" : "w-[375px]"
+                  "bg-white shadow-overlay transition-all duration-300 rounded-xl overflow-hidden border border-ink-200 w-full",
+                  previewDevice === "desktop" ? "max-w-4xl" : "max-w-[375px]"
                 )}
               >
                 {/* Mock Browser Header */}
@@ -1066,8 +1124,8 @@ export function PanelWebsiteBuilder() {
                 </div>
 
                 {/* Render Sections in Canvas */}
-                <div className="divide-y divide-ink-100 max-h-[700px] overflow-y-auto">
-                  {sections.map((sec) => {
+                <div className="divide-y divide-ink-100 max-h-[720px] overflow-y-auto">
+                  {sections.map((sec, secIdx) => {
                     if (!sec.visibility) return null;
                     const isSelected = sec.id === selectedSecId;
 
@@ -1076,117 +1134,385 @@ export function PanelWebsiteBuilder() {
                         key={sec.id}
                         onClick={() => setSelectedSecId(sec.id)}
                         className={cn(
-                          "relative cursor-pointer transition-all",
-                          isSelected && "ring-2 ring-signal ring-inset"
+                          "group relative cursor-pointer transition-all",
+                          isSelected && "ring-2 ring-signal ring-inset shadow-md"
                         )}
                       >
+                        {/* Floating Action Toolbar on Canvas Section */}
                         {isSelected && (
-                          <div className="absolute top-2 right-2 z-10 rounded bg-signal-strong text-white px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase">
-                            Aktif: {sec.type}
+                          <div className="absolute top-2 right-2 z-20 flex items-center gap-1 rounded-lg bg-black/80 px-2 py-1 text-white shadow-md backdrop-blur-xs">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mr-1.5">
+                              {sec.type.replace("_", " ")}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                moveSection(secIdx, "up");
+                              }}
+                              disabled={secIdx === 0}
+                              title="Naikkan"
+                              className="rounded p-1 hover:bg-white/20 disabled:opacity-30"
+                            >
+                              <ChevronUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                moveSection(secIdx, "down");
+                              }}
+                              disabled={secIdx === sections.length - 1}
+                              title="Turunkan"
+                              className="rounded p-1 hover:bg-white/20 disabled:opacity-30"
+                            >
+                              <ChevronDown className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDuplicateSection(sec.id);
+                              }}
+                              title="Duplikat section"
+                              className="rounded p-1 hover:bg-white/20"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSection(sec.id);
+                              }}
+                              title="Hapus section"
+                              className="rounded p-1 text-danger hover:bg-white/20"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
                           </div>
                         )}
 
+                        {/* 1. ANNOUNCEMENT */}
                         {sec.type === "announcement" && (
                           <div
-                            style={{ backgroundColor: sec.style?.bg_color || "#065F46", color: sec.style?.text_color || "#FFFFFF" }}
-                            className="py-2 px-4 text-center text-xs font-semibold"
+                            style={{
+                              backgroundColor: sec.style?.bg_color || "#065F46",
+                              color: sec.style?.text_color || "#FFFFFF",
+                            }}
+                            className="py-2.5 px-4 text-center text-xs font-semibold"
                           >
-                            {sec.content?.text}
+                            {sec.content?.text || "Pengumuman promo toko"}
                           </div>
                         )}
 
+                        {/* 2. HERO */}
                         {sec.type === "hero" && (
-                          <div className="p-8 text-center bg-slate-50">
+                          <div
+                            style={{ backgroundColor: sec.style?.bg_color || "#F8FAFC" }}
+                            className="p-8 sm:p-12 text-center border-b border-slate-100"
+                          >
+                            <div className="max-w-2xl mx-auto">
+                              {sec.content?.badge && (
+                                <span className="inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 mb-3 shadow-xs">
+                                  {sec.content.badge}
+                                </span>
+                              )}
+                              <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                                {sec.content?.headline || "Headline Produk Toko"}
+                              </h1>
+                              <p className="mt-3 text-xs sm:text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
+                                {sec.content?.subheadline || "Penjelasan penawaran produk..."}
+                              </p>
+
+                              {/* Hero Media Preview */}
+                              {sec.content?.image_url && (
+                                <div className="mt-6 mx-auto max-w-md overflow-hidden rounded-xl border border-slate-200 shadow-md">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={sec.content.image_url}
+                                    alt="Hero"
+                                    className="h-full w-full object-cover max-h-60"
+                                  />
+                                </div>
+                              )}
+
+                              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                                <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm">
+                                  <MessageCircle className="h-4 w-4" />
+                                  {sec.content?.cta_primary_text || "Pesan via WA"}
+                                </span>
+                                {sec.content?.cta_secondary_text && (
+                                  <span className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-xs">
+                                    {sec.content.cta_secondary_text}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3. VIDEO SHOWCASE */}
+                        {sec.type === "video_showcase" && (() => {
+                          const vid = getEmbedVideoUrl(sec.content?.video_url);
+                          return (
+                            <div
+                              style={{
+                                backgroundColor: sec.style?.bg_color || "#0F172A",
+                                color: sec.style?.text_color || "#FFFFFF",
+                              }}
+                              className="p-8 text-center"
+                            >
+                              {sec.content?.badge && (
+                                <span className="inline-block rounded-full bg-emerald-500/20 text-emerald-400 px-3 py-1 text-xs font-bold mb-2 border border-emerald-500/30">
+                                  {sec.content.badge}
+                                </span>
+                              )}
+                              <h3 className="text-xl font-extrabold max-w-xl mx-auto">
+                                {sec.content?.title || "Video Showcase Produk"}
+                              </h3>
+                              {sec.content?.description && (
+                                <p className="mt-2 text-xs opacity-80 max-w-md mx-auto">
+                                  {sec.content.description}
+                                </p>
+                              )}
+                              <div className="mt-6 overflow-hidden rounded-xl border border-slate-700 bg-black aspect-video max-w-xl mx-auto">
+                                {vid.isEmbed && vid.url ? (
+                                  <iframe
+                                    src={vid.url}
+                                    title="Video"
+                                    className="h-full w-full border-0 pointer-events-none"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full flex-col items-center justify-center text-slate-400 p-4">
+                                    <Video className="h-8 w-8 mb-2 text-slate-500" />
+                                    <p className="text-xs font-bold">Video Player Interaktif</p>
+                                    <p className="text-[10px] mt-0.5">{sec.content?.video_url || "Belum ada tautan video"}</p>
+                                  </div>
+                                )}
+                              </div>
+                              {sec.content?.button_text && (
+                                <span className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm">
+                                  <MessageCircle className="h-3.5 w-3.5" />
+                                  {sec.content.button_text}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* 4. GALLERY MEDIA */}
+                        {sec.type === "gallery_media" && (
+                          <div
+                            style={{ backgroundColor: sec.style?.bg_color || "#FFFFFF" }}
+                            className="p-8 text-center"
+                          >
+                            <h3 className="text-base font-bold text-slate-900 mb-1">
+                              {sec.content?.title || "Galeri Foto"}
+                            </h3>
+                            {sec.content?.subtitle && (
+                              <p className="text-xs text-slate-500 mb-6">{sec.content.subtitle}</p>
+                            )}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
+                              {(sec.content?.items || []).map((it: any, i: number) => (
+                                <div key={i} className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shadow-xs">
+                                  <div className="aspect-square w-full bg-slate-100">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={it.image_url || "/placeholder-product.svg"}
+                                      alt="Galeri"
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </div>
+                                  {it.caption && (
+                                    <p className="p-2 text-[10px] font-semibold text-slate-700 truncate bg-white">
+                                      {it.caption}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 5. TEXT BANNER / ABOUT */}
+                        {sec.type === "text_banner" && (
+                          <div
+                            style={{ backgroundColor: sec.style?.bg_color || "#F8FAFC" }}
+                            className="p-8"
+                          >
+                            <div className="grid gap-6 sm:grid-cols-2 sm:items-center max-w-3xl mx-auto">
+                              <div>
+                                {sec.content?.badge && (
+                                  <span className="inline-block rounded-full bg-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-700 mb-2">
+                                    {sec.content.badge}
+                                  </span>
+                                )}
+                                <h3 className="text-lg font-bold text-slate-900">
+                                  {sec.content?.title || "Cerita Toko"}
+                                </h3>
+                                <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+                                  {sec.content?.paragraph || "Paragraf cerita toko..."}
+                                </p>
+                                {sec.content?.button_text && (
+                                  <span className="mt-4 inline-block rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white">
+                                    {sec.content.button_text}
+                                  </span>
+                                )}
+                              </div>
+                              {sec.content?.image_url && (
+                                <div className="rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={sec.content.image_url}
+                                    alt="Story"
+                                    className="h-full w-full object-cover max-h-48"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 6. COUNTDOWN PROMO */}
+                        {sec.type === "countdown_promo" && (
+                          <div
+                            style={{
+                              backgroundColor: sec.style?.bg_color || "#065F46",
+                              color: sec.style?.text_color || "#FFFFFF",
+                            }}
+                            className="p-8 text-center"
+                          >
                             {sec.content?.badge && (
-                              <span className="inline-block rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-bold text-emerald-800 mb-2">
+                              <span className="inline-block rounded-full bg-amber-400 text-slate-950 px-3 py-0.5 text-2xs font-extrabold mb-2 uppercase">
                                 {sec.content.badge}
                               </span>
                             )}
-                            <h2 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
-                              {sec.content?.headline}
-                            </h2>
-                            <p className="mt-2 text-xs text-slate-600 max-w-md mx-auto">
-                              {sec.content?.subheadline}
-                            </p>
-                            <div className="mt-4 flex justify-center gap-2">
-                              <span className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white">
-                                {sec.content?.cta_primary_text || "Pesan via WA"}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
-                        {sec.type === "benefits" && (
-                          <div className="p-6 bg-white">
-                            <h3 className="text-sm font-bold text-center text-slate-900 mb-4">
-                              {sec.content?.title || "Keunggulan"}
+                            <h3 className="text-xl font-extrabold max-w-lg mx-auto">
+                              {sec.content?.title || "Promo Flash Sale"}
                             </h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                              {(sec.content?.items || []).map((it: any, i: number) => (
-                                <div key={i} className="rounded-lg border border-slate-200 p-3 bg-slate-50 text-xs">
-                                  <p className="font-bold text-slate-900">{it.title}</p>
-                                  <p className="text-[11px] text-slate-500 mt-1">{it.desc}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {sec.type === "product_grid" && (
-                          <div className="p-6 bg-slate-50 text-center">
-                            <h3 className="text-sm font-bold text-slate-900">{sec.content?.title || "Katalog Produk"}</h3>
-                            <p className="text-xs text-slate-500 mt-1">Produk sinkron langsung dari database katalog toko Anda.</p>
-                            <div className="mt-3 flex justify-center gap-2">
-                              <span className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700">
-                                4+ Produk Aktif Terhubung
+                            <p className="mt-1 text-xs opacity-90 max-w-md mx-auto">
+                              {sec.content?.subtitle}
+                            </p>
+                            <div className="mt-4 flex items-center justify-center gap-2 font-mono text-xs">
+                              {sec.content?.discount_tag && (
+                                <span className="rounded bg-white/20 px-3 py-1 font-bold">
+                                  {sec.content.discount_tag}
+                                </span>
+                              )}
+                              <span className="rounded bg-white px-3 py-1 font-extrabold text-slate-900 shadow-xs">
+                                Sisa: {sec.content?.countdown_hours || 12} Jam
                               </span>
                             </div>
-                          </div>
-                        )}
-
-                        {sec.type === "testimonials" && (
-                          <div className="p-6 bg-white">
-                            <h3 className="text-sm font-bold text-center text-slate-900 mb-3">{sec.content?.title || "Testimoni"}</h3>
-                            <div className="space-y-2">
-                              {(sec.content?.items || []).map((it: any, i: number) => (
-                                <div key={i} className="rounded border border-slate-100 p-2 text-xs italic text-slate-600 bg-slate-50">
-                                  &ldquo;{it.text}&rdquo; - <span className="font-bold not-italic text-slate-800">{it.name}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {sec.type === "faq" && (
-                          <div className="p-6 bg-slate-50">
-                            <h3 className="text-sm font-bold text-center text-slate-900 mb-3">{sec.content?.title || "FAQ"}</h3>
-                            <div className="space-y-1.5 max-w-md mx-auto">
-                              {(sec.content?.items || []).map((it: any, i: number) => (
-                                <div key={i} className="rounded border border-slate-200 bg-white p-2.5 text-xs">
-                                  <p className="font-semibold text-slate-900">{it.q}</p>
-                                  <p className="text-slate-500 mt-0.5 text-[11px]">{it.a}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {sec.type === "whatsapp_cta" && (
-                          <div
-                            style={{ backgroundColor: sec.style?.bg_color || "#065F46", color: "#FFFFFF" }}
-                            className="p-6 text-center"
-                          >
-                            <h3 className="text-base font-bold">{sec.content?.title}</h3>
-                            <p className="text-xs mt-1 opacity-90">{sec.content?.subtitle}</p>
-                            <span className="mt-3 inline-block rounded-lg bg-white px-4 py-1.5 text-xs font-bold text-emerald-900">
-                              {sec.content?.button_text || "Chat WA"}
+                            <span className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-md">
+                              <MessageCircle className="h-3.5 w-3.5" />
+                              {sec.content?.button_text || "Klaim Promo"}
                             </span>
                           </div>
                         )}
 
+                        {/* 7. BENEFITS */}
+                        {sec.type === "benefits" && (
+                          <div className="p-8 bg-white border-b border-slate-100">
+                            <h3 className="text-base font-bold text-center text-slate-900 mb-6">
+                              {sec.content?.title || "Keunggulan Layanan"}
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto">
+                              {(sec.content?.items || []).map((it: any, i: number) => (
+                                <div key={i} className="rounded-xl border border-slate-200 p-3.5 bg-slate-50 text-xs">
+                                  <p className="font-bold text-slate-900">{it.title}</p>
+                                  <p className="text-2xs text-slate-500 mt-1 leading-relaxed">{it.desc}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 8. PRODUCT GRID */}
+                        {sec.type === "product_grid" && (
+                          <div className="p-8 bg-slate-50/70 text-center border-b border-slate-100">
+                            <h3 className="text-base font-bold text-slate-900">{sec.content?.title || "Katalog Produk Pilihan"}</h3>
+                            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">{sec.content?.subtitle}</p>
+                            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
+                              {[1, 2, 3].map((num) => (
+                                <div key={num} className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xs">
+                                  <div className="aspect-square w-full rounded-lg bg-slate-100 mb-2 overflow-hidden">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src="/placeholder-product.svg" alt="P" className="h-full w-full object-cover" />
+                                  </div>
+                                  <p className="font-bold text-slate-900 text-xs truncate">Sample Produk #{num}</p>
+                                  <p className="font-mono text-emerald-700 font-extrabold text-xs mt-1">Rp 175.000</p>
+                                  <span className="mt-2 block rounded bg-slate-900 py-1 text-center text-[10px] font-bold text-white">
+                                    Pesan via WA
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 9. TESTIMONIALS */}
+                        {sec.type === "testimonials" && (
+                          <div className="p-8 bg-white border-b border-slate-100">
+                            <h3 className="text-base font-bold text-center text-slate-900 mb-4">{sec.content?.title || "Ulasan Pembeli"}</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+                              {(sec.content?.items || []).map((it: any, i: number) => (
+                                <div key={i} className="rounded-xl border border-slate-200 p-3.5 text-xs italic text-slate-700 bg-slate-50">
+                                  &ldquo;{it.text}&rdquo;
+                                  <p className="mt-2 font-bold not-italic text-slate-900 text-2xs">
+                                    {it.name} <span className="text-slate-400 font-normal">- {it.role}</span>
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 10. FAQ */}
+                        {sec.type === "faq" && (
+                          <div className="p-8 bg-slate-50/70 border-b border-slate-100">
+                            <h3 className="text-base font-bold text-center text-slate-900 mb-4">{sec.content?.title || "FAQ"}</h3>
+                            <div className="space-y-2 max-w-md mx-auto">
+                              {(sec.content?.items || []).map((it: any, i: number) => (
+                                <div key={i} className="rounded-xl border border-slate-200 bg-white p-3 text-xs">
+                                  <p className="font-bold text-slate-900">{it.q}</p>
+                                  <p className="text-slate-600 mt-1 text-2xs leading-relaxed">{it.a}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 11. WHATSAPP CTA */}
+                        {sec.type === "whatsapp_cta" && (
+                          <div
+                            style={{
+                              backgroundColor: sec.style?.bg_color || "#065F46",
+                              color: sec.style?.text_color || "#FFFFFF",
+                            }}
+                            className="p-8 text-center"
+                          >
+                            <h3 className="text-lg font-extrabold max-w-md mx-auto">{sec.content?.title}</h3>
+                            <p className="text-xs mt-1.5 opacity-90 max-w-sm mx-auto leading-relaxed">{sec.content?.subtitle}</p>
+                            <span className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-emerald-900 shadow-md">
+                              <MessageCircle className="h-4 w-4 text-emerald-700" />
+                              {sec.content?.button_text || "Chat WhatsApp"}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* 12. FOOTER */}
                         {sec.type === "footer" && (
-                          <div className="p-4 bg-slate-900 text-center text-[10px] text-slate-400">
-                            {sec.content?.brand_name} &bull; {sec.content?.copyright}
+                          <div
+                            style={{
+                              backgroundColor: sec.style?.bg_color || "#0F172A",
+                              color: sec.style?.text_color || "#94A3B8",
+                            }}
+                            className="p-5 text-center text-2xs"
+                          >
+                            <p className="font-bold text-white text-xs">{sec.content?.brand_name || "Toko Online"}</p>
+                            <p className="mt-0.5 opacity-80">{sec.content?.tagline}</p>
+                            <p className="mt-2 opacity-60">{sec.content?.copyright}</p>
                           </div>
                         )}
                       </div>
@@ -1194,10 +1520,32 @@ export function PanelWebsiteBuilder() {
                   })}
                 </div>
               </div>
+
+              {/* Bottom Canvas Button: Add Section */}
+              <button
+                type="button"
+                onClick={() => setShowAddSectionModal(true)}
+                className="w-full max-w-xl rounded-xl border-2 border-dashed border-ink-300 bg-white/70 p-3.5 text-center transition-all hover:border-signal hover:bg-signal-wash/20"
+              >
+                <div className="flex items-center justify-center gap-2 text-xs font-bold text-ink">
+                  <Plus className="h-4 w-4 text-signal-strong" />
+                  Tambah Section Baru ke Halaman
+                </div>
+                <p className="text-[10px] text-ink-500 mt-0.5">
+                  Pilih dari galeri foto, video showcase, promo flash sale, review, dan lainnya
+                </p>
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* MODAL SECTION CATALOG LIBRARY */}
+      <WebsiteSectionModal
+        isOpen={showAddSectionModal}
+        onClose={() => setShowAddSectionModal(false)}
+        onAddSection={handleAddSection}
+      />
     </div>
   );
 }
