@@ -1,0 +1,267 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Base layer for Noewbar CS Pro. Direction and dials live in DESIGN.md.
+ *
+ * Palette: a neutral ink scale + one accent (signal green) + semantic warns.
+ * Light theme on purpose: this is a storefront surface plus an operations
+ * console read in daylight by shop owners on phones (R-21 wants a written
+ * reason for dark, and there is none here).
+ *
+ * Layering rule: panels stack by surface tint and a hairline border first, and
+ * only reach for a shadow when a surface genuinely floats above the page.
+ */
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface-sunken text-ink antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* R-32: keyboard focus must always be visible, never removed without a
+     replacement. The ring is the accent so it is findable at a glance. */
+  :focus-visible {
+    outline: 2px solid theme("colors.signal.strong");
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply tracking-tight text-ink;
+    text-wrap: balance;
+  }
+
+  /* Tabular numerals for every data readout: prices, counts, latencies. */
+  .tnum,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Slim scrollbars: the console has many short scroll regions and the default
+     macOS overlay scrollbar reads as clutter against hairline borders. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme("colors.ink.300") transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: theme("colors.ink.300");
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: theme("colors.ink.400");
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* ---------------------------------------------------------------- buttons */
+  /* Solid rectangular, 8px radius. No pill shapes anywhere, CTAs included. */
+  .btn {
+    @apply inline-flex min-h-[44px] select-none items-center justify-center gap-2 rounded-lg border
+           border-transparent px-4 text-sm font-semibold transition-all duration-150
+           disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .btn:not(:disabled):active {
+    transform: scale(0.985);
+  }
+
+  .btn-primary {
+    @apply btn bg-ink text-white shadow-raised hover:bg-ink-800;
+  }
+
+  .btn-accent {
+    @apply btn bg-signal-strong text-white shadow-raised hover:bg-signal;
+  }
+
+  .btn-secondary {
+    @apply btn border-ink-200 bg-white text-ink shadow-flat hover:border-ink-300 hover:bg-ink-50;
+  }
+
+  .btn-ghost {
+    @apply btn px-3 text-ink-600 hover:bg-ink-100 hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger text-white shadow-raised hover:bg-danger-strong;
+  }
+
+  /* 40px floor: the previous 36px controls were the smallest tap targets
+     measured in the running console. */
+  .btn-sm {
+    @apply min-h-[40px] px-3 text-sm rounded-md;
+  }
+
+  /* Icon-only controls. 44px hit area on touch, visual density preserved by
+     the negative margin so it does not inflate the row. */
+  .icon-btn {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-500
+           transition-colors hover:bg-ink-100 hover:text-ink
+           max-sm:-my-1 max-sm:h-11 max-sm:w-11;
+  }
+
+  /* ------------------------------------------------------------------ cards */
+  .card {
+    @apply rounded-xl border border-ink-200 bg-white shadow-raised transition-all;
+  }
+
+  /* A card that sits inside another card: flatter, no double shadow. */
+  .card-flat {
+    @apply rounded-lg border border-ink-200 bg-white;
+  }
+
+  .card-sunken {
+    @apply rounded-xl border border-ink-200 bg-ink-50/70;
+  }
+
+  /* The one surface allowed to genuinely float: modals, command palette. */
+  .card-overlay {
+    @apply rounded-2xl border border-ink-200 bg-white shadow-overlay;
+  }
+
+  /* ------------------------------------------------------------------ forms */
+  .field {
+    @apply block w-full rounded-lg border border-ink-200 bg-white px-3.5 py-2.5 text-base text-ink
+           shadow-flat outline-none transition-all
+           placeholder:text-ink-400
+           focus:border-signal focus:ring-2 focus:ring-signal/20
+           disabled:bg-ink-50 disabled:text-ink-500 sm:text-sm;
+  }
+
+  .field-sm {
+    @apply py-1.5 text-sm rounded-md;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-600;
+  }
+
+  .hint {
+    @apply mt-1 text-xs leading-relaxed text-ink-500;
+  }
+
+  /* ----------------------------------------------------------------- badges */
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-xs font-semibold
+           whitespace-nowrap;
+  }
+
+  .badge-neutral {
+    @apply badge border-ink-200 bg-ink-50 text-ink-700;
+  }
+
+  .badge-signal {
+    @apply badge border-signal/20 bg-signal-wash text-signal-strong;
+  }
+
+  .badge-warn {
+    @apply badge border-warn/25 bg-warn-wash text-warn-strong;
+  }
+
+  .badge-danger {
+    @apply badge border-danger/25 bg-danger-wash text-danger-strong;
+  }
+
+  /* ------------------------------------------------------------------- tabs */
+  /* Segmented control for in-page switching (console tabs, dashboard rows). */
+  .segmented {
+    @apply inline-flex items-center gap-0.5 rounded-lg border border-ink-200 bg-ink-50 p-0.5;
+  }
+
+  .segmented-item {
+    @apply inline-flex min-h-[40px] items-center gap-1.5 rounded-[6px] px-3 text-sm font-semibold
+           text-ink-500 transition-all hover:text-ink;
+  }
+
+  .segmented-item[data-active="true"] {
+    @apply bg-white text-ink shadow-flat;
+  }
+
+  /* ------------------------------------------------------------ typographic */
+  /* 12px floor: 11px measured as unreadably small on a phone. */
+  .eyebrow {
+    @apply font-mono text-xs font-semibold uppercase tracking-[0.14em] text-ink-500;
+  }
+
+  .meta {
+    @apply font-mono text-2xs text-ink-500;
+  }
+
+  /* ----------------------------------------------------------- layout rhythm */
+  .section {
+    @apply mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-24;
+  }
+
+  .hairline {
+    @apply border-t border-ink-200;
+  }
+
+  /* Page rhythm inside the console: one scale, used everywhere. */
+  .page {
+    @apply space-y-5 p-4 sm:p-6 lg:p-8;
+  }
+
+  /* --------------------------------------------------------------- skeleton */
+  /* Loading state (R-27). A calm pulse, never a spinner that jumps the layout. */
+  .skeleton {
+    @apply relative overflow-hidden rounded bg-ink-100;
+  }
+
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r
+           from-transparent via-white/60 to-transparent content-[''];
+  }
+}
+
+@layer utilities {
+  /* Screen-reader-only text that stays available to assistive tech. */
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}

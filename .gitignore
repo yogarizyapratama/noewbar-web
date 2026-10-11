@@ -1,0 +1,37 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+
+# runtime data
+*.pid
+*.seed
+*.log
+
+# environment (NEVER commit real credentials)
+.env
+.env.local
+.env*.local
+
+# whatsmeow golang daemon
+/gateway-whatsmeow/whatsmeow-daemon*
+/gateway-whatsmeow/data/
+/data/
+*.prev
+
+# prisma
+prisma/migrations/dev.db*
+
+# misc
+.DS_Store
+*.tsbuildinfo
+/coverage
+

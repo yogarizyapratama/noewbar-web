@@ -1,0 +1,310 @@
+"use client";
+
+/**
+ * WhatsApp connection tab.
+ *
+ * The QR is fetched through /api/wa/qr. The first response can legitimately
+ * carry an empty qr_base64 because WhatsApp emits the code a moment after the
+ * socket opens, so this panel polls until a QR arrives and shows a countdown
+ * instead of leaving the user staring at a blank card.
+ */
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CheckCircle2, Loader2, MessageSquare, RefreshCw, Smartphone } from "lucide-react";
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  StatusDot,
+  cn,
+} from "@/components/ui";
+import type { Health } from "./types";
+
+type QrState = { base64: string; status: string } | null;
+
+const STEPS = [
+  "Buka WhatsApp di HP toko Anda.",
+  "Masuk ke Pengaturan, lalu Perangkat tertaut.",
+  "Pilih Tautkan perangkat, arahkan kamera ke QR di samping.",
+  "Tunggu sampai status berubah menjadi CONNECTED.",
+];
+
+export function PanelWhatsapp({
+  health,
+  onRefreshHealth,
+}: {
+  health: Health | null;
+  onRefreshHealth: () => void;
+}) {
+  const [qr, setQr] = useState<QrState>(null);
+  const [busy, setBusy] = useState(false);
+  const [polling, setPolling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const connected = health?.whatsapp?.connection_status === "CONNECTED";
+  const daemonDown = health ? health.whatsapp.daemon_reachable === false : false;
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => clearTimer, [clearTimer]);
+
+  const requestQr = useCallback(
+    async (action: "start" | "poll") => {
+      const res = await fetch("/api/wa/qr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      return res.json();
+    },
+    []
+  );
+
+  /** Poll until WhatsApp emits the code, then stop. */
+  const pollForQr = useCallback(async () => {
+    setPolling(true);
+    setCountdown(12);
+    let attempts = 0;
+
+    await new Promise<void>((resolve) => {
+      clearTimer();
+      timerRef.current = setInterval(async () => {
+        attempts += 1;
+        setCountdown((c) => (c > 0 ? c - 1 : 0));
+        try {
+          const json = await requestQr("poll");
+          if (json.qr_base64) {
+            setQr({ base64: json.qr_base64, status: json.connection_status ?? "PAIRING" });
+            clearTimer();
+            setPolling(false);
+            resolve();
+            return;
+          }
+          if (json.connection_status === "CONNECTED") {
+            clearTimer();
+            setPolling(false);
+            onRefreshHealth();
+            resolve();
+            return;
+          }
+        } catch {
+          /* keep polling, the next tick may succeed */
+        }
+        if (attempts >= 12) {
+          clearTimer();
+          setPolling(false);
+          resolve();
+        }
+      }, 2000);
+    });
+  }, [clearTimer, onRefreshHealth, requestQr]);
+
+  async function startPairing() {
+    setBusy(true);
+    setError(null);
+    setQr(null);
+    try {
+      const json = await requestQr("start");
+      if (json.daemon_reachable === false) {
+        setError(
+          json.error ??
+            "Server gateway WhatsApp belum terhubung. Silakan coba sesaat lagi."
+        );
+        return;
+      }
+      if (json.connection_status === "CONNECTED") {
+        onRefreshHealth();
+        return;
+      }
+      if (json.qr_base64) {
+        setQr({ base64: json.qr_base64, status: json.connection_status ?? "PAIRING" });
+      } else {
+        await pollForQr();
+      }
+      onRefreshHealth();
+    } catch {
+      setError("Gagal menghubungi server gateway WhatsApp.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="page">
+      <PageHeader
+        eyebrow="Integrasi"
+        title="Koneksi WhatsApp"
+        description="Pindai QR dengan WhatsApp di HP toko. Sesi disimpan terpisah per toko, jadi nomor satu toko tidak pernah tercampur dengan yang lain."
+        icon={<MessageSquare className="h-4 w-4" aria-hidden="true" />}
+        actions={
+          <Button variant="secondary" onClick={onRefreshHealth}>
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Periksa status
+          </Button>
+        }
+      />
+
+      {/* status strip */}
+      <Card>
+        <CardHeader
+          icon={<Smartphone className="h-4 w-4" aria-hidden="true" />}
+          title="Status nomor toko"
+          description={
+            connected
+              ? "Nomor sudah tertaut dan siap menerima chat pembeli."
+              : "Nomor belum tertaut. Bot belum bisa membalas siapa pun."
+          }
+          actions={
+            <Badge tone={connected ? "signal" : daemonDown ? "danger" : "warn"}>
+              <StatusDot ok={connected} pulse={connected} />
+              {connected ? "CONNECTED" : health?.whatsapp?.connection_status ?? "OFFLINE"}
+            </Badge>
+          }
+        />
+        <CardBody className="p-0">
+          <dl className="divide-y divide-ink-200">
+            <div className="flex items-baseline justify-between gap-4 px-5 py-2.5">
+              <dt className="text-xs text-ink-500">Nomor terpasang</dt>
+              <dd className="font-mono text-xs font-medium text-ink">
+                {health?.whatsapp?.phone_number ?? "belum terhubung"}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 px-5 py-2.5">
+              <dt className="text-xs text-ink-500">Server WhatsApp</dt>
+              <dd
+                className={cn(
+                  "font-mono text-xs font-medium",
+                  daemonDown ? "text-danger" : "text-signal-strong"
+                )}
+              >
+                {daemonDown ? "belum terhubung" : "Online & Siap"}
+              </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 px-5 py-2.5">
+              <dt className="text-xs text-ink-500">Catatan sistem</dt>
+              <dd className="truncate font-mono text-xs font-medium text-ink">
+                {health?.whatsapp?.error ?? "normal"}
+              </dd>
+            </div>
+          </dl>
+        </CardBody>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+        {/* pairing card */}
+        <Card>
+          <CardHeader title="Tautkan perangkat" description="QR berlaku sekitar 20 detik." />
+          <CardBody>
+            {error && (
+              <div className="mb-4">
+                <ErrorState title="Pairing gagal" description={error} compact />
+              </div>
+            )}
+
+            {connected ? (
+              <EmptyState
+                tone="signal"
+                icon={<CheckCircle2 className="h-5 w-5 text-signal" aria-hidden="true" />}
+                title="Nomor sudah tertaut"
+                description="Tidak perlu scan ulang. Untuk mengganti nomor, putuskan sesi dari HP lalu mulai pairing baru."
+                action={
+                  <Button variant="secondary" onClick={startPairing} loading={busy}>
+                    Mulai pairing ulang
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+                <div className="grid h-[220px] w-[220px] shrink-0 place-items-center rounded-lg border border-ink-200 bg-white p-2">
+                  {qr?.base64 ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={qr.base64}
+                      alt="QR pairing WhatsApp, berlaku sekitar 20 detik"
+                      width={204}
+                      height={204}
+                      className="h-full w-full rounded object-contain"
+                    />
+                  ) : polling ? (
+                    <div className="text-center">
+                      <Loader2
+                        className="mx-auto h-6 w-6 animate-spin text-ink-400"
+                        aria-hidden="true"
+                      />
+                      <p className="mt-3 text-xs font-medium text-ink-600">Menyiapkan QR...</p>
+                      <p className="mt-1 font-mono text-2xs text-ink-400">
+                        menunggu WhatsApp ({countdown}s)
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="px-4 text-center text-xs leading-relaxed text-ink-500">
+                      QR belum diminta. Tekan tombol di bawah untuk memulai pairing.
+                    </p>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <Button variant="accent" onClick={startPairing} loading={busy}>
+                    {qr?.base64 ? "Muat ulang QR" : "Tampilkan QR pairing"}
+                  </Button>
+                  {qr?.status && (
+                    <p className="meta mt-3">
+                      status sesi: {qr.status}
+                      {qr.base64 ? " - QR siap dipindai" : ""}
+                    </p>
+                  )}
+                  <ol className="mt-4 space-y-2.5">
+                    {STEPS.map((s, i) => (
+                      <li key={s} className="flex gap-2.5 text-sm text-ink-600">
+                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-ink-100 font-mono text-2xs font-bold text-ink-600">
+                          {i + 1}
+                        </span>
+                        <span className="leading-relaxed">{s}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  {daemonDown && (
+                    <p className="mt-4 rounded border border-danger/25 bg-danger-wash px-3 py-2 text-xs text-danger">
+                      Server WhatsApp belum terhubung. Silakan periksa koneksi atau coba beberapa saat lagi.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* safety note */}
+        <Card variant="sunken">
+          <CardHeader title="Kenapa ini aman" />
+          <CardBody className="space-y-3 text-sm leading-relaxed text-ink-600">
+            <p>
+              Bot hanya membalas chat yang masuk lebih dulu, dan meniru jeda mengetik manusia.
+              Bukan alat blast massal.
+            </p>
+            <p>
+              Kredensial sesi disimpan di server dengan enkripsi, tidak pernah dikirim ke browser
+              sebagai teks biasa.
+            </p>
+            <p className="text-xs text-ink-500">
+              Anda bisa memutus tautan kapan saja dari HP: Perangkat tertaut, lalu pilih perangkat
+              ini dan klik Keluar.
+            </p>
+          </CardBody>
+        </Card>
+      </div>
+    </div>
+  );
+}

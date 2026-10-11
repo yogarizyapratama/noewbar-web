@@ -1,0 +1,290 @@
+// Noewbar CS Pro - Prisma schema
+// Authoritative mapping of the 8 tables verified live in noewbar_pro_db @ seco-remote.
+// Every model pins @@map to the exact snake_case table name and every column to its exact
+// database column name, so `prisma db push` is a no-op against the existing production schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                     String   @id @default(uuid()) @db.Uuid
+  email                  String   @unique
+  password_hash          String
+  business_name          String
+  owner_name             String
+  owner_whatsapp         String
+  owner_telegram_chat_id String?
+  /// TRIAL | ACTIVE | GRACE_PERIOD | SUSPENDED
+  status                 String   @default("TRIAL")
+  /// 7 hari dari registrasi
+  trial_expires_at       DateTime
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  wa_instances     WaInstance[]
+  catalog_settings CatalogSetting?
+  conversations    Conversation[]
+  subscriptions    Subscription[]
+  orders           Order[]
+  knowledge_docs   KnowledgeDocument[]
+
+  @@map("tenants")
+}
+
+model WaInstance {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenant_id         String    @db.Uuid
+  instance_key      String    @unique
+  phone_number      String?
+  /// CONNECTED | PAIRING | OFFLINE
+  connection_status String    @default("OFFLINE")
+  last_seen         DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@map("wa_instances")
+}
+
+model CatalogSetting {
+  id                     String    @id @default(uuid()) @db.Uuid
+  tenant_id              String    @unique @db.Uuid
+  sheets_url             String
+  /// Kecamatan Asal Toko (Nama Kecamatan & Kota)
+  origin_subdistrict     String
+  /// Payment destination shown to the buyer. Optional: a store may use QRIS only,
+  /// or a bank transfer only. The AI may NEVER invent these; an empty value must
+  /// be escalated to the owner instead of guessed (zero-custody, chapter 8.C).
+  bank_name              String    @default("")
+  bank_account_number    String    @default("")
+  bank_account_holder    String    @default("")
+  /// Object key of the store's official QRIS image in MinIO, uploaded from the
+  /// dashboard. Empty means the store has not uploaded one.
+  qris_object_key        String    @default("")
+  /// Default: 120 menit
+  nudge_delay_minutes    Int       @default(120)
+  auto_reply_enabled     Boolean   @default(true)
+  alert_whatsapp_enabled Boolean   @default(true)
+  alert_telegram_enabled Boolean   @default(false)
+  /// AI Persona configuration
+  bot_name               String    @default("Admin CS")
+  bot_tone               String    @default("RAMAH")
+  custom_persona_prompt  String    @default("")
+  greeting_message       String    @default("")
+  last_synced_at         DateTime?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@map("catalog_settings")
+}
+
+model Conversation {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenant_id         String   @db.Uuid
+  /// Nomor WhatsApp pembeli, e.g. 628123456789@s.whatsapp.net
+  buyer_jid         String
+  buyer_name        String?
+  /// INQUIRY | QUOTED | PAID | ESCALATED
+  pipeline_stage    String   @default("INQUIRY")
+  is_human_takeover Boolean  @default(false)
+  last_interaction  DateTime @default(now())
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  tenant           Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  chat_messages    ChatMessage[]
+  scheduled_nudges ScheduledNudge[]
+  orders           Order[]
+
+  @@unique([tenant_id, buyer_jid])
+  @@map("conversations")
+}
+
+model ChatMessage {
+  id              String   @id @default(uuid()) @db.Uuid
+  conversation_id String   @db.Uuid
+  /// BUYER | BOT | HUMAN_AGENT
+  sender_type     String
+  /// TEXT | IMAGE | LOCATION | DOCUMENT
+  message_type    String   @default("TEXT")
+  content         String   @db.Text
+  media_url       String?
+  created_at      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model ScheduledNudge {
+  id              String   @id @default(uuid()) @db.Uuid
+  conversation_id String   @db.Uuid
+  scheduled_time  DateTime
+  /// PENDING | SENT | CANCELLED
+  status          String   @default("PENDING")
+  message_payload String   @db.Text
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@map("scheduled_nudges")
+}
+
+model ShippingRatesCache {
+  id                      String   @id @default(uuid()) @db.Uuid
+  origin_subdistrict      String
+  destination_subdistrict String
+  /// JNT | SICEPAT | JNE
+  courier                 String
+  /// EZ | REG | OKE
+  service_type            String
+  tariff_per_kg           Decimal  @db.Decimal(12, 2)
+  last_checked_at         DateTime @default(now())
+
+  @@index([origin_subdistrict, destination_subdistrict, courier])
+  @@map("shipping_rates_cache")
+}
+
+model Subscription {
+  id                      String   @id @default(uuid()) @db.Uuid
+  tenant_id               String   @db.Uuid
+  /// PRO_MONTHLY | PRO_ANNUAL
+  plan_name               String
+  amount                  Decimal  @db.Decimal(12, 2)
+  /// TRIAL | ACTIVE | GRACE_PERIOD | EXPIRED
+  status                  String   @default("TRIAL")
+  starts_at               DateTime @default(now())
+  expires_at              DateTime
+  payment_gateway         String   @default("MIDTRANS")
+  midtrans_order_id       String?  @unique
+  midtrans_transaction_id String?
+  /// qris | bca_va | gopay | shopeepay
+  payment_type            String?
+  invoice_reference       String?
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ---------------------------------------------------------------------------
+// Chapter 8.C + chapter 16 support tables.
+//
+// The chapter 9 core schema (8 tables) is the verified production schema and is
+// reproduced above without a single deviation. Two further tables are explicitly
+// required by later chapters of the same specification:
+//
+//   * `orders` - chapter 8.C: "AI Buat Order Snapshot di DB + 3 Digit Kode Unik",
+//     carrying the two separated state machines (order_status and payment_status)
+//     plus the atomic 2-hour stock reservation.
+//   * `webhook_events` - chapter 16: "Setiap webhook diperiksa menggunakan tabel
+//     webhook_events dengan idempotency key dan unique constraint".
+//
+// Both are additive: they introduce no change to the 8 documented tables.
+// ---------------------------------------------------------------------------
+
+model Order {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenant_id       String   @db.Uuid
+  conversation_id String   @db.Uuid
+  buyer_jid       String
+  buyer_name      String?
+  /// Human readable invoice: NOEW-ORDER-{yyyymmdd}-{seq}
+  order_number    String   @unique
+
+  /// DRAFT | PENDING_CONFIRMATION | PENDING_PAYMENT | PROCESSING | READY_TO_SHIP | SHIPPED | COMPLETED | CANCELLED | EXPIRED
+  order_status     String   @default("DRAFT")
+  /// UNPAID | PROOF_SUBMITTED | UNDER_REVIEW | VERIFIED | REJECTED
+  payment_status   String   @default("UNPAID")
+
+  /// Line item snapshot: [{sku, name, variant, price, qty, line_total}]
+  items            Json
+  subtotal         Decimal  @db.Decimal(12, 2)
+  shipping_tariff  Decimal  @db.Decimal(12, 2)
+  unique_code      Int
+  total_amount     Decimal  @db.Decimal(12, 2)
+
+  courier              String?
+  courier_service      String?
+  destination_subdistrict String?
+  shipping_is_estimate Boolean  @default(true)
+
+  /// Atomic stock reservation (chapter 16): released idempotently at expiry.
+  stock_reserved         Boolean   @default(false)
+  reservation_expires_at DateTime?
+  stock_released         Boolean   @default(false)
+
+  /// Hybrid payment verification (chapter 8.C.4)
+  proof_media_url    String?
+  proof_ocr          Json?
+  proof_submitted_at DateTime?
+  verified_at        DateTime?
+  verified_by        String?
+
+  /// Nomor resi pengiriman (diisi owner setelah paket diserahkan ke kurir)
+  tracking_number    String?
+  /// Tanggal dan waktu paket diserahkan ke kurir
+  shipped_at         DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  tenant       Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  conversation Conversation    @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  webhooks     WebhookEvent[]
+
+  @@index([tenant_id, payment_status])
+  @@index([tenant_id, order_status])
+  @@map("orders")
+}
+
+model WebhookEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  provider   String   /// MIDTRANS | WHATSMEOW | TELEGRAM
+  event_key  String   @unique /// Idempotency key
+  event_type String?
+  payload    Json
+  processed  Boolean  @default(false)
+  order_id   String?  @db.Uuid
+  created_at DateTime @default(now())
+
+  order Order? @relation(fields: [order_id], references: [id], onDelete: SetNull)
+
+  @@index([provider, created_at])
+  @@map("webhook_events")
+}
+
+model KnowledgeDocument {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenant_id   String   @db.Uuid
+  title       String
+  /// FAQ | SOP | SIZE_CHART | POLICY | OTHER
+  doc_type    String   @default("OTHER")
+  /// Extracted plain text content (from PDF/DOCX/TXT/paste)
+  content_text String  @db.Text
+  /// Original file object key in MinIO (null if pasted text only)
+  file_key    String?
+  file_name   String?
+  /// MIME type of original file
+  file_mime   String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id, is_active])
+  @@map("knowledge_documents")
+}
