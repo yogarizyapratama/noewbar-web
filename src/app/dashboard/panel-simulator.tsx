@@ -40,13 +40,16 @@ type SimMessage = {
 function cleanAiText(raw: string): string {
   if (!raw) return "";
   let text = raw;
-  text = text.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  text = text.replace(/<think>[\s\S]*?<\/think>\s*/gi, "");
   text = text.replace(/<think>[\s\S]*$/gi, "");
+  text = text.replace(/^[\s\S]*?<\/think>\s*/gi, "");
   text = text.replace(
-    /\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*?\[\/(?:thinking|reasoning|pikirkan|analisis)\]/gi,
+    /\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*?\[\/(?:thinking|reasoning|pikirkan|analisis)\]\s*/gi,
     ""
   );
   text = text.replace(/\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*$/gi, "");
+  text = text.replace(/^[\s\S]*?\[\/(?:thinking|reasoning|pikirkan|analisis)\]\s*/gi, "");
+  text = text.replace(/<\/?think>/gi, "");
   text = text.replace(/<pesan_pembeli>[\s\S]*?<\/pesan_pembeli>/gi, "");
   text = text.replace(/<\/?pesan_pembeli>/gi, "");
   text = text.replace(/\[JID pembeli:[^\]]*\]/gi, "");

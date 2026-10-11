@@ -173,16 +173,21 @@ export function sanitizeAgentReply(raw: string): string {
   if (!raw) return "";
   let text = raw;
 
-  // 1. Remove closed and unclosed <think> blocks
-  text = text.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  // 1. Remove paired think tags
+  text = text.replace(/<think>[\s\S]*?<\/think>\s*/gi, "");
+  // 2. Remove unclosed opening think tag
   text = text.replace(/<think>[\s\S]*$/gi, "");
-
-  // 2. Remove [THINKING]...[/THINKING] or [REASONING] blocks
+  // 3. Remove orphaned closing think tag and everything preceding it
+  text = text.replace(/^[\s\S]*?<\/think>\s*/gi, "");
+  // 4. Remove paired or orphaned [thinking] tags
   text = text.replace(
-    /\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*?\[\/(?:thinking|reasoning|pikirkan|analisis)\]/gi,
+    /\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*?\[\/(?:thinking|reasoning|pikirkan|analisis)\]\s*/gi,
     ""
   );
   text = text.replace(/\[(?:thinking|reasoning|pikirkan|analisis)\][\s\S]*$/gi, "");
+  text = text.replace(/^[\s\S]*?\[\/(?:thinking|reasoning|pikirkan|analisis)\]\s*/gi, "");
+  // 5. Clean any leftover think tags
+  text = text.replace(/<\/?think>/gi, "");
 
   // 3. Remove echoed <pesan_pembeli> blocks if model leaked them
   text = text.replace(/<pesan_pembeli>[\s\S]*?<\/pesan_pembeli>/gi, "");
