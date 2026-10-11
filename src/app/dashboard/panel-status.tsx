@@ -14,20 +14,15 @@
  */
 
 import {
-  AlertTriangle,
   ArrowRight,
   Bot,
-  CheckCircle2,
   ChevronRight,
-  ClipboardList,
   Globe,
   MessageSquare,
   Package,
   Receipt,
   RefreshCw,
-  ShoppingBag,
   Smartphone,
-  Sparkles,
   Tag,
   Wallet,
 } from "lucide-react";
@@ -123,77 +118,14 @@ export function PanelStatus({
   const promoRulesCount = health.promos?.promo_rules?.length ?? 0;
   const voucherCount = health.promos?.voucher_rules?.length ?? 0;
   const cutOffHour = health.shipping?.cut_off_hour ?? 15;
-
-  // 5 Probe Sistem Utama
-  const items = [
-    {
-      icon: <Smartphone className="h-4 w-4" aria-hidden="true" />,
-      iconTheme: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
-      label: "Koneksi WhatsApp",
-      ok: waOk,
-      okText: health.whatsapp.phone_number
-        ? `Terhubung (${health.whatsapp.phone_number})`
-        : "Terhubung dan siap melayani",
-      badText:
-        health.whatsapp.connection_status === "PAIRING"
-          ? "Menunggu pemindaian QR"
-          : "Belum terhubung",
-      action: onGoWhatsapp,
-      actionLabel: waOk ? "Kelola Sesi" : "Hubungkan WA",
-    },
-    {
-      icon: <Sparkles className="h-4 w-4" aria-hidden="true" />,
-      iconTheme: "bg-sky-50 text-sky-700 border-sky-200/80",
-      label: "Mesin AI & Gateway",
-      ok: aiOk,
-      okText: `Aktif (${health.ai.model || "combo-ai"}) ${health.ai.latency_ms ? `[${health.ai.latency_ms}ms]` : ""}`,
-      badText: health.ai.error ?? "Perlu perhatian",
-      action: onGoSimulator ?? onRefresh,
-      actionLabel: "Uji Respon AI",
-    },
-    {
-      icon: <Bot className="h-4 w-4" aria-hidden="true" />,
-      iconTheme: "bg-violet-50 text-violet-700 border-violet-200/80",
-      label: "AI Persona & CS",
-      ok: true,
-      okText: `${health.catalog.bot_name || "Admin CS"} (${health.catalog.bot_tone || "Ramah"})`,
-      badText: "Belum diatur",
-      action: onGoSimulator,
-      actionLabel: "Uji di Simulator",
-    },
-    {
-      icon: <Package className="h-4 w-4" aria-hidden="true" />,
-      iconTheme: "bg-sky-50 text-sky-700 border-sky-200/80",
-      label: "Katalog & Basis SOP",
-      ok: catalogOk,
-      okText: "Spreadsheet & SOP Aktif",
-      badText: "Katalog belum diatur",
-      action: onGoCatalog,
-      actionLabel: "Atur Dokumen",
-    },
-    {
-      icon: <Tag className="h-4 w-4" aria-hidden="true" />,
-      iconTheme: "bg-amber-50 text-amber-700 border-amber-200/80",
-      label: "Promosi & Jam Kirim",
-      ok: promoRulesCount > 0 || voucherCount > 0,
-      okText: `${promoRulesCount} Promo, Cut-Off ${cutOffHour}:00`,
-      badText: `Cut-off ${cutOffHour}:00 WIB (Belum ada promo)`,
-      action: onGoPromos ?? onGoCatalog,
-      actionLabel: "Atur Promosi",
-    },
-    {
-      icon: <Wallet className="h-4 w-4" aria-hidden="true" />,
-      iconTheme: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
-      label: "Bukti Transfer Masuk",
-      ok: !hasPendingProof,
-      okText: "Tidak ada antrean verifikasi",
-      badText: `${pendingProofsCount} bukti bayar menunggu`,
-      action: onGoOrders,
-      actionLabel: "Buka Pesanan",
-    },
+  const readinessChecks = [
+    waOk,
+    aiOk,
+    catalogOk,
+    promoRulesCount > 0 || voucherCount > 0,
+    !hasPendingProof,
   ];
-
-  const needsAction = items.filter((i) => !i.ok);
+  const readinessScore = readinessChecks.filter(Boolean).length;
 
   return (
     <div className="page space-y-6">
@@ -343,353 +275,464 @@ export function PanelStatus({
         </div>
       </div>
 
-      {/* 5 Kartu Kesehatan Sistem & Layanan */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-ink-500">
-            Kesehatan Sistem & Probe Layanan
-          </h2>
-          <span className="text-2xs text-ink-400 font-mono">
-            {needsAction.length === 0 ? "Semua sistem optimal" : `${needsAction.length} butuh tindakan`}
-          </span>
-        </div>
-
-        <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <Card
-              key={item.label}
-              className={cn(
-                "group relative flex flex-col justify-between p-4.5 transition-all duration-150 hover:shadow-raised min-h-[178px]",
-                !item.ok && "border-amber-200/90 bg-amber-50/20"
-              )}
-            >
+      {/* Tata Letak Inti 2 Kolom: Operasional & Interaksi Pelanggan */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Kolom Kiri (8 Kolom): Kesiapan Toko & Aktivitas Pesanan */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Card 1: Pusat Kesiapan & Status Operasional Toko */}
+          <Card className="border-ink-200 overflow-hidden">
+            <div className="border-b border-ink-100 bg-ink-50/50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="flex items-start justify-between gap-2.5">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className={cn(
-                        "grid h-8 w-8 shrink-0 place-items-center rounded-lg border shadow-flat transition-transform group-hover:scale-105",
-                        item.iconTheme
-                      )}
-                    >
-                      {item.icon}
-                    </span>
-                    <p className="text-xs font-bold text-ink leading-snug truncate">
-                      {item.label}
-                    </p>
-                  </div>
-                  <Badge tone={item.ok ? "signal" : "warn"} className="shrink-0 text-[10px] px-2 py-0.5">
-                    <StatusDot ok={item.ok} />
-                    {item.ok ? "Normal" : "Perhatian"}
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-ink">
+                    Kesiapan &amp; Status Operasional Toko
+                  </h3>
+                  <Badge tone={readinessScore === 5 ? "signal" : "warn"} className="text-[10px]">
+                    <StatusDot ok={readinessScore === 5} />
+                    {readinessScore === 5 ? "Sistem Siap" : `${5 - readinessScore} Perlu Konfigurasi`}
                   </Badge>
                 </div>
-
-                <div className="mt-3 flex items-start gap-2">
-                  {item.ok ? (
-                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal" aria-hidden="true" />
-                  ) : (
-                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warn" aria-hidden="true" />
-                  )}
-                  <p
-                    className={cn(
-                      "text-xs leading-relaxed",
-                      item.ok ? "font-medium text-ink-600" : "font-semibold text-warn-strong"
-                    )}
-                  >
-                    {item.ok ? item.okText : item.badText}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-3.5 border-t border-ink-100/80 pt-3">
-                <Button
-                  size="sm"
-                  variant={item.ok ? "secondary" : "primary"}
-                  className="w-full text-xs font-semibold py-1.5 h-8 min-h-[34px]"
-                  onClick={item.action}
-                >
-                  {item.actionLabel}
-                  <ChevronRight className="ml-1 h-3 w-3 opacity-60 group-hover:translate-x-0.5 transition-transform" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Peringatan Tindakan jika ada */}
-      {needsAction.length > 0 && (
-        <div className="rounded-2xl border border-amber-300/80 bg-amber-50/60 p-4 sm:p-5 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-800 border border-amber-200">
-                <ClipboardList className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <div>
-                <p className="text-sm font-bold text-amber-950">
-                  Perlu perhatian pemilik toko ({needsAction.length} hal):
+                <p className="mt-0.5 text-2xs text-ink-500">
+                  Status 5 integrasi saluran utama agar bot AI CS dapat melayani pembeli otomatis.
                 </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {needsAction.map((n) => (
-                    <span
-                      key={n.label}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-white/90 border border-amber-200 px-2.5 py-1 text-xs font-medium text-amber-900 shadow-2xs"
-                    >
-                      <AlertTriangle className="h-3 w-3 text-amber-600 shrink-0" />
-                      <strong>{n.label}:</strong> {n.badText}
-                    </span>
-                  ))}
-                </div>
               </div>
+              <span className="font-mono text-xs font-semibold text-ink-600 bg-white border border-ink-200 px-2.5 py-1 rounded-md">
+                Kesiapan: {readinessScore}/5
+              </span>
             </div>
-            {needsAction.some((n) => n.action) && (
-              <Button
-                size="sm"
-                variant="primary"
-                onClick={needsAction[0].action}
-                className="shrink-0 bg-ink-900 hover:bg-ink-800 text-white border-none shadow-sm text-xs font-semibold px-4 py-2 h-9"
-              >
-                Selesaikan Sekarang
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
 
-      {/* Feed 5 Pesanan Terbaru Nyata */}
-      <Card className="border-ink-200">
-        <div className="flex items-center justify-between border-b border-ink-100 px-5 py-4">
-          <div>
-            <h3 className="text-sm font-bold text-ink">Aktivitas Pesanan Terbaru</h3>
-            <p className="text-2xs text-ink-500">5 transaksi terakhir yang tercatat di sistem.</p>
-          </div>
-          {onGoOrders && (
-            <Button size="sm" variant="secondary" onClick={onGoOrders}>
-              Lihat Semua ({orders.length})
-              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-            </Button>
-          )}
-        </div>
-        <CardBody className="p-0">
-          {orders.length === 0 ? (
-            <div className="p-6">
-              <EmptyState
-                icon={<Receipt className="h-6 w-6" />}
-                title="Belum Ada Pesanan"
-                description="Pesanan pelanggan akan otomatis tercatat di sini saat proses checkout selesai."
-              />
-            </div>
-          ) : (
             <div className="divide-y divide-ink-100">
-              {orders.slice(0, 5).map((ord) => (
-                <div
-                  key={ord.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 hover:bg-ink-50/50 transition-colors"
-                >
-                  <div className="min-w-0">
+              {/* Row 1: WhatsApp Connection */}
+              <div className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-ink-50/30 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className={cn(
+                    "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border",
+                    waOk ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
+                  )}>
+                    <Smartphone className="h-4 w-4" />
+                  </span>
+                  <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-ink">
-                        {ord.order_number}
-                      </span>
-                      <Badge
-                        tone={
-                          ord.payment_status === "VERIFIED"
-                            ? "signal"
-                            : ord.payment_status === "REJECTED"
-                            ? "danger"
-                            : "warn"
-                        }
-                        className="text-[10px]"
-                      >
-                        {ord.payment_status_label}
+                      <p className="text-xs font-bold text-ink">Koneksi WhatsApp Toko</p>
+                      <Badge tone={waOk ? "signal" : "danger"} className="text-[10px]">
+                        {waOk ? "Terhubung" : "Belum Tertaut"}
                       </Badge>
-                      <span className="text-2xs text-ink-400 font-mono">
-                        {timeAgo(ord.created_at)}
-                      </span>
                     </div>
-                    <p className="mt-1 text-xs text-ink-600 truncate">
-                      {ord.buyer_name || "Pelanggan WhatsApp"} ({ord.buyer_jid.split("@")[0]})
-                      {ord.items.length > 0 && (
-                        <span className="text-ink-400 ml-1">
-                          • {ord.items[0].name} {ord.items.length > 1 ? `+${ord.items.length - 1} item` : ""}
-                        </span>
-                      )}
+                    <p className="mt-0.5 text-2xs text-ink-500 leading-relaxed">
+                      {waOk
+                        ? health.whatsapp.phone_number
+                          ? `Nomor ${health.whatsapp.phone_number} aktif merespon chat pembeli.`
+                          : "Nomor WhatsApp aktif dan siap menerima pesan."
+                        : "Pindai QR code dari nomor WhatsApp bisnis toko Anda agar bot dapat membalas chat."}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                    <span className="font-mono text-sm font-bold text-ink">
-                      Rp {rupiah(ord.total_amount)}
-                    </span>
-                    {onGoOrders && (
-                      <Button
-                        size="sm"
-                        variant={ord.payment_status === "PROOF_SUBMITTED" ? "accent" : "secondary"}
-                        className="h-7 text-xs px-2.5"
-                        onClick={onGoOrders}
-                      >
-                        {ord.payment_status === "PROOF_SUBMITTED" ? "Verifikasi" : "Periksa"}
-                      </Button>
-                    )}
+                </div>
+                <Button
+                  size="sm"
+                  variant={waOk ? "secondary" : "primary"}
+                  className="shrink-0 h-8 text-xs font-medium px-3.5"
+                  onClick={onGoWhatsapp}
+                >
+                  {waOk ? "Kelola Sesi" : "Hubungkan WA"}
+                </Button>
+              </div>
+
+              {/* Row 2: AI CS Persona & Gateway */}
+              <div className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-ink-50/30 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border bg-violet-50 text-violet-700 border-violet-200">
+                    <Bot className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-ink">AI Persona CS ({health.catalog.bot_name || "Admin CS"})</p>
+                      <Badge tone={aiOk ? "signal" : "warn"} className="text-[10px]">
+                        {aiOk ? "Aktif" : "Perhatian"}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 text-2xs text-ink-500 leading-relaxed">
+                      Gaya bahasa: <strong className="text-ink-700">{health.catalog.bot_tone || "Ramah"}</strong>.
+                      {health.ai.latency_ms ? ` Latensi respon AI: ${health.ai.latency_ms}ms.` : " Siap melayani tanya jawab produk dan ongkir."}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardBody>
-      </Card>
+                {onGoSimulator && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="shrink-0 h-8 text-xs font-medium px-3.5"
+                    onClick={onGoSimulator}
+                  >
+                    Uji di Simulator
+                  </Button>
+                )}
+              </div>
 
-      {/* Pusat Kendali Operasional Toko (6 Kartu Navigasi Utama) */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-ink-500">
-            Pusat Kendali Operasional
-          </h2>
-          <span className="text-2xs text-ink-400">Pilih modul untuk dikelola</span>
+              {/* Row 3: Product Catalog & SOP */}
+              <div className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-ink-50/30 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className={cn(
+                    "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border",
+                    catalogOk ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                  )}>
+                    <Package className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-ink">Katalog Produk &amp; SOP Toko</p>
+                      <Badge tone={catalogOk ? "signal" : "warn"} className="text-[10px]">
+                        {catalogOk ? "Terkonfigurasi" : "Belum Diatur"}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 text-2xs text-ink-500 leading-relaxed">
+                      {catalogOk
+                        ? "Basis pengetahuan produk, harga, foto/video, dan aturan toko aktif terhubung."
+                        : "Katalog produk atau spreadsheet belum dihubungkan. Hubungkan agar bot memahami produk Anda."}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant={catalogOk ? "secondary" : "primary"}
+                  className="shrink-0 h-8 text-xs font-medium px-3.5"
+                  onClick={onGoCatalog ?? onGoProducts}
+                >
+                  {catalogOk ? "Atur SOP" : "Hubungkan Katalog"}
+                </Button>
+              </div>
+
+              {/* Row 4: Promosi & Jam Kirim */}
+              <div className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-ink-50/30 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border bg-amber-50 text-amber-700 border-amber-200">
+                    <Tag className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-ink">Promosi &amp; Jam Cut-off Pengiriman</p>
+                      <Badge tone={promoRulesCount > 0 || voucherCount > 0 ? "signal" : "neutral"} className="text-[10px]">
+                        {promoRulesCount > 0 || voucherCount > 0 ? `${promoRulesCount + voucherCount} Aturan Aktif` : "Standar"}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 text-2xs text-ink-500 leading-relaxed">
+                      Cut-off same day: <strong className="text-ink-700">{cutOffHour}:00 WIB</strong>.
+                      {promoRulesCount > 0
+                        ? ` Diskon bundling dan voucher otomatis diterapkan bot saat checkout.`
+                        : " Tambahkan promo beli banyak atau kupon voucher untuk meningkatkan penjualan."}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="shrink-0 h-8 text-xs font-medium px-3.5"
+                  onClick={onGoPromos}
+                >
+                  Atur Promosi
+                </Button>
+              </div>
+
+              {/* Row 5: Bukti Pembayaran */}
+              <div className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-ink-50/30 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className={cn(
+                    "mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border",
+                    hasPendingProof ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  )}>
+                    <Wallet className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-ink">Verifikasi Bukti Pembayaran</p>
+                      <Badge tone={hasPendingProof ? "warn" : "signal"} className="text-[10px]">
+                        {hasPendingProof ? `${pendingProofsCount} Antrean` : "Semua Beres"}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 text-2xs text-ink-500 leading-relaxed">
+                      {hasPendingProof
+                        ? `${pendingProofsCount} bukti transfer dari pembeli menunggu konfirmasi Anda untuk proses pengiriman.`
+                        : "Tidak ada antrean bukti transfer yang perlu diperiksa saat ini."}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant={hasPendingProof ? "accent" : "secondary"}
+                  className="shrink-0 h-8 text-xs font-medium px-3.5"
+                  onClick={onGoOrders}
+                >
+                  {hasPendingProof ? "Verifikasi Sekarang" : "Buka Pesanan"}
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Card 2: Aktivitas Pesanan Terbaru */}
+          <Card className="border-ink-200 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-ink-100 px-5 py-4">
+              <div>
+                <h3 className="text-sm font-bold text-ink">Aktivitas Pesanan Terbaru</h3>
+                <p className="text-2xs text-ink-500">Transaksi pesanan pelanggan dari WhatsApp.</p>
+              </div>
+              {onGoOrders && (
+                <Button size="sm" variant="secondary" onClick={onGoOrders} className="h-8 text-xs">
+                  Lihat Semua ({orders.length})
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+            <CardBody className="p-0">
+              {orders.length === 0 ? (
+                <div className="p-8 text-center">
+                  <EmptyState
+                    icon={<Receipt className="h-7 w-7 text-ink-400" />}
+                    title="Belum Ada Pesanan"
+                    description="Pesanan dari pembeli WhatsApp akan otomatis tercatat di sini saat proses checkout selesai."
+                    action={
+                      onGoSimulator && (
+                        <Button variant="secondary" size="sm" onClick={onGoSimulator}>
+                          <Bot className="mr-1.5 h-3.5 w-3.5" />
+                          Simulasi Checkout di Bot
+                        </Button>
+                      )
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="divide-y divide-ink-100">
+                  {orders.slice(0, 5).map((ord) => (
+                    <div
+                      key={ord.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 hover:bg-ink-50/50 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-ink">
+                            {ord.order_number}
+                          </span>
+                          <Badge
+                            tone={
+                              ord.payment_status === "VERIFIED"
+                                ? "signal"
+                                : ord.payment_status === "REJECTED"
+                                ? "danger"
+                                : "warn"
+                            }
+                            className="text-[10px]"
+                          >
+                            {ord.payment_status_label}
+                          </Badge>
+                          <span className="text-2xs text-ink-400 font-mono">
+                            {timeAgo(ord.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-ink-600 truncate">
+                          {ord.buyer_name || "Pelanggan WhatsApp"} ({ord.buyer_jid.split("@")[0]})
+                          {ord.items.length > 0 && (
+                            <span className="text-ink-400 ml-1">
+                              • {ord.items[0].name} {ord.items.length > 1 ? `+${ord.items.length - 1} item` : ""}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                        <span className="font-mono text-sm font-bold text-ink">
+                          Rp {rupiah(ord.total_amount)}
+                        </span>
+                        {onGoOrders && (
+                          <Button
+                            size="sm"
+                            variant={ord.payment_status === "PROOF_SUBMITTED" ? "accent" : "secondary"}
+                            className="h-7 text-xs px-2.5"
+                            onClick={onGoOrders}
+                          >
+                            {ord.payment_status === "PROOF_SUBMITTED" ? "Verifikasi" : "Periksa"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardBody>
+          </Card>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Card 1: Simulator */}
-          <Card className="group flex flex-col justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-raised">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="grid h-10 w-10 place-items-center rounded-lg border border-emerald-200/80 bg-emerald-50 text-emerald-700 shadow-flat">
-                  <Bot className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="text-2xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
-                  Uji Live
-                </span>
-              </div>
-              <h3 className="mt-3.5 text-base font-bold text-ink">Simulator WhatsApp AI</h3>
-              <p className="mt-1 text-xs leading-relaxed text-ink-600">
-                Uji langsung gaya bicara bot, respon katalog, dan persona CS pada simulasi chat 1:1 tanpa menyentuh nomor asli.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-ink-100">
-              <Button variant="primary" size="sm" className="w-full text-xs font-semibold" onClick={onGoSimulator}>
-                Buka Simulator WA
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
+        {/* Kolom Kanan (4 Kolom): Pintasan Cepat & Live Feed */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Pintasan Cepat Operasional */}
+          <Card className="border-ink-200 p-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-ink-500 mb-3">
+              Pusat Akses Cepat
+            </h3>
+            <div className="space-y-2">
+              {onGoChat && (
+                <button
+                  type="button"
+                  onClick={onGoChat}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <MessageSquare className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-ink group-hover:text-ink-950">Live Chat CS Toko</p>
+                      <p className="text-[11px] text-ink-500">Pantau &amp; ambil alih percakapan</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-ink-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
+
+              {onGoSimulator && (
+                <button
+                  type="button"
+                  onClick={onGoSimulator}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-violet-700 border border-violet-200">
+                      <Bot className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-ink group-hover:text-ink-950">Simulator WhatsApp AI</p>
+                      <p className="text-[11px] text-ink-500">Uji skenario &amp; respon bot</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-ink-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
+
+              {onGoProducts && (
+                <button
+                  type="button"
+                  onClick={onGoProducts}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-sky-50 text-sky-700 border border-sky-200">
+                      <Package className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-ink group-hover:text-ink-950">Katalog Produk &amp; SKU</p>
+                      <p className="text-[11px] text-ink-500">Kelola stok &amp; varian harga</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-ink-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
+
+              {onGoPromos && (
+                <button
+                  type="button"
+                  onClick={onGoPromos}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                      <Tag className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-ink group-hover:text-ink-950">Diskon &amp; Jadwal Kirim</p>
+                      <p className="text-[11px] text-ink-500">Promo kupon &amp; batas same day</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-ink-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
+
+              {onGoWebsite && (
+                <button
+                  type="button"
+                  onClick={onGoWebsite}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-purple-50 text-purple-700 border border-purple-200">
+                      <Globe className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-ink group-hover:text-ink-950">AI Website Builder</p>
+                      <p className="text-[11px] text-ink-500">Halaman landing page publik</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-ink-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
             </div>
           </Card>
 
-          {/* Card 2: Produk & AI */}
-          <Card className="group flex flex-col justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-raised">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="grid h-10 w-10 place-items-center rounded-lg border border-sky-200/80 bg-sky-50 text-sky-700 shadow-flat">
-                  <ShoppingBag className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="text-2xs font-mono font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200/60">
-                  Katalog SKU
-                </span>
+          {/* Percakapan WhatsApp Terkini */}
+          <Card className="border-ink-200 overflow-hidden">
+            <div className="border-b border-ink-100 px-5 py-3.5 flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-ink-500">
+                  Chat Pelanggan Terkini
+                </h3>
               </div>
-              <h3 className="mt-3.5 text-base font-bold text-ink">Katalog Produk & AI</h3>
-              <p className="mt-1 text-xs leading-relaxed text-ink-600">
-                Kelola database produk, varian ukuran/warna, harga coret, serta sinkronisasi instan ke basis pengetahuan AI.
-              </p>
+              {onGoChat && (
+                <button
+                  type="button"
+                  onClick={onGoChat}
+                  className="text-2xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                >
+                  Buka Chat ({conversations.length})
+                </button>
+              )}
             </div>
-            <div className="mt-5 pt-3 border-t border-ink-100">
-              <Button variant="secondary" size="sm" className="w-full text-xs font-semibold" onClick={onGoProducts}>
-                Kelola Produk
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
+            <div className="divide-y divide-ink-100">
+              {conversations.length === 0 ? (
+                <div className="p-5 text-center text-xs text-ink-500">
+                  Belum ada riwayat percakapan. Mulai percakapan melalui nomor WhatsApp toko Anda.
+                </div>
+              ) : (
+                conversations.slice(0, 3).map((conv) => (
+                  <div
+                    key={conv.id}
+                    onClick={onGoChat}
+                    className="p-3.5 hover:bg-ink-50/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-ink truncate">
+                        {conv.buyer_name || conv.buyer_jid.split("@")[0]}
+                      </span>
+                      <span className="text-[10px] text-ink-400 font-mono">
+                        {timeAgo(conv.last_interaction)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-2xs text-ink-500 truncate">
+                      Tahap: {conv.pipeline_stage} • {conv.message_count} pesan
+                    </p>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      <span className={cn(
+                        "inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium font-mono",
+                        conv.is_human_takeover
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-emerald-100 text-emerald-800"
+                      )}>
+                        {conv.is_human_takeover ? "Manual Takeover" : "Bot AI"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
 
-          {/* Card 3: Promosi & Pengiriman */}
-          <Card className="group flex flex-col justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-raised">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="grid h-10 w-10 place-items-center rounded-lg border border-amber-200/80 bg-amber-50 text-amber-700 shadow-flat">
-                  <Tag className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="text-2xs font-mono font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200/60">
-                  Promo & Jam
-                </span>
+          {/* Info Ekspedisi Pengiriman Hari Ini */}
+          <Card className="border-ink-200 p-4 bg-ink-50/40">
+            <div className="flex items-start gap-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-sky-100 text-sky-800 border border-sky-200 shrink-0">
+                <Globe className="h-3.5 w-3.5" />
+              </span>
+              <div>
+                <p className="text-xs font-bold text-ink">Jadwal Ekspedisi Hari Ini</p>
+                <p className="mt-1 text-2xs text-ink-600 leading-relaxed">
+                  Batas kirim same-day: <strong>{cutOffHour}:00 WIB</strong>.
+                  Pesanan sesudah jam ini dikirim keesokan hari. Ekspedisi aktif: J&amp;T, SiCepat, JNE.
+                </p>
               </div>
-              <h3 className="mt-3.5 text-base font-bold text-ink">Promosi & Jam Pengiriman</h3>
-              <p className="mt-1 text-xs leading-relaxed text-ink-600">
-                Atur diskon beli banyak (bundling), kupon voucher, dan batas jam cut-off kirim same day agar diinformasikan otomatis oleh AI.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-ink-100">
-              <Button variant="secondary" size="sm" className="w-full text-xs font-semibold" onClick={onGoPromos}>
-                Atur Promosi & Jadwal
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
-            </div>
-          </Card>
-
-          {/* Card 4: AI Website Builder */}
-          <Card className="group flex flex-col justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-raised">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="grid h-10 w-10 place-items-center rounded-lg border border-purple-200/80 bg-purple-50 text-purple-700 shadow-flat">
-                  <Globe className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="text-2xs font-mono font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200/60">
-                  Landing Page
-                </span>
-              </div>
-              <h3 className="mt-3.5 text-base font-bold text-ink">AI Website Builder</h3>
-              <p className="mt-1 text-xs leading-relaxed text-ink-600">
-                Buat landing page toko online instan dengan AI generator, editor visual per-blok, dan terbitkan langsung ke publik.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-ink-100">
-              <Button variant="secondary" size="sm" className="w-full text-xs font-semibold" onClick={onGoWebsite}>
-                Buka Website Builder
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
-            </div>
-          </Card>
-
-          {/* Card 5: Pesanan */}
-          <Card className="group flex flex-col justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-raised">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="grid h-10 w-10 place-items-center rounded-lg border border-emerald-200/80 bg-emerald-50 text-emerald-700 shadow-flat">
-                  <Receipt className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="text-2xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/60">
-                  Verifikasi
-                </span>
-              </div>
-              <h3 className="mt-3.5 text-base font-bold text-ink">Pesanan & Bukti Bayar</h3>
-              <p className="mt-1 text-xs leading-relaxed text-ink-600">
-                Verifikasi bukti transfer dari pembeli lewat preview gambar langsung, input nomor resi kurir, dan rekap CSV.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-ink-100">
-              <Button variant="secondary" size="sm" className="w-full text-xs font-semibold" onClick={onGoOrders}>
-                Periksa Pesanan
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
-            </div>
-          </Card>
-
-          {/* Card 6: Live Chat */}
-          <Card className="group flex flex-col justify-between p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-raised">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="grid h-10 w-10 place-items-center rounded-lg border border-indigo-200/80 bg-indigo-50 text-indigo-700 shadow-flat">
-                  <MessageSquare className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="text-2xs font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200/60">
-                  Takeover
-                </span>
-              </div>
-              <h3 className="mt-3.5 text-base font-bold text-ink">Live Chat & Ambil Alih</h3>
-              <p className="mt-1 text-xs leading-relaxed text-ink-600">
-                Pantau percakapan pembeli secara langsung dan gunakan fitur ambil alih (takeover) saat membutuhkan negosiasi khusus.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-ink-100">
-              <Button variant="secondary" size="sm" className="w-full text-xs font-semibold" onClick={onGoChat}>
-                Buka Live Chat
-                <ArrowRight className="ml-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              </Button>
             </div>
           </Card>
         </div>

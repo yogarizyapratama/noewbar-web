@@ -15,7 +15,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  Activity,
   AlertCircle,
   AlertTriangle,
   ArrowUpRight,
@@ -432,6 +431,7 @@ export default function SuperadminPage() {
   const totalConversations = stats?.total_conversations ?? data.tenants.reduce((acc, t) => acc + t.conversations, 0);
   const totalOrders = stats?.total_orders ?? data.tenants.reduce((acc, t) => acc + t.orders, 0);
   const totalStores = stats?.total_tenants ?? data.tenants.length;
+  const connectedFleetCount = data.fleet.filter((f) => f.connection_status === "CONNECTED").length;
 
   const filteredTenants = data.tenants
     .filter((t) => (tenantFilter === "all" ? true : t.status === tenantFilter))
@@ -466,17 +466,16 @@ export default function SuperadminPage() {
     webhookProviderFilter === "all" ? true : w.provider === webhookProviderFilter
   );
 
-  // Navigasi Terstruktur
+  // Navigasi Terstruktur Manajemen Aplikasi Noewbar (SaaS Console)
   const navGroups: NavGroup[] = [
     {
-      group: "MONITORING & KESEHATAN",
+      group: "IKHTISAR PLATFORM",
       items: [
-        { id: "overview", label: "Ringkasan Eksekutif", icon: <LayoutDashboard className="h-4 w-4" /> },
-        { id: "infrastructure", label: "Kesehatan Infrastruktur", icon: <Server className="h-4 w-4" /> },
+        { id: "overview", label: "Ringkasan Platform", icon: <LayoutDashboard className="h-4 w-4" /> },
       ],
     },
     {
-      group: "MANAJEMEN ENTITAS",
+      group: "MANAJEMEN TOKO",
       items: [
         {
           id: "tenants",
@@ -488,24 +487,24 @@ export default function SuperadminPage() {
       ],
     },
     {
-      group: "GATEWAY & KOMUNIKASI",
+      group: "SALURAN & AI GATEWAY",
       items: [
         {
           id: "fleet",
-          label: "Fleet WhatsApp",
+          label: "Koneksi WhatsApp Toko",
           badge: `${data.fleet.length}`,
           icon: <MessageSquare className="h-4 w-4" />,
         },
         {
           id: "ai_models",
-          label: "AI Gateway & Model",
+          label: "Mesin AI & Kuota Token",
           badge: data.gateway.ok ? "Aktif" : "Gangguan",
           icon: <Zap className="h-4 w-4" />,
         },
       ],
     },
     {
-      group: "INTEGRASI & AUDIT",
+      group: "TRANSAKSI & AUDIT",
       items: [
         {
           id: "orders",
@@ -522,12 +521,11 @@ export default function SuperadminPage() {
       ],
     },
     {
-      group: "SISTEM & OPERASI",
+      group: "KEAMANAN APLIKASI",
       items: [
-        { id: "system_ops", label: "Pemeliharaan Platform", icon: <Cpu className="h-4 w-4" /> },
         {
           id: "killswitch",
-          label: "Pengamanan & Darurat",
+          label: "Kontrol Darurat AI",
           badge: ks.disabled ? "OFF" : "ON",
           badgeTone: ks.disabled ? "danger" : "signal",
           icon: <ShieldAlert className="h-4 w-4" />,
@@ -552,13 +550,16 @@ export default function SuperadminPage() {
                   setSidebarOpen(!sidebarOpen);
                 }
               }}
-              className="p-1.5 rounded-lg border border-slate-800 bg-slate-850 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-              title="Toggle Navigasi Sidebar"
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-850 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              title="Buka atau tutup navigasi"
               aria-label="Toggle Sidebar"
             >
-              <Menu className="h-4 w-4 lg:hidden" />
-              <PanelLeftClose className={cn("h-4 w-4 hidden lg:block", !sidebarOpen && "hidden")} />
-              <PanelLeftOpen className={cn("h-4 w-4 hidden lg:block", sidebarOpen && "hidden")} />
+              <span className="lg:hidden flex items-center justify-center">
+                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              </span>
+              <span className="hidden lg:flex items-center justify-center">
+                {sidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+              </span>
             </button>
 
             <div className="flex items-center gap-2.5">
@@ -594,37 +595,37 @@ export default function SuperadminPage() {
             </div>
           </div>
 
-          {/* Telemetry Pills Strip */}
+          {/* Telemetry Pills Strip: Metrik Aplikasi SaaS Nyata */}
           <div className="hidden xl:flex items-center gap-2.5 text-xs text-slate-300 bg-slate-950 border border-slate-800 rounded-lg px-3 py-1">
+            <div className="flex items-center gap-1.5" title="Toko Terdaftar">
+              <Users className="h-3 w-3 text-indigo-400" />
+              <span className="text-slate-400 text-2xs">Toko:</span>
+              <span className="font-mono font-semibold text-xs text-slate-100">
+                {totalStores} ({activeTenantsCount} Aktif)
+              </span>
+            </div>
+            <span className="text-slate-800">&bull;</span>
+            <div className="flex items-center gap-1.5" title="Fleet WhatsApp Terhubung">
+              <MessageSquare className={cn("h-3 w-3", connectedFleetCount > 0 ? "text-emerald-400" : "text-amber-400")} />
+              <span className="text-slate-400 text-2xs">Fleet WA:</span>
+              <span className="font-mono font-semibold text-xs text-slate-100">
+                {connectedFleetCount}/{totalStores} Siap
+              </span>
+            </div>
+            <span className="text-slate-800">&bull;</span>
             <div className="flex items-center gap-1.5" title="Latency AI Gateway">
               <Zap className={cn("h-3 w-3", data.gateway.ok ? "text-emerald-400" : "text-rose-400")} />
-              <span className="text-slate-400 text-2xs">AI:</span>
+              <span className="text-slate-400 text-2xs">AI Gateway:</span>
               <span className="font-mono font-semibold text-xs text-slate-100">
                 {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "Gangguan"}
               </span>
             </div>
             <span className="text-slate-800">&bull;</span>
-            <div className="flex items-center gap-1.5" title="Soket WhatsApp Aktif">
-              <Server className={cn("h-3 w-3", data.daemon.ok ? "text-emerald-400" : "text-rose-400")} />
-              <span className="text-slate-400 text-2xs">WA:</span>
-              <span className="font-mono font-semibold text-xs text-slate-100">{data.daemon.active_instances ?? 0}</span>
+            <div className="flex items-center gap-1.5" title="Total Transaksi Toko">
+              <ShoppingBag className="h-3 w-3 text-amber-400" />
+              <span className="text-slate-400 text-2xs">Pesanan:</span>
+              <span className="font-mono font-semibold text-xs text-slate-100">{totalOrders}</span>
             </div>
-            <span className="text-slate-800">&bull;</span>
-            <div className="flex items-center gap-1.5" title="Beban Antrean Pesan BullMQ">
-              <Cpu className={cn("h-3 w-3", data.queue.redis ? "text-amber-400" : "text-rose-400")} />
-              <span className="text-slate-400 text-2xs">Antre:</span>
-              <span className="font-mono font-semibold text-xs text-slate-100">{data.queue.waiting}</span>
-            </div>
-            {stats && (
-              <>
-                <span className="text-slate-800">&bull;</span>
-                <div className="flex items-center gap-1.5" title="Memori V8 Heap">
-                  <Activity className="h-3 w-3 text-indigo-400" />
-                  <span className="text-slate-400 text-2xs">RAM:</span>
-                  <span className="font-mono font-semibold text-xs text-slate-100">{stats.memory_heap_used_mb} MB</span>
-                </div>
-              </>
-            )}
           </div>
 
           {/* Top Quick Actions */}
@@ -639,16 +640,16 @@ export default function SuperadminPage() {
               Toko Baru
             </Button>
 
-            <Button
-              size="sm"
-              variant="secondary"
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border-slate-750 h-8 px-2.5"
+            <button
+              type="button"
               onClick={handleRefresh}
-              loading={refreshing}
+              disabled={refreshing}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-850 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50"
               title="Perbarui data konsol"
+              aria-label="Segarkan data konsol"
             >
-              <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
-            </Button>
+              <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin text-indigo-400")} />
+            </button>
 
             <NotificationBell
               scope="admin"
@@ -764,19 +765,20 @@ export default function SuperadminPage() {
           {sidebarOpen ? (
             <div className="p-3 border-t border-slate-800 bg-slate-950/60 text-2xs space-y-1.5">
               <div className="flex items-center justify-between text-slate-400">
-                <span>Versi Mesin:</span>
-                <span className="font-mono text-slate-200">{stats?.node_version ?? process.version}</span>
+                <span>Noewbar Console:</span>
+                <span className="font-mono text-indigo-300 font-semibold">v1.0.0</span>
               </div>
               <div className="flex items-center justify-between text-slate-400">
-                <span>Uptime Server:</span>
-                <span className="font-mono text-emerald-400">
-                  {stats ? formatSeconds(stats.uptime_seconds) : "-"}
+                <span>Multi-tenant SaaS:</span>
+                <span className="text-emerald-400 font-medium flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Operasional
                 </span>
               </div>
             </div>
           ) : (
             <div className="p-2 border-t border-slate-800 flex justify-center text-slate-500">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" title="Server Aktif" />
+              <span className="h-2 w-2 rounded-full bg-emerald-400" title="Multi-tenant Operasional" />
             </div>
           )}
         </aside>
@@ -790,20 +792,36 @@ export default function SuperadminPage() {
                 <span>Konsol Manajemen</span>
                 <ChevronRight className="h-3 w-3 text-slate-600" />
                 <span className="text-indigo-400 font-medium capitalize">
-                  {activeSection.replace("_", " ")}
+                  {activeSection === "overview"
+                    ? "Ringkasan Platform"
+                    : activeSection === "tenants"
+                    ? "Direktori Toko"
+                    : activeSection === "financials"
+                    ? "Finansial & Langganan"
+                    : activeSection === "fleet"
+                    ? "Koneksi WhatsApp"
+                    : activeSection === "ai_models"
+                    ? "Mesin AI & Kuota"
+                    : activeSection === "orders"
+                    ? "Transaksi Lintas Toko"
+                    : activeSection === "webhooks"
+                    ? "Buku Besar Webhook"
+                    : activeSection === "killswitch"
+                    ? "Kontrol Darurat"
+                    : activeSection.replace("_", " ")}
                 </span>
               </div>
               <h1 className="text-lg font-bold text-white tracking-tight mt-0.5">
-                {activeSection === "overview" && "Ringkasan Eksekutif & Skala Platform"}
-                {activeSection === "infrastructure" && "Pusat Kesehatan Infrastruktur & Layanan Backend"}
-                {activeSection === "tenants" && "Direktori & Manajemen Toko Klien (Multi-Tenant)"}
-                {activeSection === "financials" && "Analisis Finansial & Siklus Langganan"}
-                {activeSection === "fleet" && "Fleet & Soket Daemon WhatsApp Toko"}
-                {activeSection === "ai_models" && "AI Gateway Orchestrator & Model Explorer"}
-                {activeSection === "orders" && "Monitoring Pesanan Transaksi Lintas Toko"}
-                {activeSection === "webhooks" && "Buku Besar Audit Webhook & Idempotensi"}
-                {activeSection === "system_ops" && "Operasi Pemeliharaan Rutin & Jadwal Platform"}
+                {activeSection === "overview" && "Ringkasan Platform & Operasional Toko"}
+                {activeSection === "tenants" && "Direktori & Manajemen Toko (Tenant)"}
+                {activeSection === "financials" && "Analisis Finansial & Langganan Toko"}
+                {activeSection === "fleet" && "Koneksi & Fleet WhatsApp Toko"}
+                {activeSection === "ai_models" && "Mesin AI CS & Penggunaan Kuota Token"}
+                {activeSection === "orders" && "Monitoring Transaksi Penjualan Seluruh Toko"}
+                {activeSection === "webhooks" && "Buku Besar Audit Webhook Masuk"}
                 {activeSection === "killswitch" && "Protokol Keamanan & Emergency Kill Switch"}
+                {activeSection === "infrastructure" && "Pusat Kesehatan Infrastruktur & Layanan Backend"}
+                {activeSection === "system_ops" && "Operasi Pemeliharaan Rutin Platform"}
               </h1>
             </div>
 
@@ -992,103 +1010,136 @@ export default function SuperadminPage() {
                 </div>
               </div>
 
-              {/* Infrastructure Summary Strip */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5">
-                <div className="flex items-center justify-between mb-4">
+              {/* Ringkasan Status Layanan SaaS & Kesiapan Toko */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 space-y-4">
+                <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                      Snapshot Status Layanan Inti
+                      Kesiapan Layanan SaaS & Gateway Toko
                     </h2>
                     <p className="text-2xs text-slate-400 mt-0.5">
-                      Pemantauan langsung 6 komponen backend utama platform.
+                      Status operasional saluran WhatsApp, mesin AI, dan penagihan langganan multi-tenant.
                     </p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-7 text-xs px-2.5 bg-slate-800 text-slate-300"
-                    onClick={() => setActiveSection("infrastructure")}
-                  >
-                    Detail Lengkap
-                    <ArrowUpRight className="ml-1 h-3 w-3" />
-                  </Button>
+                  <Badge tone={connectedFleetCount > 0 && data.gateway.ok ? "signal" : "warn"}>
+                    <StatusDot ok={connectedFleetCount > 0 && data.gateway.ok} />
+                    {connectedFleetCount > 0 && data.gateway.ok ? "Layanan Siap" : "Perlu Perhatian"}
+                  </Badge>
                 </div>
 
-                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-                    <div className="flex items-center justify-between text-slate-400 text-2xs">
-                      <span>AI Gateway</span>
-                      <StatusDot ok={data.gateway.ok} />
+                <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 text-xs">
+                  {/* Card 1: WhatsApp Fleet */}
+                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-slate-400 text-2xs">
+                        <span className="font-semibold text-slate-300">Fleet WhatsApp</span>
+                        <StatusDot ok={connectedFleetCount > 0} />
+                      </div>
+                      <p className="font-mono text-lg font-bold text-white mt-1.5">
+                        {connectedFleetCount} <span className="text-xs font-normal text-slate-400">/ {totalStores} Toko</span>
+                      </p>
+                      <p className="text-2xs text-slate-400 mt-1">
+                        {connectedFleetCount === totalStores
+                          ? "Semua nomor toko aktif terhubung"
+                          : `${totalStores - connectedFleetCount} nomor menunggu pairing/scan QR`}
+                      </p>
                     </div>
-                    <p className="font-mono font-bold text-white mt-1">
-                      {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "Off"}
-                    </p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">{data.gateway.model}</p>
+                    <div className="mt-3 pt-2.5 border-t border-slate-850">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        onClick={() => setActiveSection("fleet")}
+                      >
+                        Buka Fleet WA
+                        <ArrowUpRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-                    <div className="flex items-center justify-between text-slate-400 text-2xs">
-                      <span>WhatsMeow</span>
-                      <StatusDot ok={data.daemon.ok} />
+                  {/* Card 2: AI Gateway */}
+                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-slate-400 text-2xs">
+                        <span className="font-semibold text-slate-300">AI Gateway CS</span>
+                        <StatusDot ok={data.gateway.ok} />
+                      </div>
+                      <p className="font-mono text-lg font-bold text-white mt-1.5">
+                        {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "Aktif"}
+                      </p>
+                      <p className="text-2xs text-slate-400 mt-1 truncate" title={data.gateway.model}>
+                        Model: {data.gateway.model}
+                      </p>
                     </div>
-                    <p className="font-mono font-bold text-white mt-1">
-                      {data.daemon.active_instances ?? 0} Soket
-                    </p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                      {data.daemon.ok ? "Terhubung" : "Terputus"}
-                    </p>
+                    <div className="mt-3 pt-2.5 border-t border-slate-850">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        onClick={() => setActiveSection("ai_models")}
+                      >
+                        Kelola Model AI
+                        <ArrowUpRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-                    <div className="flex items-center justify-between text-slate-400 text-2xs">
-                      <span>Redis &amp; Antrean</span>
-                      <StatusDot ok={data.queue.redis} />
+                  {/* Card 3: Billing & Langganan */}
+                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-slate-400 text-2xs">
+                        <span className="font-semibold text-slate-300">Langganan Toko</span>
+                        <StatusDot ok={activeTenantsCount > 0} />
+                      </div>
+                      <p className="font-mono text-lg font-bold text-white mt-1.5">
+                        {activeTenantsCount} <span className="text-xs font-normal text-slate-400">Aktif</span>
+                      </p>
+                      <p className="text-2xs text-slate-400 mt-1">
+                        {trialTenantsCount} toko masa trial 14 hari
+                      </p>
                     </div>
-                    <p className="font-mono font-bold text-white mt-1">
-                      {data.queue.waiting} Tugas
-                    </p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                      {data.queue.failed > 0 ? `${data.queue.failed} Gagal` : "Normal"}
-                    </p>
+                    <div className="mt-3 pt-2.5 border-t border-slate-850">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        onClick={() => setActiveSection("financials")}
+                      >
+                        Kelola Langganan
+                        <ArrowUpRight className="ml-1 h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-                    <div className="flex items-center justify-between text-slate-400 text-2xs">
-                      <span>PostgreSQL</span>
-                      <StatusDot ok />
+                  {/* Card 4: Keamanan & Status Bot */}
+                  <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between text-slate-400 text-2xs">
+                        <span className="font-semibold text-slate-300">Status Bot AI</span>
+                        <StatusDot ok={!ks.disabled} />
+                      </div>
+                      <p className="font-mono text-lg font-bold text-white mt-1.5">
+                        {ks.disabled ? (
+                          <span className="text-rose-400">Dimatikan</span>
+                        ) : (
+                          <span className="text-emerald-400">Aktif Normal</span>
+                        )}
+                      </p>
+                      <p className="text-2xs text-slate-400 mt-1">
+                        {ks.disabled ? "Emergency kill-switch aktif" : "Semua bot AI melayani pembeli"}
+                      </p>
                     </div>
-                    <p className="font-mono font-bold text-white mt-1">
-                      {totalStores} Tenant
-                    </p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                      Cluster Sehat
-                    </p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-                    <div className="flex items-center justify-between text-slate-400 text-2xs">
-                      <span>Telegram Bot</span>
-                      <StatusDot ok={data.telegram.ok} />
+                    <div className="mt-3 pt-2.5 border-t border-slate-850">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="w-full text-xs h-7 bg-slate-800 hover:bg-slate-700 text-slate-200"
+                        onClick={() => setActiveSection("killswitch")}
+                      >
+                        Kontrol Darurat
+                        <ArrowUpRight className="ml-1 h-3 w-3" />
+                      </Button>
                     </div>
-                    <p className="font-mono font-bold text-white mt-1">
-                      {data.telegram.ok ? "Siap" : "Belum"}
-                    </p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                      @{data.telegram.username || "none"}
-                    </p>
-                  </div>
-
-                  <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-                    <div className="flex items-center justify-between text-slate-400 text-2xs">
-                      <span>Node.js V8</span>
-                      <StatusDot ok />
-                    </div>
-                    <p className="font-mono font-bold text-white mt-1">
-                      {stats?.memory_heap_used_mb ?? 0} MB
-                    </p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                      Uptime {stats ? formatSeconds(stats.uptime_seconds) : "-"}
-                    </p>
                   </div>
                 </div>
               </div>
