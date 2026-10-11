@@ -51,6 +51,7 @@ import {
   CardHeader,
   ErrorState,
   InlineLoading,
+  Modal,
   cn,
 } from "@/components/ui";
 import {
@@ -851,9 +852,12 @@ export function PanelWebsiteBuilder() {
           </div>
 
           {/* MODAL TEMPLATE WEB PREVIEW */}
-          {previewTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-              <div className="flex h-[92vh] w-full max-w-5xl flex-col rounded-2xl border border-ink-200 bg-ink-100 shadow-overlay overflow-hidden">
+          <Modal open={Boolean(previewTemplate)} onClose={() => setPreviewTemplate(null)}>
+            {previewTemplate && (
+              <div
+                className="flex h-[92vh] w-full max-w-5xl flex-col rounded-2xl border border-ink-200 bg-ink-100 shadow-overlay overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
                 {/* Top Bar Preview Modal */}
                 <div className="flex items-center justify-between border-b border-ink-200 bg-white px-5 py-3">
                   <div>
@@ -1115,8 +1119,8 @@ export function PanelWebsiteBuilder() {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </Modal>
         </div>
       )}
 
@@ -1961,9 +1965,12 @@ export function PanelWebsiteBuilder() {
       />
 
       {/* MODAL PENGATURAN TOKO (WEBSITE SETTINGS) */}
-      {showSiteSettingsModal && currentSite && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150">
+      <Modal open={Boolean(showSiteSettingsModal && currentSite)} onClose={() => setShowSiteSettingsModal(false)}>
+        {showSiteSettingsModal && currentSite && (
+          <div
+            className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-ink-100 bg-ink-50/70 px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-8 w-8 place-items-center rounded-lg bg-signal-wash text-signal-strong">
@@ -2107,13 +2114,16 @@ export function PanelWebsiteBuilder() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* MODAL KONFIRMASI HAPUS WEBSITE */}
-      {siteToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150">
+      <Modal open={Boolean(siteToDelete)} onClose={() => setSiteToDelete(null)}>
+        {siteToDelete && (
+          <div
+            className="w-full max-w-md rounded-2xl border border-red-200 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-red-100 bg-red-50/70 px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-8 w-8 place-items-center rounded-lg bg-red-100 text-red-700">
@@ -2176,13 +2186,16 @@ export function PanelWebsiteBuilder() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* MODAL KONFIRMASI TIMPA / GANTI WEBSITE (1 STORE = 1 WEBSITE) */}
-      {confirmReplaceModal && confirmReplaceModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150">
+      <Modal open={Boolean(confirmReplaceModal && confirmReplaceModal.open)} onClose={() => setConfirmReplaceModal(null)}>
+        {confirmReplaceModal && confirmReplaceModal.open && (
+          <div
+            className="w-full max-w-md rounded-2xl border border-amber-200 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b border-amber-100 bg-amber-50/70 px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <div className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 text-amber-700">
@@ -2242,8 +2255,8 @@ export function PanelWebsiteBuilder() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

@@ -18,7 +18,7 @@ import {
   AVAILABLE_SECTION_TEMPLATES,
   type WebsiteSection,
 } from "@/lib/website/types";
-import { cn } from "@/components/ui";
+import { Modal, cn } from "@/components/ui";
 
 interface WebsiteSectionModalProps {
   isOpen: boolean;
@@ -73,8 +73,11 @@ export function WebsiteSectionModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="flex h-[90vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-200 bg-white shadow-overlay overflow-hidden">
+    <Modal open={isOpen} onClose={onClose}>
+      <div
+        className="flex h-[90vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-200 bg-white shadow-overlay overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Top Header */}
         <div className="flex items-center justify-between border-b border-ink-100 px-6 py-4">
           <div>
@@ -158,6 +161,6 @@ export function WebsiteSectionModal({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

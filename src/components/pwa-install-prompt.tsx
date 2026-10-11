@@ -8,7 +8,7 @@ import {
   Smartphone,
   X,
 } from "lucide-react";
-import { cn } from "@/components/ui";
+import { Modal, cn } from "@/components/ui";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -141,9 +141,11 @@ export function PwaInstallPrompt({
       )}
 
       {/* Guide Modal for iOS or manual install */}
-      {showIosGuide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+      <Modal open={showIosGuide} onClose={() => setShowIosGuide(false)}>
+        <div
+          className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900"
+          onClick={(e) => e.stopPropagation()}
+        >
             <button
               type="button"
               onClick={() => setShowIosGuide(false)}
@@ -225,8 +227,7 @@ export function PwaInstallPrompt({
               Saya Mengerti
             </button>
           </div>
-        </div>
-      )}
-    </>
+        </Modal>
+      </>
   );
 }

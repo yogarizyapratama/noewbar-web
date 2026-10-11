@@ -17,6 +17,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  Modal,
   NoResults,
   PageHeader,
   Segmented,
@@ -422,13 +423,8 @@ export function PanelPesanan({
       )}
 
       {/* Lightbox Preview Modal */}
-      {previewImage && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          onClick={() => setPreviewImage(null)}
-        >
+      <Modal open={Boolean(previewImage)} onClose={() => setPreviewImage(null)}>
+        {previewImage && (
           <div
             className="relative flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -474,8 +470,8 @@ export function PanelPesanan({
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

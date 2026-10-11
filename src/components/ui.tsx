@@ -12,7 +12,8 @@
  * - No em dash (U+2014) in any user-visible string.
  */
 
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { useEffect, useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, Inbox, Loader2, SearchX } from "lucide-react";
 
 export { cn } from "@/lib/utils";
@@ -557,4 +558,74 @@ export function InlineLoading({ label }: { label: string }) {
   );
 }
 
+/* ------------------------------------------------------------------ modal / portal */
+
+/**
+ * Attaches content directly to document.body so modals and overlays
+ * span the true 100vw x 100vh viewport without being trapped inside
+ * parent flex containers, transformed elements, or sidebar stacking contexts.
+ */
+export function Portal({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(children, document.body);
+}
+
+export function Modal({
+  open,
+  onClose,
+  children,
+  className,
+}: {
+  open: boolean;
+  onClose?: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = origOverflow;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !onClose) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose?.();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <Portal>
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={cn(
+          "fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-sm animate-fade-up",
+          className
+        )}
+        onClick={(e) => {
+          if (e.target === e.currentTarget && onClose) {
+            onClose();
+          }
+        }}
+      >
+        {children}
+      </div>
+    </Portal>
+  );
+}
+
 export { timeAgo, rupiah } from "@/lib/utils";
+

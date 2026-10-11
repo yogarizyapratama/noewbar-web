@@ -32,6 +32,7 @@ import {
   CardBody,
   ErrorState,
   InlineLoading,
+  Modal,
   PageHeader,
   TextField,
   cn,
@@ -568,9 +569,11 @@ export function PanelProducts() {
       </Card>
 
       {/* Modal Tambah / Edit Produk */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs">
-          <div className="w-full max-w-xl rounded-2xl border border-ink-200 bg-white p-4 sm:p-6 shadow-overlay space-y-4 max-h-[92vh] flex flex-col overflow-hidden">
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)}>
+        <div
+          className="w-full max-w-xl rounded-2xl border border-ink-200 bg-white p-4 sm:p-6 shadow-overlay space-y-4 max-h-[92vh] flex flex-col overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
             <div className="flex items-start justify-between border-b border-ink-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-ink flex items-center gap-2">
@@ -869,13 +872,14 @@ export function PanelProducts() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        </Modal>
 
       {/* Modal Import CSV */}
-      {showCsvModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-4 sm:p-6 shadow-overlay space-y-4 max-h-[92vh] flex flex-col overflow-hidden">
+      <Modal open={showCsvModal} onClose={() => setShowCsvModal(false)}>
+        <div
+          className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-4 sm:p-6 shadow-overlay space-y-4 max-h-[92vh] flex flex-col overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
             <div className="flex items-start justify-between border-b border-ink-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-ink">Impor Produk Massal via CSV</h3>
@@ -928,8 +932,7 @@ export function PanelProducts() {
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        </Modal>
     </div>
   );
 }
