@@ -20,6 +20,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Bot,
+  Camera,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -34,6 +35,7 @@ import {
   MessageCircle,
   Monitor,
   Palette,
+  Pencil,
   Plus,
   QrCode,
   Save,
@@ -166,6 +168,232 @@ export const COLOR_THEMES = [
   },
 ];
 
+const IMAGE_PRESETS = [
+  { label: "Skincare Glow Serum", url: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=800&q=80" },
+  { label: "Organic Cream Bottle", url: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=800&q=80" },
+  { label: "Aesthetic Cosmetic Pack", url: "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?auto=format&fit=crop&w=800&q=80" },
+  { label: "Fashion Outfit Minimal", url: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?auto=format&fit=crop&w=800&q=80" },
+  { label: "Modern Bag & Shoes", url: "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80" },
+  { label: "Fresh Coffee & Cafe", url: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80" },
+  { label: "Gourmet Snack & Food", url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80" },
+  { label: "Gadget & Minimal Tech", url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80" },
+  { label: "Storefront / Toko UMKM", url: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80" },
+];
+
+const VIDEO_PRESETS = [
+  { label: "Sample Teaser YouTube", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" },
+  { label: "Product Demo YouTube", url: "https://www.youtube.com/watch?v=jNQXAC9IVRw" },
+];
+
+function InlineCanvasText({
+  value,
+  fallback = "",
+  onSave,
+  onSelectSec,
+  multiline = false,
+  className = "",
+  style,
+  badgeLabel = "Klik untuk Edit",
+  as: Component = "span",
+}: {
+  value?: string;
+  fallback?: string;
+  onSave: (val: string) => void;
+  onSelectSec?: () => void;
+  multiline?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  badgeLabel?: string;
+  as?: any;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? fallback);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setDraft(value ?? fallback);
+    }
+  }, [value, fallback, isEditing]);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const commit = () => {
+    setIsEditing(false);
+    if (draft !== (value ?? fallback)) {
+      onSave(draft);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !multiline) {
+      e.preventDefault();
+      commit();
+    } else if (e.key === "Enter" && multiline && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      commit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setDraft(value ?? fallback);
+      setIsEditing(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div
+        className="relative inline-block w-full max-w-full my-1 z-30"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {multiline ? (
+          <textarea
+            ref={inputRef as any}
+            value={draft}
+            rows={3}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={commit}
+            style={style}
+            className={cn(
+              "w-full rounded-lg border-2 border-emerald-500 bg-white p-2 text-ink shadow-lg outline-none ring-2 ring-emerald-500/20 text-xs sm:text-sm resize-y leading-normal font-sans",
+              className
+            )}
+          />
+        ) : (
+          <input
+            ref={inputRef as any}
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={commit}
+            style={style}
+            className={cn(
+              "w-full rounded-md border-2 border-emerald-500 bg-white px-2 py-1 text-ink shadow-lg outline-none ring-2 ring-emerald-500/20 leading-tight font-sans",
+              className
+            )}
+          />
+        )}
+        <div className="flex items-center gap-1.5 mt-1 bg-slate-900/90 text-white text-[10px] px-2 py-1 rounded shadow-md w-max z-40 backdrop-blur-xs">
+          <span>{multiline ? "Ctrl+Enter simpan : Esc batal" : "Enter simpan : Esc batal"}</span>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              commit();
+            }}
+            className="rounded bg-emerald-600 px-1.5 py-0.5 text-white font-bold hover:bg-emerald-500 text-[10px]"
+          >
+            Simpan
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setDraft(value ?? fallback);
+              setIsEditing(false);
+            }}
+            className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-200 hover:bg-slate-600 text-[10px]"
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const displayText = value !== undefined && value !== null && value !== "" ? value : fallback;
+
+  return (
+    <Component
+      style={style}
+      onClick={(e: React.MouseEvent) => {
+        e.stopPropagation();
+        onSelectSec?.();
+        setDraft(displayText);
+        setIsEditing(true);
+      }}
+      title="Klik untuk mengedit langsung"
+      className={cn(
+        "group/inline relative cursor-text rounded transition-all hover:outline hover:outline-2 hover:outline-dashed hover:outline-emerald-500 hover:bg-emerald-500/10 hover:shadow-xs px-1 -mx-1",
+        className
+      )}
+    >
+      {displayText}
+      <span className="pointer-events-none absolute -top-3.5 right-0 hidden group-hover/inline:inline-flex items-center gap-1 rounded bg-emerald-600 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs z-20">
+        <Pencil className="h-2 w-2" />
+        {badgeLabel}
+      </span>
+    </Component>
+  );
+}
+
+function InlineCanvasImage({
+  src,
+  alt,
+  className = "",
+  containerClassName = "",
+  onEditClick,
+  onSelectSec,
+  label = "Ganti Foto",
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  containerClassName?: string;
+  onEditClick: () => void;
+  onSelectSec?: () => void;
+  label?: string;
+}) {
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelectSec?.();
+      }}
+      className={cn("group/img relative overflow-hidden", containerClassName)}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} className={className} />
+
+      {/* Hover Overlay */}
+      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-2xs z-10 p-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectSec?.();
+            onEditClick();
+          }}
+          className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg hover:bg-emerald-50 hover:text-emerald-700 transition-all cursor-pointer"
+        >
+          <Camera className="h-3.5 w-3.5 text-emerald-600" />
+          {label}
+        </button>
+      </div>
+
+      {/* Always-visible Mini Badge */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelectSec?.();
+          onEditClick();
+        }}
+        className="absolute top-2 right-2 rounded-full bg-slate-950/80 p-1.5 text-white shadow-md hover:bg-emerald-600 transition-colors z-20 cursor-pointer"
+        title={label}
+      >
+        <Camera className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
 export function PanelWebsiteBuilder() {
   const [websites, setWebsites] = useState<WebsiteRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,6 +451,29 @@ export function PanelWebsiteBuilder() {
     type: "ai" | "template";
     template?: WebsiteTemplate;
   } | null>(null);
+
+  // Direct On-View Media Modal state
+  const [mediaModalTarget, setMediaModalTarget] = useState<{
+    type: "image" | "video";
+    secId: string;
+    field: string;
+    itemIndex?: number;
+    currentUrl: string;
+    title: string;
+  } | null>(null);
+  const [mediaUrlInput, setMediaUrlInput] = useState("");
+
+  function openMediaModal(target: {
+    type: "image" | "video";
+    secId: string;
+    field: string;
+    itemIndex?: number;
+    currentUrl: string;
+    title: string;
+  }) {
+    setMediaModalTarget(target);
+    setMediaUrlInput(target.currentUrl || "");
+  }
 
   function openSiteSettingsModal() {
     if (!currentSite) return;
@@ -494,12 +745,60 @@ export function PanelWebsiteBuilder() {
     }
   }
 
-  function handleUpdateSectionContent(newContent: Record<string, any>) {
-    if (!selectedSecId) return;
+  function handleUpdateSectionContent(newContent: Record<string, any>, targetSecId?: string) {
+    const idToUpdate = targetSecId || selectedSecId;
+    if (!idToUpdate) return;
     setSections((prev) =>
       prev.map((s) =>
-        s.id === selectedSecId ? { ...s, content: { ...s.content, ...newContent } } : s
+        s.id === idToUpdate ? { ...s, content: { ...s.content, ...newContent } } : s
       )
+    );
+  }
+
+  function handleUpdateSectionItem(
+    secId: string,
+    itemIndex: number,
+    itemKey: string,
+    newValue: any
+  ) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== secId) return s;
+        const currentItems = Array.isArray(s.content?.items) ? [...s.content.items] : [];
+        if (!currentItems[itemIndex]) return s;
+        currentItems[itemIndex] = {
+          ...currentItems[itemIndex],
+          [itemKey]: newValue,
+        };
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            items: currentItems,
+          },
+        };
+      })
+    );
+  }
+
+  function handleUpdateSectionBulletPoint(
+    secId: string,
+    bulletIndex: number,
+    newValue: string
+  ) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== secId) return s;
+        const pts = Array.isArray(s.content?.bullet_points) ? [...s.content.bullet_points] : [];
+        pts[bulletIndex] = newValue;
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            bullet_points: pts,
+          },
+        };
+      })
     );
   }
 
@@ -1563,14 +1862,20 @@ export function PanelWebsiteBuilder() {
                 )}
               >
                 {/* Mock Browser Header */}
-                <div className="border-b border-ink-200 bg-ink-50 px-4 py-2.5 flex items-center gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
+                <div className="border-b border-ink-200 bg-ink-50 px-4 py-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
+                    </div>
+                    <div className="flex-1 mx-1 rounded bg-white border border-ink-200 px-2.5 py-1 font-mono text-[10px] text-ink-500 truncate">
+                      https://noewbar.com/store/{currentSite.slug}
+                    </div>
                   </div>
-                  <div className="flex-1 mx-3 rounded bg-white border border-ink-200 px-3 py-1 font-mono text-[10px] text-ink-500 truncate">
-                    https://noewbar.com/store/{currentSite.slug}
+                  <div className="flex items-center gap-1.5 rounded-full bg-signal-wash border border-signal/30 px-2.5 py-0.5 text-[10px] font-semibold text-signal-strong">
+                    <Sparkles className="h-3 w-3 shrink-0" />
+                    <span>Mode Direct Edit Aktif (Klik Teks / Foto)</span>
                   </div>
                 </div>
 
@@ -1683,7 +1988,13 @@ export function PanelWebsiteBuilder() {
                                 : "py-2.5 px-4 text-xs"
                             )}
                           >
-                            {sec.content?.text || "Pengumuman promo toko"}
+                            <InlineCanvasText
+                              value={sec.content?.text}
+                              fallback="Pengumuman promo toko"
+                              onSave={(val) => handleUpdateSectionContent({ text: val }, sec.id)}
+                              onSelectSec={() => setSelectedSecId(sec.id)}
+                              badgeLabel="Edit Pengumuman"
+                            />
                           </div>
                         )}
 
@@ -1694,60 +2005,98 @@ export function PanelWebsiteBuilder() {
                             className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                           >
                             <div className="max-w-2xl mx-auto">
-                              {sec.content?.badge && (
+                              <div className="mb-3">
                                 <span
                                   className={cn(
-                                    "inline-block rounded-full px-3 py-1 text-xs font-bold mb-3 shadow-xs border",
+                                    "inline-block rounded-full px-3 py-1 text-xs font-bold shadow-xs border",
                                     theme.isDark
                                       ? "bg-white/10 text-emerald-300 border-white/20"
                                       : "bg-emerald-100 text-emerald-800 border-emerald-200"
                                   )}
                                 >
-                                  {sec.content.badge}
+                                  <InlineCanvasText
+                                    value={sec.content?.badge}
+                                    fallback="Badge Hero"
+                                    onSave={(val) => handleUpdateSectionContent({ badge: val }, sec.id)}
+                                    onSelectSec={() => setSelectedSecId(sec.id)}
+                                    badgeLabel="Edit Badge"
+                                  />
                                 </span>
-                              )}
+                              </div>
                               <h1
                                 style={{ color: theme.text }}
                                 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight"
                               >
-                                {sec.content?.headline || "Headline Produk Toko"}
+                                <InlineCanvasText
+                                  value={sec.content?.headline}
+                                  fallback="Headline Produk Toko"
+                                  onSave={(val) => handleUpdateSectionContent({ headline: val }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Headline"
+                                />
                               </h1>
                               <p
                                 style={{ color: theme.mutedText }}
                                 className="mt-3 text-xs sm:text-sm max-w-lg mx-auto leading-relaxed"
                               >
-                                {sec.content?.subheadline || "Penjelasan penawaran produk..."}
+                                <InlineCanvasText
+                                  value={sec.content?.subheadline}
+                                  fallback="Penjelasan penawaran produk..."
+                                  multiline
+                                  onSave={(val) => handleUpdateSectionContent({ subheadline: val }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Subheadline"
+                                />
                               </p>
 
                               {/* Hero Media Preview */}
-                              {sec.content?.image_url && (
-                                <div className="mt-6 mx-auto max-w-md overflow-hidden rounded-xl border border-black/10 shadow-md">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={sec.content.image_url}
-                                    alt="Hero"
-                                    className="h-full w-full object-cover max-h-60"
-                                  />
-                                </div>
-                              )}
+                              <div className="mt-6 mx-auto max-w-md">
+                                <InlineCanvasImage
+                                  src={sec.content?.image_url || "/placeholder-product.svg"}
+                                  alt="Hero"
+                                  containerClassName="rounded-xl border border-black/10 shadow-md max-h-60"
+                                  className="h-full w-full object-cover max-h-60"
+                                  label="Ganti Foto Hero"
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  onEditClick={() =>
+                                    openMediaModal({
+                                      type: "image",
+                                      secId: sec.id,
+                                      field: "image_url",
+                                      currentUrl: sec.content?.image_url || "",
+                                      title: "Ganti Foto Hero Produk",
+                                    })
+                                  }
+                                />
+                              </div>
 
-                              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                              <div className="mt-6 flex flex-wrap justify-center items-center gap-3">
                                 <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm">
-                                  <MessageCircle className="h-4 w-4" />
-                                  {sec.content?.cta_primary_text || "Pesan via WA"}
+                                  <MessageCircle className="h-4 w-4 shrink-0" />
+                                  <InlineCanvasText
+                                    value={sec.content?.cta_primary_text}
+                                    fallback="Pesan via WA"
+                                    onSave={(val) => handleUpdateSectionContent({ cta_primary_text: val }, sec.id)}
+                                    onSelectSec={() => setSelectedSecId(sec.id)}
+                                    badgeLabel="Edit Tombol WA"
+                                  />
                                 </span>
-                                {sec.content?.cta_secondary_text && (
-                                  <span
-                                    className={cn(
-                                      "rounded-xl border px-4 py-2.5 text-xs font-semibold shadow-xs",
-                                      theme.isDark
-                                        ? "border-white/20 bg-white/10 text-white"
-                                        : "border-slate-300 bg-white text-slate-700"
-                                    )}
-                                  >
-                                    {sec.content.cta_secondary_text}
-                                  </span>
-                                )}
+                                <span
+                                  className={cn(
+                                    "rounded-xl border px-4 py-2.5 text-xs font-semibold shadow-xs",
+                                    theme.isDark
+                                      ? "border-white/20 bg-white/10 text-white"
+                                      : "border-slate-300 bg-white text-slate-700"
+                                  )}
+                                >
+                                  <InlineCanvasText
+                                    value={sec.content?.cta_secondary_text}
+                                    fallback="Pelajari Lebih Lanjut"
+                                    onSave={(val) => handleUpdateSectionContent({ cta_secondary_text: val }, sec.id)}
+                                    onSelectSec={() => setSelectedSecId(sec.id)}
+                                    badgeLabel="Edit Tombol Sekunder"
+                                  />
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -1764,33 +2113,50 @@ export function PanelWebsiteBuilder() {
                               }}
                               className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                             >
-                              {sec.content?.badge && (
+                              <div className="mb-2">
                                 <span
                                   className={cn(
-                                    "inline-block rounded-full px-3 py-1 text-xs font-bold mb-2 border",
+                                    "inline-block rounded-full px-3 py-1 text-xs font-bold border",
                                     theme.isDark
                                       ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
                                       : "bg-emerald-100 text-emerald-800 border-emerald-200"
                                   )}
                                 >
-                                  {sec.content.badge}
+                                  <InlineCanvasText
+                                    value={sec.content?.badge}
+                                    fallback="Video Showcase"
+                                    onSave={(val) => handleUpdateSectionContent({ badge: val }, sec.id)}
+                                    onSelectSec={() => setSelectedSecId(sec.id)}
+                                    badgeLabel="Edit Badge"
+                                  />
                                 </span>
-                              )}
+                              </div>
                               <h3
                                 style={{ color: theme.text }}
                                 className="text-xl font-extrabold max-w-xl mx-auto"
                               >
-                                {sec.content?.title || "Video Showcase Produk"}
+                                <InlineCanvasText
+                                  value={sec.content?.title}
+                                  fallback="Video Showcase Produk"
+                                  onSave={(val) => handleUpdateSectionContent({ title: val }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Judul Video"
+                                />
                               </h3>
-                              {sec.content?.description && (
-                                <p
-                                  style={{ color: theme.mutedText }}
-                                  className="mt-2 text-xs max-w-md mx-auto"
-                                >
-                                  {sec.content.description}
-                                </p>
-                              )}
-                              <div className="mt-6 overflow-hidden rounded-xl border border-slate-700 bg-black aspect-video max-w-xl mx-auto shadow-md">
+                              <p
+                                style={{ color: theme.mutedText }}
+                                className="mt-2 text-xs max-w-md mx-auto"
+                              >
+                                <InlineCanvasText
+                                  value={sec.content?.description}
+                                  fallback="Tonton Video"
+                                  multiline
+                                  onSave={(val) => handleUpdateSectionContent({ description: val }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Deskripsi"
+                                />
+                              </p>
+                              <div className="group/vid relative mt-6 overflow-hidden rounded-xl border border-slate-700 bg-black aspect-video max-w-xl mx-auto shadow-md">
                                 {vid.isEmbed && vid.url ? (
                                   <iframe
                                     src={vid.url}
@@ -1804,13 +2170,55 @@ export function PanelWebsiteBuilder() {
                                     <p className="text-[10px] mt-0.5">{sec.content?.video_url || "Belum ada tautan video"}</p>
                                   </div>
                                 )}
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/vid:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-2xs z-10">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedSecId(sec.id);
+                                      openMediaModal({
+                                        type: "video",
+                                        secId: sec.id,
+                                        field: "video_url",
+                                        currentUrl: sec.content?.video_url || "",
+                                        title: "Ganti Link Video Showcase",
+                                      });
+                                    }}
+                                    className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg hover:bg-emerald-50 hover:text-emerald-700 transition-all cursor-pointer"
+                                  >
+                                    <Video className="h-3.5 w-3.5 text-emerald-600" />
+                                    Ganti Link Video
+                                  </button>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedSecId(sec.id);
+                                    openMediaModal({
+                                      type: "video",
+                                      secId: sec.id,
+                                      field: "video_url",
+                                      currentUrl: sec.content?.video_url || "",
+                                      title: "Ganti Link Video Showcase",
+                                    });
+                                  }}
+                                  className="absolute top-2 right-2 rounded-full bg-slate-950/80 p-1.5 text-white shadow-md hover:bg-emerald-600 transition-colors z-20 cursor-pointer"
+                                  title="Ganti Link Video"
+                                >
+                                  <Video className="h-3 w-3" />
+                                </button>
                               </div>
-                              {sec.content?.button_text && (
-                                <span className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm">
-                                  <MessageCircle className="h-3.5 w-3.5" />
-                                  {sec.content.button_text}
-                                </span>
-                              )}
+                              <div className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm">
+                                <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                                <InlineCanvasText
+                                  value={sec.content?.button_text}
+                                  fallback="Tanya via WA"
+                                  onSave={(val) => handleUpdateSectionContent({ button_text: val }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Tombol"
+                                />
+                              </div>
                             </div>
                           );
                         })()}
@@ -1825,39 +2233,63 @@ export function PanelWebsiteBuilder() {
                               style={{ color: theme.text }}
                               className="text-base font-bold mb-1"
                             >
-                              {sec.content?.title || "Galeri Foto"}
+                              <InlineCanvasText
+                                value={sec.content?.title}
+                                fallback="Galeri Foto"
+                                onSave={(val) => handleUpdateSectionContent({ title: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Judul Galeri"
+                              />
                             </h3>
-                            {sec.content?.subtitle && (
-                              <p
-                                style={{ color: theme.mutedText }}
-                                className="text-xs mb-6"
-                              >
-                                {sec.content.subtitle}
-                              </p>
-                            )}
+                            <p
+                              style={{ color: theme.mutedText }}
+                              className="text-xs mb-6"
+                            >
+                              <InlineCanvasText
+                                value={sec.content?.subtitle}
+                                fallback="Dokumentasi & Portofolio"
+                                onSave={(val) => handleUpdateSectionContent({ subtitle: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Subjudul"
+                              />
+                            </p>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
                               {(sec.content?.items || []).map((it: any, i: number) => (
                                 <div
                                   key={i}
                                   style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
-                                  className="rounded-xl border overflow-hidden shadow-xs transition-all"
+                                  className="rounded-xl border overflow-hidden shadow-xs transition-all text-left"
                                 >
                                   <div className="aspect-square w-full bg-black/10">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
+                                    <InlineCanvasImage
                                       src={it.image_url || "/placeholder-product.svg"}
                                       alt="Galeri"
                                       className="h-full w-full object-cover"
+                                      label="Ganti Foto"
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      onEditClick={() =>
+                                        openMediaModal({
+                                          type: "image",
+                                          secId: sec.id,
+                                          field: "image_url",
+                                          itemIndex: i,
+                                          currentUrl: it.image_url || "",
+                                          title: `Ganti Foto Galeri #${i + 1}`,
+                                        })
+                                      }
                                     />
                                   </div>
-                                  {it.caption && (
-                                    <p
+                                  <div className="p-2">
+                                    <InlineCanvasText
+                                      value={it.caption}
+                                      fallback="Keterangan foto..."
                                       style={{ color: theme.cardText }}
-                                      className="p-2 text-[10px] font-semibold truncate"
-                                    >
-                                      {it.caption}
-                                    </p>
-                                  )}
+                                      className="text-[10px] font-semibold truncate block"
+                                      onSave={(val) => handleUpdateSectionItem(sec.id, i, "caption", val)}
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      badgeLabel="Edit Keterangan"
+                                    />
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -1872,63 +2304,103 @@ export function PanelWebsiteBuilder() {
                           >
                             <div className="grid gap-6 sm:grid-cols-2 sm:items-center max-w-3xl mx-auto">
                               <div>
-                                {sec.content?.badge && (
+                                <div className="mb-2">
                                   <span
                                     className={cn(
-                                      "inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold mb-2 border",
+                                      "inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold border",
                                       theme.isDark
                                         ? "bg-white/10 text-white border-white/20"
                                         : "bg-slate-200 text-slate-700 border-slate-300"
                                     )}
                                   >
-                                    {sec.content.badge}
+                                    <InlineCanvasText
+                                      value={sec.content?.badge}
+                                      fallback="Cerita Brand"
+                                      onSave={(val) => handleUpdateSectionContent({ badge: val }, sec.id)}
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      badgeLabel="Edit Badge"
+                                    />
                                   </span>
-                                )}
+                                </div>
                                 <h3
                                   style={{ color: theme.text }}
                                   className="text-lg font-bold"
                                 >
-                                  {sec.content?.title || "Cerita Toko"}
+                                  <InlineCanvasText
+                                    value={sec.content?.title}
+                                    fallback="Cerita Toko"
+                                    onSave={(val) => handleUpdateSectionContent({ title: val }, sec.id)}
+                                    onSelectSec={() => setSelectedSecId(sec.id)}
+                                    badgeLabel="Edit Judul"
+                                  />
                                 </h3>
                                 <p
                                   style={{ color: theme.mutedText }}
                                   className="mt-2 text-xs leading-relaxed"
                                 >
-                                  {sec.content?.paragraph || "Paragraf cerita toko..."}
+                                  <InlineCanvasText
+                                    value={sec.content?.paragraph}
+                                    fallback="Paragraf cerita toko..."
+                                    multiline
+                                    onSave={(val) => handleUpdateSectionContent({ paragraph: val }, sec.id)}
+                                    onSelectSec={() => setSelectedSecId(sec.id)}
+                                    badgeLabel="Edit Paragraf"
+                                  />
                                 </p>
                                 {Array.isArray(sec.content?.bullet_points) && sec.content.bullet_points.length > 0 && (
                                   <ul className="mt-3 space-y-1 text-2xs">
                                     {sec.content.bullet_points.map((pt: string, idx: number) => (
                                       <li key={idx} className="flex items-center gap-1.5" style={{ color: theme.text }}>
                                         <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                                        <span>{pt}</span>
+                                        <InlineCanvasText
+                                          value={pt}
+                                          fallback={`Poin keunggulan ${idx + 1}`}
+                                          onSave={(val) => handleUpdateSectionBulletPoint(sec.id, idx, val)}
+                                          onSelectSec={() => setSelectedSecId(sec.id)}
+                                          badgeLabel="Edit Poin"
+                                        />
                                       </li>
                                     ))}
                                   </ul>
                                 )}
-                                {sec.content?.button_text && (
+                                <div className="mt-4">
                                   <span
                                     className={cn(
-                                      "mt-4 inline-block rounded-lg px-4 py-2 text-xs font-bold shadow-xs",
+                                      "inline-block rounded-lg px-4 py-2 text-xs font-bold shadow-xs",
                                       theme.isDark
                                         ? "bg-white text-slate-900"
                                         : "bg-slate-900 text-white"
                                     )}
                                   >
-                                    {sec.content.button_text}
+                                    <InlineCanvasText
+                                      value={sec.content?.button_text}
+                                      fallback="Pelajari Selengkapnya"
+                                      onSave={(val) => handleUpdateSectionContent({ button_text: val }, sec.id)}
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      badgeLabel="Edit Tombol"
+                                    />
                                   </span>
-                                )}
-                              </div>
-                              {sec.content?.image_url && (
-                                <div className="rounded-xl border border-black/10 overflow-hidden shadow-xs">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={sec.content.image_url}
-                                    alt="Story"
-                                    className="h-full w-full object-cover max-h-48"
-                                  />
                                 </div>
-                              )}
+                              </div>
+                              <div>
+                                <InlineCanvasImage
+                                  src={sec.content?.image_url || "/placeholder-product.svg"}
+                                  alt="Story"
+                                  containerClassName="rounded-xl border border-black/10 overflow-hidden shadow-xs max-h-48"
+                                  className="h-full w-full object-cover max-h-48"
+                                  label="Ganti Foto Cerita"
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  onEditClick={() =>
+                                    openMediaModal({
+                                      type: "image",
+                                      secId: sec.id,
+                                      field: "image_url",
+                                      currentUrl: sec.content?.image_url || "",
+                                      title: "Ganti Foto Cerita Toko",
+                                    })
+                                  }
+                                />
+                              </div>
                             </div>
                           </div>
                         )}
@@ -1942,39 +2414,75 @@ export function PanelWebsiteBuilder() {
                             }}
                             className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                           >
-                            {sec.content?.badge && (
-                              <span className="inline-block rounded-full bg-amber-400 text-slate-950 px-3 py-0.5 text-2xs font-extrabold mb-2 uppercase">
-                                {sec.content.badge}
+                            <div className="mb-2">
+                              <span className="inline-block rounded-full bg-amber-400 text-slate-950 px-3 py-0.5 text-2xs font-extrabold uppercase">
+                                <InlineCanvasText
+                                  value={sec.content?.badge}
+                                  fallback="Promo Terbatas"
+                                  onSave={(val) => handleUpdateSectionContent({ badge: val }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Badge Promo"
+                                />
                               </span>
-                            )}
+                            </div>
                             <h3
                               style={{ color: theme.text }}
                               className="text-xl font-extrabold max-w-lg mx-auto"
                             >
-                              {sec.content?.title || "Promo Flash Sale"}
+                              <InlineCanvasText
+                                value={sec.content?.title}
+                                fallback="Promo Flash Sale"
+                                onSave={(val) => handleUpdateSectionContent({ title: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Judul Promo"
+                              />
                             </h3>
-                            {sec.content?.subtitle && (
-                              <p
-                                style={{ color: theme.mutedText }}
-                                className="mt-1 text-xs max-w-md mx-auto"
-                              >
-                                {sec.content?.subtitle}
-                              </p>
-                            )}
+                            <p
+                              style={{ color: theme.mutedText }}
+                              className="mt-1 text-xs max-w-md mx-auto"
+                            >
+                              <InlineCanvasText
+                                value={sec.content?.subtitle}
+                                fallback="Hanya berlaku hari ini untuk 50 pembeli pertama"
+                                onSave={(val) => handleUpdateSectionContent({ subtitle: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Subjudul Promo"
+                              />
+                            </p>
                             <div className="mt-4 flex items-center justify-center gap-2 font-mono text-xs">
-                              {sec.content?.discount_tag && (
-                                <span className="rounded bg-white/20 px-3 py-1 font-bold">
-                                  {sec.content.discount_tag}
-                                </span>
-                              )}
-                              <span className="rounded bg-white px-3 py-1 font-extrabold text-slate-900 shadow-xs">
-                                Sisa: {sec.content?.countdown_hours || 12} Jam
+                              <span className="rounded bg-white/20 px-3 py-1 font-bold">
+                                <InlineCanvasText
+                                  value={sec.content?.discount_tag}
+                                  fallback="DISKON 30%"
+                                  onSave={(val) => handleUpdateSectionContent({ discount_tag: val }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Tag Diskon"
+                                />
+                              </span>
+                              <span className="rounded bg-white px-3 py-1 font-extrabold text-slate-900 shadow-xs flex items-center gap-1">
+                                <span>Sisa:</span>
+                                <InlineCanvasText
+                                  value={String(sec.content?.countdown_hours || "12")}
+                                  fallback="12"
+                                  onSave={(val) => handleUpdateSectionContent({ countdown_hours: parseInt(val) || 12 }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Jam"
+                                />
+                                <span>Jam</span>
                               </span>
                             </div>
-                            <span className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-md">
-                              <MessageCircle className="h-3.5 w-3.5" />
-                              {sec.content?.button_text || "Klaim Promo"}
-                            </span>
+                            <div className="mt-5">
+                              <span className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-md">
+                                <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                                <InlineCanvasText
+                                  value={sec.content?.button_text}
+                                  fallback="Klaim Promo"
+                                  onSave={(val) => handleUpdateSectionContent({ button_text: val }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Tombol Promo"
+                                />
+                              </span>
+                            </div>
                           </div>
                         )}
 
@@ -1988,32 +2496,55 @@ export function PanelWebsiteBuilder() {
                               style={{ color: theme.text }}
                               className="text-base font-bold text-center mb-6"
                             >
-                              {sec.content?.title || "Keunggulan Layanan"}
+                              <InlineCanvasText
+                                value={sec.content?.title}
+                                fallback="Keunggulan Layanan"
+                                onSave={(val) => handleUpdateSectionContent({ title: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Judul Keunggulan"
+                              />
                             </h3>
-                            {sec.content?.subtitle && (
-                              <p
-                                style={{ color: theme.mutedText }}
-                                className="text-xs text-center -mt-4 mb-6"
-                              >
-                                {sec.content.subtitle}
-                              </p>
-                            )}
+                            <p
+                              style={{ color: theme.mutedText }}
+                              className="text-xs text-center -mt-4 mb-6"
+                            >
+                              <InlineCanvasText
+                                value={sec.content?.subtitle}
+                                fallback="Mengapa memilih produk & layanan kami"
+                                onSave={(val) => handleUpdateSectionContent({ subtitle: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Subjudul"
+                              />
+                            </p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-3xl mx-auto">
                               {(sec.content?.items || []).map((it: any, i: number) => (
                                 <div
                                   key={i}
                                   style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
-                                  className="rounded-xl border p-3.5 text-xs shadow-xs transition-all"
+                                  className="rounded-xl border p-3.5 text-xs shadow-xs transition-all text-left"
                                 >
                                   <div className="h-7 w-7 rounded-lg bg-emerald-500/20 text-emerald-600 flex items-center justify-center font-bold mb-2">
                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                   </div>
-                                  <p style={{ color: theme.cardText }} className="font-bold">
-                                    {it.title}
-                                  </p>
-                                  <p style={{ color: theme.cardMuted }} className="text-2xs mt-1 leading-relaxed">
-                                    {it.desc}
-                                  </p>
+                                  <div style={{ color: theme.cardText }} className="font-bold">
+                                    <InlineCanvasText
+                                      value={it.title}
+                                      fallback={`Keunggulan #${i + 1}`}
+                                      onSave={(val) => handleUpdateSectionItem(sec.id, i, "title", val)}
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      badgeLabel="Edit Judul"
+                                    />
+                                  </div>
+                                  <div style={{ color: theme.cardMuted }} className="text-2xs mt-1 leading-relaxed">
+                                    <InlineCanvasText
+                                      value={it.desc}
+                                      fallback="Deskripsi singkat keunggulan..."
+                                      multiline
+                                      onSave={(val) => handleUpdateSectionItem(sec.id, i, "desc", val)}
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      badgeLabel="Edit Deskripsi"
+                                    />
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -2030,13 +2561,25 @@ export function PanelWebsiteBuilder() {
                               style={{ color: theme.text }}
                               className="text-base font-bold"
                             >
-                              {sec.content?.title || "Katalog Produk Pilihan"}
+                              <InlineCanvasText
+                                value={sec.content?.title}
+                                fallback="Katalog Produk Pilihan"
+                                onSave={(val) => handleUpdateSectionContent({ title: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Judul Katalog"
+                              />
                             </h3>
                             <p
                               style={{ color: theme.mutedText }}
                               className="text-xs mt-1 max-w-md mx-auto"
                             >
-                              {sec.content?.subtitle}
+                              <InlineCanvasText
+                                value={sec.content?.subtitle}
+                                fallback="Temukan produk terbaik untuk kebutuhan harian Anda"
+                                onSave={(val) => handleUpdateSectionContent({ subtitle: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Subjudul Katalog"
+                              />
                             </p>
                             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl mx-auto">
                               {[1, 2, 3].map((num) => (
@@ -2079,21 +2622,52 @@ export function PanelWebsiteBuilder() {
                               style={{ color: theme.text }}
                               className="text-base font-bold text-center mb-4"
                             >
-                              {sec.content?.title || "Ulasan Pembeli"}
+                              <InlineCanvasText
+                                value={sec.content?.title}
+                                fallback="Ulasan Pembeli"
+                                onSave={(val) => handleUpdateSectionContent({ title: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Judul Ulasan"
+                              />
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
                               {(sec.content?.items || []).map((it: any, i: number) => (
                                 <div
                                   key={i}
                                   style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
-                                  className="rounded-xl border p-3.5 text-xs shadow-xs transition-all"
+                                  className="rounded-xl border p-3.5 text-xs shadow-xs transition-all text-left"
                                 >
-                                  <p style={{ color: theme.cardMuted }} className="italic">
-                                    &ldquo;{it.text}&rdquo;
-                                  </p>
-                                  <p style={{ color: theme.cardText }} className="mt-2 font-bold not-italic text-2xs">
-                                    {it.name} <span style={{ color: theme.cardMuted }} className="font-normal">- {it.role}</span>
-                                  </p>
+                                  <div style={{ color: theme.cardMuted }} className="italic">
+                                    &ldquo;
+                                    <InlineCanvasText
+                                      value={it.text}
+                                      fallback="Produk sangat memuaskan dan respon cepat!"
+                                      multiline
+                                      onSave={(val) => handleUpdateSectionItem(sec.id, i, "text", val)}
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      badgeLabel="Edit Ulasan"
+                                    />
+                                    &rdquo;
+                                  </div>
+                                  <div style={{ color: theme.cardText }} className="mt-2 font-bold not-italic text-2xs flex items-center gap-1">
+                                    <InlineCanvasText
+                                      value={it.name}
+                                      fallback="Nama Pelanggan"
+                                      onSave={(val) => handleUpdateSectionItem(sec.id, i, "name", val)}
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      badgeLabel="Edit Nama"
+                                    />
+                                    <span style={{ color: theme.cardMuted }} className="font-normal">-</span>
+                                    <span style={{ color: theme.cardMuted }} className="font-normal">
+                                      <InlineCanvasText
+                                        value={it.role}
+                                        fallback="Verified Buyer"
+                                        onSave={(val) => handleUpdateSectionItem(sec.id, i, "role", val)}
+                                        onSelectSec={() => setSelectedSecId(sec.id)}
+                                        badgeLabel="Edit Peran"
+                                      />
+                                    </span>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -2110,21 +2684,40 @@ export function PanelWebsiteBuilder() {
                               style={{ color: theme.text }}
                               className="text-base font-bold text-center mb-4"
                             >
-                              {sec.content?.title || "FAQ"}
+                              <InlineCanvasText
+                                value={sec.content?.title}
+                                fallback="FAQ"
+                                onSave={(val) => handleUpdateSectionContent({ title: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Judul FAQ"
+                              />
                             </h3>
-                            <div className="space-y-2 max-w-md mx-auto">
+                            <div className="space-y-2 max-w-md mx-auto text-left">
                               {(sec.content?.items || []).map((it: any, i: number) => (
                                 <div
                                   key={i}
                                   style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
                                   className="rounded-xl border p-3 text-xs shadow-xs transition-all"
                                 >
-                                  <p style={{ color: theme.cardText }} className="font-bold">
-                                    {it.q}
-                                  </p>
-                                  <p style={{ color: theme.cardMuted }} className="mt-1 text-2xs leading-relaxed">
-                                    {it.a}
-                                  </p>
+                                  <div style={{ color: theme.cardText }} className="font-bold">
+                                    <InlineCanvasText
+                                      value={it.q}
+                                      fallback="Pertanyaan yang sering diajukan?"
+                                      onSave={(val) => handleUpdateSectionItem(sec.id, i, "q", val)}
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      badgeLabel="Edit Pertanyaan"
+                                    />
+                                  </div>
+                                  <div style={{ color: theme.cardMuted }} className="mt-1 text-2xs leading-relaxed">
+                                    <InlineCanvasText
+                                      value={it.a}
+                                      fallback="Jawaban atas pertanyaan pembeli..."
+                                      multiline
+                                      onSave={(val) => handleUpdateSectionItem(sec.id, i, "a", val)}
+                                      onSelectSec={() => setSelectedSecId(sec.id)}
+                                      badgeLabel="Edit Jawaban"
+                                    />
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -2141,15 +2734,35 @@ export function PanelWebsiteBuilder() {
                             className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                           >
                             <h3 style={{ color: theme.text }} className="text-lg font-extrabold max-w-md mx-auto">
-                              {sec.content?.title}
+                              <InlineCanvasText
+                                value={sec.content?.title}
+                                fallback="Pesan Sekarang via WhatsApp"
+                                onSave={(val) => handleUpdateSectionContent({ title: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Judul CTA"
+                              />
                             </h3>
                             <p style={{ color: theme.mutedText }} className="text-xs mt-1.5 max-w-sm mx-auto leading-relaxed">
-                              {sec.content?.subtitle}
+                              <InlineCanvasText
+                                value={sec.content?.subtitle}
+                                fallback="Konsultasi gratis & respon cepat dari customer service kami."
+                                onSave={(val) => handleUpdateSectionContent({ subtitle: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Subjudul CTA"
+                              />
                             </p>
-                            <span className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-emerald-900 shadow-md">
-                              <MessageCircle className="h-4 w-4 text-emerald-700" />
-                              {sec.content?.button_text || "Chat WhatsApp"}
-                            </span>
+                            <div className="mt-4">
+                              <span className="inline-flex items-center gap-1.5 rounded-xl bg-white px-5 py-2.5 text-xs font-bold text-emerald-900 shadow-md">
+                                <MessageCircle className="h-4 w-4 text-emerald-700 shrink-0" />
+                                <InlineCanvasText
+                                  value={sec.content?.button_text}
+                                  fallback="Chat WhatsApp"
+                                  onSave={(val) => handleUpdateSectionContent({ button_text: val }, sec.id)}
+                                  onSelectSec={() => setSelectedSecId(sec.id)}
+                                  badgeLabel="Edit Tombol WA"
+                                />
+                              </span>
+                            </div>
                           </div>
                         )}
 
@@ -2162,15 +2775,33 @@ export function PanelWebsiteBuilder() {
                             }}
                             className={cn("text-center border-t border-black/10 text-2xs transition-colors", padClass)}
                           >
-                            <p style={{ color: theme.text }} className="font-bold text-xs">
-                              {sec.content?.brand_name || "Toko Online"}
-                            </p>
-                            <p style={{ color: theme.mutedText }} className="mt-0.5">
-                              {sec.content?.tagline}
-                            </p>
-                            <p style={{ color: theme.mutedText }} className="mt-2 opacity-60">
-                              {sec.content?.copyright}
-                            </p>
+                            <div style={{ color: theme.text }} className="font-bold text-xs">
+                              <InlineCanvasText
+                                value={sec.content?.brand_name}
+                                fallback="Toko Online"
+                                onSave={(val) => handleUpdateSectionContent({ brand_name: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Nama Toko"
+                              />
+                            </div>
+                            <div style={{ color: theme.mutedText }} className="mt-0.5">
+                              <InlineCanvasText
+                                value={sec.content?.tagline}
+                                fallback="Solusi belanja terpercaya Anda"
+                                onSave={(val) => handleUpdateSectionContent({ tagline: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Slogan"
+                              />
+                            </div>
+                            <div style={{ color: theme.mutedText }} className="mt-2 opacity-60">
+                              <InlineCanvasText
+                                value={sec.content?.copyright}
+                                fallback="© 2026 Toko Online. All rights reserved."
+                                onSave={(val) => handleUpdateSectionContent({ copyright: val }, sec.id)}
+                                onSelectSec={() => setSelectedSecId(sec.id)}
+                                badgeLabel="Edit Hak Cipta"
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2610,6 +3241,183 @@ export function PanelWebsiteBuilder() {
             <div className="flex justify-end gap-2 pt-2 border-t border-ink-100">
               <Button size="sm" variant="ghost" onClick={() => setShowQrModal(false)}>
                 Tutup
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* MODAL GANTI FOTO / VIDEO LANGSUNG (ON-VIEW) */}
+      <Modal open={Boolean(mediaModalTarget)} onClose={() => setMediaModalTarget(null)}>
+        {mediaModalTarget && (
+          <div
+            className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white shadow-2xl overflow-hidden p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-ink-100 pb-3">
+              <div className="flex items-center gap-2 text-left">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-signal-wash text-signal-strong">
+                  {mediaModalTarget.type === "video" ? (
+                    <Video className="h-4 w-4" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-ink">
+                    {mediaModalTarget.title || (mediaModalTarget.type === "video" ? "Ganti Video" : "Ganti Foto")}
+                  </h3>
+                  <p className="text-2xs text-ink-500">
+                    {mediaModalTarget.type === "video"
+                      ? "Tempel URL YouTube atau file MP4"
+                      : "Pilih foto preset siap pakai atau tempel URL kustom"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMediaModalTarget(null)}
+                className="rounded-lg p-1 text-ink-400 hover:bg-ink-100 hover:text-ink cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-ink-700 mb-1">
+                  URL {mediaModalTarget.type === "video" ? "Video" : "Gambar"}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={mediaUrlInput}
+                    onChange={(e) => setMediaUrlInput(e.target.value)}
+                    placeholder={
+                      mediaModalTarget.type === "video"
+                        ? "https://www.youtube.com/watch?v=..."
+                        : "https://images.unsplash.com/..."
+                    }
+                    className="flex-1 rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
+                  />
+                  {mediaUrlInput && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setMediaUrlInput("")}
+                      className="text-xs"
+                    >
+                      Reset
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              {mediaModalTarget.type === "image" && mediaUrlInput && (
+                <div className="rounded-xl border border-ink-200 p-2 bg-ink-50">
+                  <p className="text-[10px] font-bold text-ink-500 mb-1 uppercase tracking-wider">
+                    Pratinjau Foto:
+                  </p>
+                  <div className="max-h-40 overflow-hidden rounded-lg flex items-center justify-center bg-black/5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={mediaUrlInput}
+                      alt="Pratinjau"
+                      className="max-h-40 w-auto object-contain rounded"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Presets Grid */}
+              {mediaModalTarget.type === "image" && (
+                <div>
+                  <label className="block text-2xs font-bold uppercase tracking-wider text-ink-500 mb-2">
+                    Koleksi Foto Komersial Siap Pakai:
+                  </label>
+                  <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1 border border-ink-100 rounded-xl bg-ink-50/50">
+                    {IMAGE_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setMediaUrlInput(preset.url)}
+                        className={cn(
+                          "flex flex-col text-left rounded-lg border p-1.5 transition-all text-xs hover:border-signal cursor-pointer",
+                          mediaUrlInput === preset.url
+                            ? "border-signal bg-signal-wash/40 ring-1 ring-signal"
+                            : "border-ink-200 bg-white"
+                        )}
+                      >
+                        <div className="aspect-video w-full rounded overflow-hidden bg-ink-100 mb-1">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={preset.url}
+                            alt={preset.label}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <span className="text-[10px] font-semibold text-ink truncate">
+                          {preset.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {mediaModalTarget.type === "video" && (
+                <div>
+                  <label className="block text-2xs font-bold uppercase tracking-wider text-ink-500 mb-2">
+                    Contoh Tautan Video:
+                  </label>
+                  <div className="space-y-1.5">
+                    {VIDEO_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setMediaUrlInput(preset.url)}
+                        className="w-full flex items-center justify-between rounded-lg border border-ink-200 p-2 text-xs hover:border-signal text-left bg-white cursor-pointer"
+                      >
+                        <span className="font-semibold text-ink">{preset.label}</span>
+                        <span className="text-[10px] text-ink-400 font-mono truncate max-w-xs">
+                          {preset.url}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-ink-100">
+              <Button size="sm" variant="secondary" onClick={() => setMediaModalTarget(null)}>
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => {
+                  if (mediaModalTarget.itemIndex !== undefined) {
+                    handleUpdateSectionItem(
+                      mediaModalTarget.secId,
+                      mediaModalTarget.itemIndex,
+                      mediaModalTarget.field,
+                      mediaUrlInput
+                    );
+                  } else {
+                    handleUpdateSectionContent(
+                      { [mediaModalTarget.field]: mediaUrlInput },
+                      mediaModalTarget.secId
+                    );
+                  }
+                  setMediaModalTarget(null);
+                }}
+              >
+                Gunakan {mediaModalTarget.type === "video" ? "Video" : "Foto"} Ini
               </Button>
             </div>
           </div>
