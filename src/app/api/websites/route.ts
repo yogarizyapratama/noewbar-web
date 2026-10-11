@@ -59,8 +59,30 @@ export async function POST(req: Request) {
   }
 
   if (action === "create") {
-    const { name, template_id, slug: requestedSlug } = body;
+    const { name, template_id, slug: requestedSlug, replace_existing } = body;
     const template = TEMPLATES.find((t) => t.id === template_id) || TEMPLATES[0];
+
+    // Enforce 1 website per tenant
+    const existingWebsite = await prisma.website.findFirst({
+      where: { tenant_id: tenantId },
+    });
+
+    if (existingWebsite) {
+      if (replace_existing !== true) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Toko Anda sudah memiliki 1 website aktif. Setiap akun toko hanya dapat memiliki 1 website resmi. Anda dapat mengedit website yang ada atau menggantinya.",
+            existing_website: existingWebsite,
+          },
+          { status: 400 }
+        );
+      }
+      // If replace_existing is requested, safely remove existing websites first
+      await prisma.website.deleteMany({
+        where: { tenant_id: tenantId },
+      });
+    }
 
     // Generate unique slug
     const tenant = await prisma.tenant.findUnique({
@@ -96,9 +118,31 @@ export async function POST(req: Request) {
   }
 
   if (action === "generate_ai") {
-    const { prompt, template_id } = body;
+    const { prompt, template_id, replace_existing } = body;
     if (!prompt?.trim()) {
       return NextResponse.json({ ok: false, error: "Prompt instruksi website wajib diisi." }, { status: 400 });
+    }
+
+    // Enforce 1 website per tenant
+    const existingWebsite = await prisma.website.findFirst({
+      where: { tenant_id: tenantId },
+    });
+
+    if (existingWebsite) {
+      if (replace_existing !== true) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Toko Anda sudah memiliki 1 website aktif. Setiap akun toko hanya dapat memiliki 1 website resmi. Anda dapat mengedit website yang ada atau menimpanya.",
+            existing_website: existingWebsite,
+          },
+          { status: 400 }
+        );
+      }
+      // If replace_existing is requested, safely remove existing websites first
+      await prisma.website.deleteMany({
+        where: { tenant_id: tenantId },
+      });
     }
 
     const tenant = await prisma.tenant.findUnique({
@@ -247,11 +291,15 @@ export async function POST(req: Request) {
     const { id } = body;
     if (!id) return NextResponse.json({ ok: false, error: "ID website wajib diisi." }, { status: 400 });
 
-    await prisma.website.deleteMany({
+    const result = await prisma.website.deleteMany({
       where: { id, tenant_id: tenantId },
     });
 
-    return NextResponse.json({ ok: true });
+    if (result.count === 0) {
+      return NextResponse.json({ ok: false, error: "Website tidak ditemukan atau bukan milik akun Anda." }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, message: "Website berhasil dihapus." });
   }
 
   return NextResponse.json({ ok: false, error: "Aksi tidak dikenali." }, { status: 400 });

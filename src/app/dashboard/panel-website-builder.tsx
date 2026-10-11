@@ -118,6 +118,18 @@ export function PanelWebsiteBuilder() {
     is_knowledge_source: false,
   });
 
+  // Delete Website Modal state
+  const [siteToDelete, setSiteToDelete] = useState<WebsiteRecord | null>(null);
+  const [deletingSite, setDeletingSite] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Replace Website Modal state (enforcing 1 store = 1 website)
+  const [confirmReplaceModal, setConfirmReplaceModal] = useState<{
+    open: boolean;
+    type: "ai" | "template";
+    template?: WebsiteTemplate;
+  } | null>(null);
+
   function openSiteSettingsModal() {
     if (!currentSite) return;
     setSiteSettingsForm({
@@ -201,8 +213,42 @@ export function PanelWebsiteBuilder() {
     setEditorMsg(null);
   }
 
-  async function handleCreateWithAi() {
+  async function handleDeleteWebsite(site: WebsiteRecord) {
+    setDeletingSite(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch("/api/websites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", id: site.id }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setSiteToDelete(null);
+        if (currentSite?.id === site.id) {
+          setCurrentSite(null);
+          setSections([]);
+          setActiveTab("list");
+        }
+        await loadWebsites();
+      } else {
+        setDeleteError(json.error || "Gagal menghapus website.");
+      }
+    } catch {
+      setDeleteError("Gagal menghubungi server untuk menghapus website.");
+    } finally {
+      setDeletingSite(false);
+    }
+  }
+
+  async function handleCreateWithAi(replaceExisting = false) {
     if (!aiPrompt.trim()) return;
+
+    if (websites.length >= 1 && !replaceExisting) {
+      setConfirmReplaceModal({ open: true, type: "ai" });
+      return;
+    }
+
     setAiGenerating(true);
     setAiGenError(null);
     try {
@@ -213,10 +259,12 @@ export function PanelWebsiteBuilder() {
           action: "generate_ai",
           prompt: aiPrompt.trim(),
           template_id: aiTemplateId,
+          replace_existing: replaceExisting,
         }),
       });
       const json = await res.json();
       if (json.ok && json.website) {
+        setConfirmReplaceModal(null);
         await loadWebsites();
         startEditor(json.website);
       } else {
@@ -229,7 +277,12 @@ export function PanelWebsiteBuilder() {
     }
   }
 
-  async function handleUseTemplate(template: WebsiteTemplate) {
+  async function handleUseTemplate(template: WebsiteTemplate, replaceExisting = false) {
+    if (websites.length >= 1 && !replaceExisting) {
+      setConfirmReplaceModal({ open: true, type: "template", template });
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/websites", {
@@ -239,10 +292,12 @@ export function PanelWebsiteBuilder() {
           action: "create",
           name: `${template.name} Store`,
           template_id: template.id,
+          replace_existing: replaceExisting,
         }),
       });
       const json = await res.json();
       if (json.ok && json.website) {
+        setConfirmReplaceModal(null);
         await loadWebsites();
         startEditor(json.website);
       }
@@ -435,7 +490,7 @@ export function PanelWebsiteBuilder() {
               onClick={() => setActiveTab("list")}
             >
               <Globe className="mr-1.5 h-3.5 w-3.5" />
-              Website Saya ({websites.length})
+              Website Saya ({websites.length > 0 ? "1/1" : "0/1"})
             </Button>
             <Button
               variant={activeTab === "create_ai" ? "primary" : "secondary"}
@@ -481,68 +536,94 @@ export function PanelWebsiteBuilder() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {websites.map((w) => {
-                const isPub = w.status === "PUBLISHED";
-                return (
-                  <Card key={w.id} className="flex flex-col justify-between p-5 hover:shadow-raised transition-all">
-                    <div>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <Badge tone={isPub ? "signal" : "neutral"}>
-                          {isPub ? "Dipublikasikan" : "Draft"}
-                        </Badge>
-                        {w.is_knowledge_source && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            <Bot className="h-3 w-3" />
-                            Sumber AI
-                          </span>
-                        )}
+            <div className="space-y-4">
+              <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-xs text-sky-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start sm:items-center gap-2.5">
+                  <Globe className="h-4 w-4 text-sky-600 mt-0.5 sm:mt-0 shrink-0" />
+                  <span>
+                    <strong>Aturan Toko Resmi:</strong> Setiap toko memiliki 1 website resmi terintegrasi (1 toko = 1 website). Anda dapat mengedit visual, mengubah isi, atau menghapus website jika ingin merancang ulang dari awal.
+                  </span>
+                </div>
+                <span className="shrink-0 rounded-full bg-sky-100 border border-sky-300 px-2.5 py-0.5 text-2xs font-bold text-sky-800 self-start sm:self-auto">
+                  {websites.length}/1 Website
+                </span>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {websites.map((w) => {
+                  const isPub = w.status === "PUBLISHED";
+                  return (
+                    <Card key={w.id} className="flex flex-col justify-between p-5 hover:shadow-raised transition-all">
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <Badge tone={isPub ? "signal" : "neutral"}>
+                            {isPub ? "Dipublikasikan" : "Draft"}
+                          </Badge>
+                          {w.is_knowledge_source && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              <Bot className="h-3 w-3" />
+                              Sumber AI
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-base font-bold text-ink">{w.name}</h3>
+                        <p className="mt-1 text-xs text-ink-500 line-clamp-2">
+                          {w.description || "Toko online resmi terhubung ke WhatsApp."}
+                        </p>
+
+                        <div className="mt-4 rounded-lg bg-ink-50 p-2.5 font-mono text-2xs text-ink-600 flex items-center justify-between">
+                          <span className="truncate">/store/{w.slug}</span>
+                          {isPub && (
+                            <a
+                              href={`/store/${w.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-signal-strong hover:underline inline-flex items-center gap-1 font-semibold"
+                            >
+                              Buka <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
                       </div>
 
-                      <h3 className="text-base font-bold text-ink">{w.name}</h3>
-                      <p className="mt-1 text-xs text-ink-500 line-clamp-2">
-                        {w.description || "Toko online resmi terhubung ke WhatsApp."}
-                      </p>
-
-                      <div className="mt-4 rounded-lg bg-ink-50 p-2.5 font-mono text-2xs text-ink-600 flex items-center justify-between">
-                        <span className="truncate">/store/{w.slug}</span>
+                      <div className="mt-5 pt-3 border-t border-ink-100 flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          className="flex-1 text-xs"
+                          onClick={() => startEditor(w)}
+                        >
+                          Buka Visual Editor
+                        </Button>
                         {isPub && (
                           <a
                             href={`/store/${w.slug}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-signal-strong hover:underline inline-flex items-center gap-1 font-semibold"
+                            className="rounded-lg border border-ink-200 p-2 text-ink-600 hover:bg-ink-50"
+                            title="Lihat Website Publik"
                           >
-                            Buka <ExternalLink className="h-3 w-3" />
+                            <Eye className="h-4 w-4" />
                           </a>
                         )}
-                      </div>
-                    </div>
-
-                    <div className="mt-5 pt-3 border-t border-ink-100 flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        className="flex-1 text-xs"
-                        onClick={() => startEditor(w)}
-                      >
-                        Buka Visual Editor
-                      </Button>
-                      {isPub && (
-                        <a
-                          href={`/store/${w.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-lg border border-ink-200 p-2 text-ink-600 hover:bg-ink-50"
-                          title="Lihat Website Publik"
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 px-2.5"
+                          onClick={() => {
+                            setDeleteError(null);
+                            setSiteToDelete(w);
+                          }}
+                          title="Hapus Website"
                         >
-                          <Eye className="h-4 w-4" />
-                        </a>
-                      )}
-                    </div>
-                  </Card>
-                );
-              })}
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -558,6 +639,18 @@ export function PanelWebsiteBuilder() {
           />
           <CardBody className="space-y-5">
             {aiGenError && <ErrorState title="Gagal membuat website" description={aiGenError} compact />}
+
+            {websites.length >= 1 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-950 flex items-start gap-2.5">
+                <Globe className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-bold">Perhatian: Toko Anda sudah memiliki website aktif ({websites[0].name})</p>
+                  <p className="text-2xs text-amber-800 mt-0.5 leading-relaxed">
+                    Kebijakan toko menetapkan 1 website resmi per akun. Jika Anda melanjutkan generate dengan AI, website saat ini akan digantikan dengan rancangan baru. Anda juga dapat langsung mengeditnya di Visual Editor.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-600">
@@ -605,7 +698,7 @@ export function PanelWebsiteBuilder() {
               </Button>
               <Button
                 variant="primary"
-                onClick={handleCreateWithAi}
+                onClick={() => handleCreateWithAi(false)}
                 loading={aiGenerating}
                 disabled={!aiPrompt.trim()}
               >
@@ -1074,6 +1167,20 @@ export function PanelWebsiteBuilder() {
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
               )}
+
+              <Button
+                size="sm"
+                variant="secondary"
+                className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                onClick={() => {
+                  setDeleteError(null);
+                  setSiteToDelete(currentSite);
+                }}
+                title="Hapus website toko ini"
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Hapus Web
+              </Button>
             </div>
           </div>
 
@@ -1926,6 +2033,29 @@ export function PanelWebsiteBuilder() {
                   </div>
                 </label>
               </div>
+
+              <div className="rounded-xl border border-red-200 bg-red-50/60 p-3.5 flex items-center justify-between gap-3">
+                <div>
+                  <span className="font-bold text-xs text-red-950 block">Zona Bahaya: Hapus Website</span>
+                  <span className="text-2xs text-red-700 leading-relaxed block mt-0.5">
+                    Hapus website toko ini secara permanen. Tautan publik tidak akan dapat diakses lagi.
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  type="button"
+                  className="border-red-300 bg-white text-red-600 hover:bg-red-50 shrink-0 font-semibold"
+                  onClick={() => {
+                    setShowSiteSettingsModal(false);
+                    setDeleteError(null);
+                    setSiteToDelete(currentSite);
+                  }}
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  Hapus Web
+                </Button>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 border-t border-ink-100 bg-ink-50/50 px-5 py-3.5">
@@ -1948,6 +2078,141 @@ export function PanelWebsiteBuilder() {
               >
                 <Save className="mr-1.5 h-3.5 w-3.5" />
                 Simpan Pengaturan
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI HAPUS WEBSITE */}
+      {siteToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-red-100 bg-red-50/70 px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-red-100 text-red-700">
+                  <Trash2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-red-950">Hapus Website Toko</h3>
+                  <p className="text-2xs text-red-700">Tindakan ini tidak dapat dibatalkan</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!deletingSite) setSiteToDelete(null);
+                }}
+                className="rounded-lg p-1 text-ink-400 hover:bg-ink-100 hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3 text-xs">
+              <p className="text-ink-700 leading-relaxed">
+                Apakah Anda yakin ingin menghapus website <strong>&ldquo;{siteToDelete.name}&rdquo;</strong>?
+              </p>
+              <div className="rounded-lg bg-ink-50 p-2.5 font-mono text-2xs text-ink-600">
+                Tautan: /store/{siteToDelete.slug}
+              </div>
+              <p className="text-2xs text-ink-500 leading-relaxed">
+                Seluruh halaman, struktur section, dan tampilan publik website ini akan dihapus permanen. Setelah dihapus, Anda dapat membuat website baru dari awal.
+              </p>
+
+              {deleteError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 p-2 text-2xs text-red-700 font-medium">
+                  {deleteError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-ink-100 bg-ink-50/50 px-5 py-3.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={() => setSiteToDelete(null)}
+                disabled={deletingSite}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                type="button"
+                className="bg-red-600 hover:bg-red-700 text-white border-transparent"
+                onClick={() => handleDeleteWebsite(siteToDelete)}
+                loading={deletingSite}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Ya, Hapus Permanen
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI TIMPA / GANTI WEBSITE (1 STORE = 1 WEBSITE) */}
+      {confirmReplaceModal && confirmReplaceModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-white shadow-2xl overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-amber-100 bg-amber-50/70 px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 text-amber-700">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-amber-950">
+                    {confirmReplaceModal.type === "ai"
+                      ? "Konfirmasi Generate Ulang dengan AI"
+                      : "Konfirmasi Ganti Template Website"}
+                  </h3>
+                  <p className="text-2xs text-amber-700">Aturan: 1 Akun Toko = 1 Website Resmi</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmReplaceModal(null)}
+                className="rounded-lg p-1 text-ink-400 hover:bg-ink-100 hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3 text-xs">
+              <p className="text-ink-700 leading-relaxed">
+                Toko Anda sudah memiliki website aktif <strong>&ldquo;{websites[0]?.name}&rdquo;</strong>.
+              </p>
+              <p className="text-2xs text-ink-600 leading-relaxed">
+                Untuk menjaga konsistensi katalog produk dan chatbot AI WhatsApp, setiap akun toko hanya memiliki 1 website resmi. Melanjutkan tindakan ini akan <strong>menimpa dan menggantikan website yang ada saat ini</strong>.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-ink-100 bg-ink-50/50 px-5 py-3.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={() => setConfirmReplaceModal(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                type="button"
+                onClick={() => {
+                  if (confirmReplaceModal.type === "ai") {
+                    handleCreateWithAi(true);
+                  } else if (confirmReplaceModal.template) {
+                    handleUseTemplate(confirmReplaceModal.template, true);
+                  }
+                }}
+                loading={confirmReplaceModal.type === "ai" ? aiGenerating : loading}
+              >
+                <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                Ya, Timpa & Buat Baru
               </Button>
             </div>
           </div>
