@@ -39,13 +39,18 @@ const STOPWORDS = new Set([
   "semua","item","dagangan","koleksi","pilihan",
 ]);
 
+const VALID_SHORT_TOKENS = new Set([
+  "s", "m", "l", "xl", "xs", "xxl", "3xl", "4xl",
+  "27", "28", "29", "30", "31", "32", "33", "34", "36", "38", "39", "40", "41", "42", "43", "44", "45",
+]);
+
 function tokenize(query: string): string[] {
   return query
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
     .map((t) => t.trim())
-    .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
+    .filter((t) => (t.length >= 3 || VALID_SHORT_TOKENS.has(t)) && !STOPWORDS.has(t));
 }
 
 function scoreRow(row: ProductRow, tokens: string[]): number {
@@ -58,7 +63,7 @@ function scoreRow(row: ProductRow, tokens: string[]): number {
 
   for (const t of tokens) {
     if (name.includes(t)) score += 3;
-    if (variant.includes(t)) score += 2;
+    if (variant.includes(t)) score += 4;
     if (sku.includes(t)) score += 4;
     if (category.includes(t)) score += 2;
     if (desc.includes(t)) score += 1;

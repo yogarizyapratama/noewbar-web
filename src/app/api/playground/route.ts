@@ -44,7 +44,7 @@ const DEFAULT_PLAYGROUND_CATALOG: ProductRow[] = [
     variant: "Hitam (Size M, L, XL)",
     price: 95000,
     stock: 45,
-    photo_url: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800",
+    photo_url: "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800",
     video_url: null,
     category: "Kaos & T-Shirt",
     description: "Kaos polos oversized unisex bahan 100% Cotton Combed 24s gramasi 185gsm. Jahitan rantai standar distro, adem, lembut, dan menyerap keringat.",

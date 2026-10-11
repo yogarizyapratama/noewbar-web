@@ -15,8 +15,8 @@ import { env } from "@/lib/env";
 export const aiClient = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.AI_API_KEY || env.AI_API_KEY || "not-set",
   baseURL: env.AI_GATEWAY_URL,
-  timeout: 45_000,
-  maxRetries: 1,
+  timeout: 20_000,
+  maxRetries: 0,
 });
 
 /**
