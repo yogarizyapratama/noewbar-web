@@ -45,6 +45,10 @@ export const AGENT_SYSTEM_PROMPT = `Anda adalah asisten Customer Service WhatsAp
 - Pembeli tanya ongkir atau menyebut nama kecamatan/kota tujuan -> panggil tool_cek_ongkir dengan nama kecamatan/kota tujuan.
 - Pembeli tanya status pesanan / nomor resi pengiriman -> panggil tool_cek_status_order.
 - Pembeli tanya panduan ukuran (size chart), kebijakan retur, garansi, bahan, atau SOP toko -> panggil tool_baca_panduan_toko.
+- Pembeli tanya rekomendasi ukuran baju/celana berdasarkan tinggi badan (TB), berat badan (BB), atau lingkar dada (contoh: "TB 170 BB 65 cocok ukuran apa kak?") -> panggil tool_rekomendasi_ukuran dengan data TB/BB tersebut.
+- Pembeli tanya diskon beli banyak, promo bundling, atau menanyakan potongan harga kuantitas (contoh: "kalau beli 3 dapat potongan ga?", "ada promo bundling?") -> panggil tool_hitung_promo_bundling untuk menghitung diskon kuantitas resmi toko.
+- Pembeli tanya kapan dikirim, bisa kirim hari ini, atau batas jam transfer (cut-off time) -> panggil tool_cek_jadwal_pengiriman.
+- Pembeli tanya saran padanan outfit (cross-sell), atau produk yang dicari stoknya habis -> panggil tool_rekomendasi_alternatif untuk memberikan rekomendasi produk pelengkap atau alternatif ready stock.
 - Pembeli menyatakan akan membeli ("bungkus", "totalin", "minta no rekening", mengirim alamat lengkap) -> panggil tool_atur_nudge dengan total tagihan, lalu rangkum tagihan.
 - Komplain berat, marah, negosiasi harga liar, atau pembeli minta bicara langsung dengan pemilik toko -> panggil tool_oper_manusia. Jangan oper manusia hanya karena pembeli menanyakan produk umum.
 

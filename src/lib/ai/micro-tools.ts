@@ -599,6 +599,300 @@ export async function toolBacaPanduanToko(
 }
 
 // ---------------------------------------------------------------------------
+// 8. tool_rekomendasi_ukuran
+// ---------------------------------------------------------------------------
+
+export type SizeRecommendationResult = {
+  recommended_size: string;
+  confidence: "high" | "medium";
+  fit_note: string;
+  dimensions: {
+    chest_cm: number;
+    length_cm: number;
+  };
+  size_chart_summary: string;
+};
+
+export async function toolRekomendasiUkuran(
+  _ctx: ToolContext,
+  args: {
+    height_cm?: number;
+    weight_kg?: number;
+    chest_cm?: number;
+    category?: string;
+    fit_preference?: "slim" | "regular" | "oversize";
+  }
+): Promise<SizeRecommendationResult> {
+  const h = Number(args.height_cm || 0);
+  const w = Number(args.weight_kg || 0);
+  const pref = args.fit_preference || "regular";
+
+  let size = "M";
+  let chest = 102;
+  let length = 70;
+
+  if (w > 0 && h > 0) {
+    if (w < 55 && h <= 165) {
+      size = "S";
+      chest = 96;
+      length = 68;
+    } else if (w <= 66 && h <= 173) {
+      size = "M";
+      chest = 102;
+      length = 70;
+    } else if (w <= 78 && h <= 180) {
+      size = "L";
+      chest = 108;
+      length = 72;
+    } else if (w <= 90 && h <= 185) {
+      size = "XL";
+      chest = 114;
+      length = 74;
+    } else {
+      size = "XXL";
+      chest = 120;
+      length = 76;
+    }
+  } else if (w > 0) {
+    if (w < 55) { size = "S"; chest = 96; length = 68; }
+    else if (w <= 66) { size = "M"; chest = 102; length = 70; }
+    else if (w <= 78) { size = "L"; chest = 108; length = 72; }
+    else if (w <= 90) { size = "XL"; chest = 114; length = 74; }
+    else { size = "XXL"; chest = 120; length = 76; }
+  } else if (args.chest_cm) {
+    const c = Number(args.chest_cm);
+    if (c <= 96) { size = "S"; chest = 96; length = 68; }
+    else if (c <= 102) { size = "M"; chest = 102; length = 70; }
+    else if (c <= 108) { size = "L"; chest = 108; length = 72; }
+    else if (c <= 114) { size = "XL"; chest = 114; length = 74; }
+    else { size = "XXL"; chest = 120; length = 76; }
+  }
+
+  if (pref === "oversize" && size !== "XXL") {
+    const ladder = ["S", "M", "L", "XL", "XXL"];
+    const idx = ladder.indexOf(size);
+    if (idx >= 0 && idx < ladder.length - 1) {
+      size = ladder[idx + 1];
+      chest += 6;
+      length += 2;
+    }
+  }
+
+  return {
+    recommended_size: size,
+    confidence: h > 0 && w > 0 ? "high" : "medium",
+    fit_note: `Rekomendasi ukuran ${size} untuk ${h > 0 ? `TB ${h} cm` : ""} ${w > 0 ? `BB ${w} kg` : ""} dengan preferensi ${pref} fit.`,
+    dimensions: { chest_cm: chest, length_cm: length },
+    size_chart_summary: "Size chart standar: S (LD 96, P 68), M (LD 102, P 70), L (LD 108, P 72), XL (LD 114, P 74), XXL (LD 120, P 76). Toleransi 1-2 cm.",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 9. tool_hitung_promo_bundling
+// ---------------------------------------------------------------------------
+
+export type PromoBundlingResult = {
+  total_qty: number;
+  subtotal_before_discount: number;
+  discount_percent: number;
+  discount_amount: number;
+  final_subtotal: number;
+  promo_name: string;
+  applied_voucher: string | null;
+  savings_note: string;
+};
+
+export async function toolHitungPromoBundling(
+  ctx: ToolContext,
+  args: {
+    items: { sku?: string; qty: number; price?: number }[];
+    voucher_code?: string;
+  }
+): Promise<PromoBundlingResult> {
+  let totalQty = 0;
+  let rawSubtotal = 0;
+
+  const catalogMap = new Map<string, number>();
+  ctx.catalog.forEach((p) => catalogMap.set(p.sku, p.price));
+
+  for (const it of args.items || []) {
+    const qty = Math.max(1, Math.round(Number(it.qty) || 1));
+    totalQty += qty;
+    const itemPrice = it.price ?? (it.sku ? catalogMap.get(it.sku) : undefined) ?? 0;
+    rawSubtotal += itemPrice * qty;
+  }
+
+  let discPercent = 0;
+  let promoName = "Harga Reguler";
+
+  if (totalQty >= 5) {
+    discPercent = 15;
+    promoName = "Diskon Grosir 15% (Beli 5+ pcs)";
+  } else if (totalQty >= 3) {
+    discPercent = 10;
+    promoName = "Diskon Bundling 10% (Beli 3+ pcs)";
+  } else if (totalQty >= 2) {
+    discPercent = 5;
+    promoName = "Diskon Hemat 5% (Beli 2 pcs)";
+  }
+
+  let discAmount = Math.round((rawSubtotal * discPercent) / 100);
+
+  let voucherApplied: string | null = null;
+  const v = (args.voucher_code || "").trim().toUpperCase();
+  if (v === "HEMAT10" || v === "NOEWBAR10") {
+    discAmount += 10000;
+    voucherApplied = v;
+  }
+
+  const finalSubtotal = Math.max(0, rawSubtotal - discAmount);
+
+  return {
+    total_qty: totalQty,
+    subtotal_before_discount: rawSubtotal,
+    discount_percent: discPercent,
+    discount_amount: discAmount,
+    final_subtotal: finalSubtotal,
+    promo_name: promoName,
+    applied_voucher: voucherApplied,
+    savings_note:
+      discAmount > 0
+        ? `Hemat Rp${discAmount.toLocaleString("id-ID")} dengan ${promoName}! Subtotal akhir menjadi Rp${finalSubtotal.toLocaleString("id-ID")}.`
+        : "Belum memenuhi kuota promo. Tambah 1 pcs lagi untuk mendapatkan potongan diskon bertingkat!",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 10. tool_cek_jadwal_pengiriman
+// ---------------------------------------------------------------------------
+
+export type ShippingScheduleResult = {
+  current_time_wib: string;
+  is_store_open: boolean;
+  same_day_dispatch_eligible: boolean;
+  cut_off_time: string;
+  dispatch_schedule_estimate: string;
+  courier_schedules: { courier: string; pickup_hours: string }[];
+  note: string;
+};
+
+export async function toolCekJadwalPengiriman(
+  _ctx: ToolContext,
+  _args?: { courier?: CourierCode }
+): Promise<ShippingScheduleResult> {
+  const now = new Date();
+  const wibHour = (now.getUTCHours() + 7) % 24;
+  const wibMinute = now.getUTCMinutes();
+  const dayOfWeek = now.getUTCDay();
+
+  const isSunday = dayOfWeek === 0;
+  const beforeCutoff = wibHour < 15;
+  const sameDayEligible = !isSunday && beforeCutoff;
+
+  const currentFormatted = `${String(wibHour).padStart(2, "0")}:${String(wibMinute).padStart(2, "0")} WIB`;
+
+  let estimate = "Paket diserahkan ke kurir hari ini pukul 16.00 WIB";
+  if (!sameDayEligible) {
+    estimate = isSunday
+      ? "Pesanan diproses dan diserahkan ke kurir hari Senin pagi pukul 10.00 WIB"
+      : "Pesanan diserahkan ke kurir besok pagi pukul 10.00 WIB (karena melewati batas cut-off 15.00 WIB)";
+  }
+
+  return {
+    current_time_wib: currentFormatted,
+    is_store_open: wibHour >= 8 && wibHour < 21,
+    same_day_dispatch_eligible: sameDayEligible,
+    cut_off_time: "15.00 WIB (Senin - Sabtu)",
+    dispatch_schedule_estimate: estimate,
+    courier_schedules: [
+      { courier: "JNT", pickup_hours: "11.00 & 16.00 WIB setiap hari" },
+      { courier: "SICEPAT", pickup_hours: "11.00 & 16.00 WIB (Senin - Sabtu)" },
+      { courier: "JNE", pickup_hours: "13.00 & 17.00 WIB (Senin - Sabtu)" },
+    ],
+    note: sameDayEligible
+      ? "Transfer sebelum jam 15.00 WIB dijamin dikirim hari ini!"
+      : "Pesanan masuk antrean pengiriman kloter pertama besok pagi.",
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 11. tool_rekomendasi_alternatif
+// ---------------------------------------------------------------------------
+
+export type CrossSellRecommendation = {
+  sku: string;
+  name: string;
+  variant: string;
+  price: number;
+  category: string;
+  available_stock: number;
+  reason: string;
+};
+
+export async function toolRekomendasiAlternatif(
+  ctx: ToolContext,
+  args: {
+    current_sku?: string;
+    category?: string;
+    strategy?: "cross_sell" | "alternative" | "best_seller";
+  }
+): Promise<{
+  strategy: string;
+  recommendations: CrossSellRecommendation[];
+  count: number;
+}> {
+  const strategy = args.strategy || (args.current_sku ? "cross_sell" : "best_seller");
+  const inStockCatalog = ctx.catalog.filter((p) => p.is_active !== false && p.stock > 0);
+
+  let picks: ProductRow[] = [];
+
+  if (strategy === "cross_sell") {
+    const currentItem = ctx.catalog.find((p) => p.sku === args.current_sku);
+    const currCat = (currentItem?.category || args.category || "").toLowerCase();
+
+    picks = inStockCatalog.filter((p) => {
+      if (p.sku === args.current_sku) return false;
+      const cat = (p.category || "").toLowerCase();
+      if (currCat.includes("kaos") || currCat.includes("hoodie") || currCat.includes("jaket")) {
+        return cat.includes("celana") || cat.includes("aksesoris") || cat.includes("kemeja");
+      }
+      return !cat.includes(currCat);
+    });
+  } else if (strategy === "alternative") {
+    const currCat = (args.category || "").toLowerCase();
+    picks = inStockCatalog.filter((p) => {
+      if (p.sku === args.current_sku) return false;
+      return currCat ? (p.category || "").toLowerCase().includes(currCat) : true;
+    });
+  }
+
+  if (picks.length === 0) {
+    picks = inStockCatalog.filter((p) => p.sku !== args.current_sku);
+  }
+
+  const results: CrossSellRecommendation[] = picks.slice(0, 3).map((p) => ({
+    sku: p.sku,
+    name: p.name,
+    variant: p.variant,
+    price: p.price,
+    category: p.category || "Umum",
+    available_stock: p.stock,
+    reason:
+      strategy === "cross_sell"
+        ? "Produk komplementer yang cocok dipadukan"
+        : strategy === "alternative"
+        ? "Alternatif serupa yang siap kirim"
+        : "Produk favorit pilihan toko",
+  }));
+
+  return {
+    strategy,
+    recommendations: results,
+    count: results.length,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Tool schemas handed to the model
 // ---------------------------------------------------------------------------
 
@@ -749,6 +1043,92 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
             type: "string",
             enum: ["FAQ", "SOP", "SIZE_CHART", "POLICY", "OTHER"],
             description: "Jenis dokumen spesifik (opsional)",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "tool_rekomendasi_ukuran",
+      description:
+        "Hitung rekomendasi ukuran baju atau celana yang pas berdasarkan tinggi badan (TB cm), berat badan (BB kg), lingkar dada (LD cm), dan preferensi fit pembeli. Panggil saat pembeli menanyakan rekomendasi size.",
+      parameters: {
+        type: "object",
+        properties: {
+          height_cm: { type: "number", description: "Tinggi badan pembeli dalam cm, mis. 170" },
+          weight_kg: { type: "number", description: "Berat badan pembeli dalam kg, mis. 65" },
+          chest_cm: { type: "number", description: "Lingkar dada pembeli dalam cm, mis. 100" },
+          fit_preference: {
+            type: "string",
+            enum: ["slim", "regular", "oversize"],
+            description: "Preferensi kenyamanan potongan",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "tool_hitung_promo_bundling",
+      description:
+        "Hitung potongan diskon kuantitas, bundling beli banyak (2/3/5 pcs), atau voucher hemat secara matematis akurat. Panggil saat pembeli tanya diskon kuantitas atau memasukkan kode voucher.",
+      parameters: {
+        type: "object",
+        properties: {
+          items: {
+            type: "array",
+            description: "Daftar produk dan jumlah yang dibeli",
+            items: {
+              type: "object",
+              properties: {
+                sku: { type: "string" },
+                qty: { type: "number" },
+                price: { type: "number" },
+              },
+              required: ["qty"],
+            },
+          },
+          voucher_code: { type: "string", description: "Kode voucher jika ada (mis. HEMAT10)" },
+        },
+        required: ["items"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "tool_cek_jadwal_pengiriman",
+      description:
+        "Cek jam operasional toko, batas waktu transfer hari ini (cut-off 15.00 WIB) agar dikirim hari yang sama, dan jadwal pickup kurir. Panggil saat pembeli tanya kapan paket dikirim.",
+      parameters: {
+        type: "object",
+        properties: {
+          courier: { type: "string", enum: ["JNT", "SICEPAT", "JNE"] },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "tool_rekomendasi_alternatif",
+      description:
+        "Temukan produk pelengkap (cross-sell outfit) atau produk alternatif sejenis yang ready stok di katalog. Panggil saat stok yang dicari habis atau pembeli minta saran padanan outfit.",
+      parameters: {
+        type: "object",
+        properties: {
+          current_sku: { type: "string", description: "SKU produk acuan" },
+          category: { type: "string", description: "Kategori produk yang dicari" },
+          strategy: {
+            type: "string",
+            enum: ["cross_sell", "alternative", "best_seller"],
+            description: "Strategi rekomendasi (cross_sell, alternative, best_seller)",
           },
         },
         required: [],
@@ -915,6 +1295,69 @@ export async function executeTool(
         payload: data,
         toolPayload: data,
         summary: `Baca panduan toko: ${data.documents.length} dokumen ditemukan`,
+        media: [],
+        escalated: false,
+      };
+    }
+
+    case "tool_rekomendasi_ukuran": {
+      const data = await toolRekomendasiUkuran(ctx, {
+        height_cm: args.height_cm ? Number(args.height_cm) : undefined,
+        weight_kg: args.weight_kg ? Number(args.weight_kg) : undefined,
+        chest_cm: args.chest_cm ? Number(args.chest_cm) : undefined,
+        category: args.category ? String(args.category) : undefined,
+        fit_preference: (args.fit_preference as "slim" | "regular" | "oversize") || "regular",
+      });
+      return {
+        tool: name,
+        payload: data,
+        toolPayload: data,
+        summary: `Rekomendasi ukuran: ${data.recommended_size} (${data.fit_note})`,
+        media: [],
+        escalated: false,
+      };
+    }
+
+    case "tool_hitung_promo_bundling": {
+      const data = await toolHitungPromoBundling(ctx, {
+        items: Array.isArray(args.items) ? (args.items as any[]) : [],
+        voucher_code: args.voucher_code ? String(args.voucher_code) : undefined,
+      });
+      return {
+        tool: name,
+        payload: data,
+        toolPayload: data,
+        summary: `Hitung promo: ${data.promo_name} -> Potongan Rp${data.discount_amount.toLocaleString("id-ID")}`,
+        media: [],
+        escalated: false,
+      };
+    }
+
+    case "tool_cek_jadwal_pengiriman": {
+      const data = await toolCekJadwalPengiriman(ctx, {
+        courier: args.courier as CourierCode | undefined,
+      });
+      return {
+        tool: name,
+        payload: data,
+        toolPayload: data,
+        summary: `Jadwal kirim: ${data.dispatch_schedule_estimate}`,
+        media: [],
+        escalated: false,
+      };
+    }
+
+    case "tool_rekomendasi_alternatif": {
+      const data = await toolRekomendasiAlternatif(ctx, {
+        current_sku: args.current_sku ? String(args.current_sku) : undefined,
+        category: args.category ? String(args.category) : undefined,
+        strategy: args.strategy as "cross_sell" | "alternative" | "best_seller" | undefined,
+      });
+      return {
+        tool: name,
+        payload: data,
+        toolPayload: data,
+        summary: `Rekomendasi ${data.strategy}: ${data.count} produk disarankan`,
         media: [],
         escalated: false,
       };

@@ -8,6 +8,10 @@ import {
   toolCariProduk,
   toolAmbilFotoVideo,
   toolCekOngkir,
+  toolRekomendasiUkuran,
+  toolHitungPromoBundling,
+  toolCekJadwalPengiriman,
+  toolRekomendasiAlternatif,
 } from "../../src/lib/ai/micro-tools";
 import { calculateShippingRates } from "../../src/lib/logistics/shipping-engine";
 import { buildOrderNumber, createOrder } from "../../src/lib/orders/orders";
@@ -198,6 +202,40 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.ok(res.rates.length >= 3);
     assert.ok(res.cheapest);
     assert.ok(res.cheapest.tariff > 0);
+  });
+
+  await test("toolRekomendasiUkuran: accurately calculates size from height & weight", async () => {
+    const res = await toolRekomendasiUkuran(mockContext, { height_cm: 170, weight_kg: 65 });
+    assert.strictEqual(res.recommended_size, "M");
+    assert.strictEqual(res.confidence, "high");
+    assert.ok(res.dimensions.chest_cm > 0);
+  });
+
+  await test("toolHitungPromoBundling: calculates multi-buy volume discounts", async () => {
+    const res = await toolHitungPromoBundling(mockContext, {
+      items: [{ sku: "TSH-OVR-BLK", qty: 3, price: 95000 }],
+    });
+    assert.strictEqual(res.total_qty, 3);
+    assert.strictEqual(res.subtotal_before_discount, 285000);
+    assert.strictEqual(res.discount_percent, 10);
+    assert.strictEqual(res.discount_amount, 28500);
+    assert.strictEqual(res.final_subtotal, 256500);
+  });
+
+  await test("toolCekJadwalPengiriman: returns store cut-off time and courier schedules", async () => {
+    const res = await toolCekJadwalPengiriman(mockContext);
+    assert.ok(res.current_time_wib.includes("WIB"));
+    assert.ok(res.cut_off_time.includes("15.00"));
+    assert.ok(res.courier_schedules.length >= 3);
+  });
+
+  await test("toolRekomendasiAlternatif: provides in-stock cross-sell and alternatives", async () => {
+    const res = await toolRekomendasiAlternatif(mockContext, {
+      current_sku: "TSH-OVR-BLK",
+      strategy: "cross_sell",
+    });
+    assert.ok(res.count > 0);
+    assert.ok(res.recommendations.every((r) => r.available_stock > 0));
   });
 
   console.log("\n=== 3. UNIT TEST: Logistics & Orders Engine ===");

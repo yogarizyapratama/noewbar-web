@@ -26,7 +26,11 @@ export type ToolName =
   | "tool_atur_nudge"
   | "tool_oper_manusia"
   | "tool_cek_status_order"
-  | "tool_baca_panduan_toko";
+  | "tool_baca_panduan_toko"
+  | "tool_rekomendasi_ukuran"
+  | "tool_hitung_promo_bundling"
+  | "tool_cek_jadwal_pengiriman"
+  | "tool_rekomendasi_alternatif";
 
 export const TOOL_NAMES: ToolName[] = [
   "tool_cari_produk",
@@ -36,6 +40,10 @@ export const TOOL_NAMES: ToolName[] = [
   "tool_oper_manusia",
   "tool_cek_status_order",
   "tool_baca_panduan_toko",
+  "tool_rekomendasi_ukuran",
+  "tool_hitung_promo_bundling",
+  "tool_cek_jadwal_pengiriman",
+  "tool_rekomendasi_alternatif",
 ];
 
 /** Buyer intent classification used for routing and pipeline staging. */

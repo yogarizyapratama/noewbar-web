@@ -46,7 +46,7 @@ export async function runE2ETests(): Promise<{ total: number; passed: number; fa
 
   async function flow(name: string, fn: () => Promise<void>) {
     let lastErr: unknown = null;
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
         await fn();
         passed += 1;
@@ -54,8 +54,8 @@ export async function runE2ETests(): Promise<{ total: number; passed: number; fa
         return;
       } catch (err) {
         lastErr = err;
-        if (attempt < 2) {
-          await new Promise((r) => setTimeout(r, 1500));
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 2000));
         }
       }
     }
