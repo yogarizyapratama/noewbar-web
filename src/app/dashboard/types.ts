@@ -1,6 +1,7 @@
 /** Shapes returned by the dashboard APIs, shared by every tab panel. */
 
 export type Health = {
+  degraded?: boolean;
   tenant: { business_name: string; status: string; trial_expires_at: string } | null;
   whatsapp: {
     daemon_reachable: boolean;

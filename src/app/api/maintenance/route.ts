@@ -73,8 +73,63 @@ export async function GET() {
   const session = await requireTenant();
   if (!session) return fail("Unauthorized", 401);
 
+  // Soft-fail: the DB sits across a Tailscale relay that can blip. A blip must
+  // degrade the board (HTTP 200 + degraded flag), never 500 the dashboard poll.
+  try {
+    return ok(await buildHealth(session.sub));
+  } catch (err) {
+    const [daemon, gateway, telegram] = await Promise.all([
+      waDaemon.health().catch(() => null),
+      gatewayHealth().catch(() => null),
+      telegramHealth().catch(() => null),
+    ]);
+    return ok({
+      degraded: true,
+      error: err instanceof Error ? err.message : "health probe failed",
+      tenant: null,
+      subscription: null,
+      whatsapp: {
+        daemon_reachable: daemon?.ok ?? false,
+        connection_status: "UNKNOWN",
+        phone_number: null,
+        last_seen: null,
+        error: "Database tidak terjangkau sesaat, coba lagi.",
+      },
+      catalog: {
+        configured: false,
+        sheets_url: null,
+        origin_subdistrict: null,
+        last_synced_at: null,
+        bank_name: "",
+        bank_account_number: "",
+        bank_account_holder: "",
+        qris_key: null,
+      },
+      persona: {
+        bot_name: "Admin CS",
+        bot_tone: "RAMAH",
+        custom_persona_prompt: "",
+        greeting_message: "",
+      },
+      promos: { promo_rules: [], voucher_rules: [] },
+      shipping: { cut_off_hour: 15, open_hour: 8, close_hour: 21 },
+      storage: { used_bytes: 0, quota_bytes: TENANT_QUOTA_BYTES, used_percent: 0 },
+      ai: {
+        gateway_ok: gateway?.ok ?? false,
+        model: null,
+        latency_ms: gateway?.latencyMs ?? null,
+        error: null,
+      },
+      telegram: { ok: telegram?.ok ?? false, username: telegram?.username ?? null },
+      queue: { redis: false, waiting: 0, delayed: 0, pendingInDb: 0 },
+      pending_proofs: null,
+    });
+  }
+}
+
+async function buildHealth(tenantId: string) {
   const tenant = await prisma.tenant.findUnique({
-    where: { id: session.sub },
+    where: { id: tenantId },
     include: { wa_instances: true, catalog_settings: true },
   });
 
@@ -107,14 +162,14 @@ export async function GET() {
     gatewayHealth(),
     telegramHealth(),
     nudgeQueueStats(),
-    tenantUsageBytes(session.sub),
-    getTenantSubscriptionInfo(session.sub),
+    tenantUsageBytes(tenantId),
+    getTenantSubscriptionInfo(tenantId),
   ]);
 
   const scheduler = await schedulerHealth();
 
   const pendingProofs = await prisma.order.count({
-    where: { tenant_id: session.sub, payment_status: { in: ["PROOF_SUBMITTED", "UNDER_REVIEW"] } },
+    where: { tenant_id: tenantId, payment_status: { in: ["PROOF_SUBMITTED", "UNDER_REVIEW"] } },
   });
 
   return ok({

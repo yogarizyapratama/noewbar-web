@@ -155,6 +155,14 @@ export function PanelStatus({
       </div>
 
       {/* 4 Kartu KPI Finansial & Operasional Nyata */}
+      {health.degraded && (
+        <div
+          role="status"
+          className="rounded-xl border border-warn/30 bg-warn-wash px-4 py-3 text-xs leading-relaxed text-warn"
+        >
+          Database tidak terjangkau sesaat, data di bawah mungkin basi. Coba Segarkan dalam beberapa detik.
+        </div>
+      )}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-ink-500">
