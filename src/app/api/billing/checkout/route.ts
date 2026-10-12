@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     return ok({
       mode: "unconfigured",
       order_id: order.orderId,
+      reused: order.reused,
       subscription_id: order.subscriptionId,
       plan_name: order.planName,
       amount: order.amount,
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
       return ok({
         mode: "snap_failed",
         order_id: order.orderId,
+        reused: order.reused,
         subscription_id: order.subscriptionId,
         plan_name: order.planName,
         amount: order.amount,
@@ -112,20 +114,26 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const pageBase = env.MIDTRANS_IS_PRODUCTION
+      ? "https://app.midtrans.com/snap/v2/vtweb"
+      : "https://app.sandbox.midtrans.com/snap/v2/vtweb";
+
     return ok({
       mode: "snap",
       order_id: order.orderId,
+      reused: order.reused,
       subscription_id: order.subscriptionId,
       plan_name: order.planName,
       amount: order.amount,
       client_key: order.clientKey,
       snap_token: json.token,
-      redirect_url: json.redirect_url ?? null,
+      redirect_url: json.redirect_url ?? `${pageBase}/${json.token}`,
     });
   } catch (err) {
     return ok({
       mode: "snap_unreachable",
       order_id: order.orderId,
+      reused: order.reused,
       subscription_id: order.subscriptionId,
       plan_name: order.planName,
       amount: order.amount,

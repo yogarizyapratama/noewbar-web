@@ -78,6 +78,30 @@ export async function GET() {
     include: { wa_instances: true, catalog_settings: true },
   });
 
+  // Self-healing status: the daemon is the ground truth for pairing state.
+  // A scan that succeeded outside any poll window, or a logout from the phone
+  // itself, would otherwise leave the DB row (and the dashboard badge) stale.
+  // Best-effort: a daemon hiccup must not fail the whole health board.
+  let instance = tenant?.wa_instances[0];
+  if (instance) {
+    try {
+      const live = await waDaemon.getStatus(instance.instance_key);
+      if (live.ok && (live.data.connection_status !== instance.connection_status ||
+          (live.data.phone_number || null) !== instance.phone_number)) {
+        instance = await prisma.waInstance.update({
+          where: { id: instance.id },
+          data: {
+            connection_status: live.data.connection_status,
+            phone_number: live.data.phone_number || null,
+            last_seen: new Date(),
+          },
+        });
+      }
+    } catch {
+      /* keep the stored row; daemon reachability is reported separately */
+    }
+  }
+
   const [daemon, gateway, telegram, queue, storageUsed, subInfo] = await Promise.all([
     waDaemon.health(),
     gatewayHealth(),
@@ -88,8 +112,6 @@ export async function GET() {
   ]);
 
   const scheduler = await schedulerHealth();
-
-  const instance = tenant?.wa_instances[0];
 
   const pendingProofs = await prisma.order.count({
     where: { tenant_id: session.sub, payment_status: { in: ["PROOF_SUBMITTED", "UNDER_REVIEW"] } },

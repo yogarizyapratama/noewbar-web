@@ -23,9 +23,8 @@ import {
 } from "@/components/ui";
 import type { Billing } from "./types";
 
-const MONTHLY = 199000;
-const ANNUAL = 1490000;
-const ANNUAL_SAVING = MONTHLY * 12 - ANNUAL;
+const FALLBACK_MONTHLY = 199000;
+const FALLBACK_ANNUAL = 1490000;
 const TRIAL_DAYS = 7;
 
 export function PanelBilling({
@@ -47,7 +46,14 @@ export function PanelBilling({
 
   const sub = billing?.subscription;
   const active = sub?.status === "ACTIVE";
-  const trial = sub?.status === "TRIAL" || sub?.status === "TRIALING";
+  // B6: tenant trial tanpa baris subscription dilaporkan API sebagai NONE;
+  // tampilkan sebagai masa trial agar konsisten dengan status health.
+  const trial = sub?.status === "TRIAL" || sub?.status === "NONE";
+  const monthlyPlan = billing?.plans?.find((pl) => pl.id === "PRO_MONTHLY");
+  const annualPlan = billing?.plans?.find((pl) => pl.id === "PRO_ANNUAL");
+  const MONTHLY = monthlyPlan?.price ?? FALLBACK_MONTHLY;
+  const ANNUAL = annualPlan?.price ?? FALLBACK_ANNUAL;
+  const ANNUAL_SAVING = annualPlan?.savings ?? MONTHLY * 12 - ANNUAL;
   const days = sub?.daysRemaining ?? null;
   const window = trial ? TRIAL_DAYS : 30;
   const used = days !== null ? Math.max(0, window - days) : 0;
@@ -128,7 +134,7 @@ export function PanelBilling({
           title="Paket aktif"
           actions={
             <Badge tone={active ? "signal" : trial ? "warn" : "danger"}>
-              {sub?.status ?? "TIDAK DIKETAHUI"}
+              {sub?.status === "NONE" ? "TRIAL" : (sub?.status ?? "TIDAK DIKETAHUI")}
             </Badge>
           }
         />
@@ -136,7 +142,7 @@ export function PanelBilling({
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-lg font-semibold text-ink">
-                {sub?.planName ?? "Belum berlangganan"}
+                {sub?.planName ?? (trial ? "Uji coba gratis" : "Belum berlangganan")}
               </p>
               <p className="mt-0.5 text-sm text-ink-500">
                 {days !== null
@@ -196,7 +202,7 @@ export function PanelBilling({
           <CardHeader title="Bulanan" description="Fleksibel berhenti kapan saja." />
           <CardBody className="flex flex-1 flex-col">
             <p className="font-mono text-3xl font-bold tabular-nums text-ink">Rp {rupiah(MONTHLY)}</p>
-            <p className="mt-1 text-xs text-ink-500">per bulan, setara Rp 6.633 per hari</p>
+            <p className="mt-1 text-xs text-ink-500">per bulan, setara Rp {rupiah(monthlyPlan?.per_day ?? Math.round(MONTHLY / 30))} per hari</p>
             <div className="mt-5 flex-1" />
             <Button
               variant="secondary"
@@ -218,7 +224,7 @@ export function PanelBilling({
           />
           <CardBody className="flex flex-1 flex-col">
             <p className="font-mono text-3xl font-bold tabular-nums text-ink">Rp {rupiah(ANNUAL)}</p>
-            <p className="mt-1 text-xs text-ink-500">per tahun, setara Rp 124.167 per bulan</p>
+            <p className="mt-1 text-xs text-ink-500">per tahun, setara Rp {rupiah(annualPlan?.per_month ?? Math.round(ANNUAL / 12))} per bulan</p>
             <div className="mt-5 flex-1" />
             <Button
               variant="primary"

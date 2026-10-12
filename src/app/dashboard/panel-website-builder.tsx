@@ -57,6 +57,7 @@ import {
   Card,
   CardBody,
   CardHeader,
+  ConfirmModal,
   ErrorState,
   InlineLoading,
   Modal,
@@ -428,6 +429,8 @@ export function PanelWebsiteBuilder() {
   const [previewTemplate, setPreviewTemplate] = useState<WebsiteTemplate | null>(null);
   const [templatePreviewDevice, setTemplatePreviewDevice] = useState<"desktop" | "mobile">("desktop");
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+  const [deleteSectionId, setDeleteSectionId] = useState<string | null>(null);
+  const [sectionNotice, setSectionNotice] = useState<string | null>(null);
 
   // Theme & Utility Modals
   const [showThemeModal, setShowThemeModal] = useState(false);
@@ -835,17 +838,24 @@ export function PanelWebsiteBuilder() {
     setSelectedSecId(clone.id);
   }
 
-  function handleDeleteSection(id: string) {
+  function requestDeleteSection(id: string) {
     if (sections.length <= 1) {
-      alert("Halaman harus memiliki minimal 1 section.");
+      setSectionNotice("Halaman harus memiliki minimal 1 section.");
       return;
     }
-    if (!confirm("Hapus section ini dari halaman?")) return;
+    setSectionNotice(null);
+    setDeleteSectionId(id);
+  }
+
+  function confirmDeleteSection() {
+    if (!deleteSectionId) return;
+    const id = deleteSectionId;
     const next = sections.filter((s) => s.id !== id);
     setSections(next);
     if (selectedSecId === id) {
       setSelectedSecId(next[0]?.id || null);
     }
+    setDeleteSectionId(null);
   }
 
   function handleAddSection(newSec: WebsiteSection) {
@@ -2045,7 +2055,7 @@ export function PanelWebsiteBuilder() {
                     if (idx < sections.length - 1) moveSection(idx, "down");
                   }}
                   onDuplicate={() => handleDuplicateSection(selectedSection.id)}
-                  onDelete={() => handleDeleteSection(selectedSection.id)}
+                  onDelete={() => requestDeleteSection(selectedSection.id)}
                   onToggleVisibility={() => toggleSectionVisibility(selectedSection.id)}
                   isFirst={sections.findIndex((s) => s.id === selectedSecId) === 0}
                   isLast={sections.findIndex((s) => s.id === selectedSecId) === sections.length - 1}
@@ -2166,7 +2176,7 @@ export function PanelWebsiteBuilder() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteSection(sec.id);
+                                requestDeleteSection(sec.id);
                               }}
                               title="Hapus section"
                               className="rounded p-1 text-danger hover:bg-white/20"
@@ -3953,6 +3963,20 @@ export function PanelWebsiteBuilder() {
           </div>
         )}
       </Modal>
+      {sectionNotice && (
+        <p className="mt-3 rounded border border-warn/25 bg-warn-wash px-3 py-2 text-xs text-warn" role="status">
+          {sectionNotice}
+        </p>
+      )}
+      <ConfirmModal
+        open={!!deleteSectionId}
+        title="Hapus section?"
+        description="Section dihapus dari halaman dan tidak bisa dikembalikan."
+        confirmLabel="Hapus section"
+        danger
+        onConfirm={confirmDeleteSection}
+        onClose={() => setDeleteSectionId(null)}
+      />
     </div>
   );
 }

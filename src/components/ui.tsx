@@ -627,5 +627,48 @@ export function Modal({
   );
 }
 
+/**
+ * Generic confirmation modal. Replaces native window.confirm/alert so destructive
+ * actions always go through an in-app dialog (consistent styling, no browser chrome).
+ */
+export function ConfirmModal({
+  open,
+  title,
+  description,
+  confirmLabel = "Ya, lanjutkan",
+  cancelLabel = "Batal",
+  danger = false,
+  busy = false,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  danger?: boolean;
+  busy?: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Modal open={open} onClose={onClose}>
+      <div className="card w-full max-w-sm p-5">
+        <h3 className="text-sm font-bold text-ink">{title}</h3>
+        <p className="mt-2 text-xs leading-relaxed text-ink-600">{description}</p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={busy}>
+            {cancelLabel}
+          </Button>
+          <Button variant={danger ? "danger" : "accent"} size="sm" onClick={onConfirm} loading={busy}>
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export { timeAgo, rupiah } from "@/lib/utils";
 

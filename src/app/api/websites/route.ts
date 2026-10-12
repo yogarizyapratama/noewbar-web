@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getTenantSession } from "@/lib/auth";
+import { requireTenant } from "@/lib/auth";
 import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 import {
   TEMPLATES,
@@ -25,7 +25,7 @@ import {
  */
 
 export async function GET() {
-  const session = await getTenantSession();
+  const session = await requireTenant();
   if (!session) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
@@ -40,7 +40,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await getTenantSession();
+  const session = await requireTenant();
   if (!session) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }

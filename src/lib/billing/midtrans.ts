@@ -147,6 +147,21 @@ export async function processMidtransNotification(
     return { status: "IGNORED", reason: `No subscription for order ${payload.order_id}` };
   }
 
+  // 3b. Amount lock: the signature proves authenticity, not the price. A
+  // settlement whose gross_amount differs from the stored order total must
+  // never activate the subscription.
+  const settledStatuses = new Set(["settlement", "capture"]);
+  if (settledStatuses.has(payload.transaction_status)) {
+    const paidAmount = Number(payload.gross_amount);
+    const expectedAmount = Number(subscription.amount);
+    if (!Number.isFinite(paidAmount) || paidAmount !== expectedAmount) {
+      return {
+        status: "IGNORED",
+        reason: `Amount mismatch for order ${payload.order_id}: paid ${payload.gross_amount}, expected ${expectedAmount}`,
+      };
+    }
+  }
+
   const settled =
     payload.transaction_status === "settlement" ||
     (payload.transaction_status === "capture" && payload.fraud_status !== "deny");
@@ -217,8 +232,37 @@ export async function createSubscriptionOrder(params: {
   amount: number;
   snapBaseUrl: string;
   clientKey: string;
+  reused: boolean;
 }> {
   const plan = PRICING_PLANS[params.planTier];
+
+  // Idempotency: a retry (double click, snap_failed then retry) must not mint
+  // a second billable row. Reuse a fresh pending row for the same tenant+plan
+  // created within the last 24h; each settled row extends the term, so
+  // duplicates would silently stack paid time.
+  const recentPending = await prisma.subscription.findFirst({
+    where: {
+      tenant_id: params.tenantId,
+      plan_name: plan.id,
+      status: "TRIAL",
+      midtrans_order_id: { not: null },
+      created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    },
+    orderBy: { created_at: "desc" },
+  });
+
+  if (recentPending?.midtrans_order_id) {
+    return {
+      orderId: recentPending.midtrans_order_id,
+      subscriptionId: recentPending.id,
+      planName: plan.name,
+      amount: Number(recentPending.amount),
+      snapBaseUrl: midtransSnapBaseUrl(),
+      clientKey: env.MIDTRANS_CLIENT_KEY,
+      reused: true,
+    };
+  }
+
   const orderId = `NOEWBAR-${params.planTier === "PRO_ANNUAL" ? "A" : "M"}-${params.tenantId.slice(0, 8)}-${Date.now()}`;
 
   const startsAt = new Date();
@@ -245,6 +289,7 @@ export async function createSubscriptionOrder(params: {
     amount: plan.price,
     snapBaseUrl: midtransSnapBaseUrl(),
     clientKey: env.MIDTRANS_CLIENT_KEY,
+    reused: false,
   };
 }
 
@@ -253,6 +298,7 @@ export async function fetchMidtransStatus(orderId: string): Promise<{
   ok: boolean;
   transactionStatus?: string;
   fraudStatus?: string;
+  grossAmount?: string;
   error?: string;
 }> {
   const auth = Buffer.from(`${env.MIDTRANS_SERVER_KEY}:`).toString("base64");
@@ -271,6 +317,7 @@ export async function fetchMidtransStatus(orderId: string): Promise<{
     const json = (await res.json().catch(() => null)) as {
       transaction_status?: string;
       fraud_status?: string;
+      gross_amount?: string;
       status_message?: string;
     } | null;
 
@@ -281,6 +328,7 @@ export async function fetchMidtransStatus(orderId: string): Promise<{
       ok: true,
       transactionStatus: json?.transaction_status,
       fraudStatus: json?.fraud_status,
+      grossAmount: json?.gross_amount,
     };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "unknown error" };
@@ -359,6 +407,14 @@ export async function reconcileSubscriptions(): Promise<{
     }
 
     if (status.transactionStatus === "settlement") {
+      // Amount lock (same rule as the webhook path): never activate on a
+      // mismatched gross_amount.
+      const paidAmount = Number(status.grossAmount);
+      const expectedAmount = Number(sub.amount);
+      if (status.grossAmount === undefined || !Number.isFinite(paidAmount) || paidAmount !== expectedAmount) {
+        errors.push(`${sub.midtrans_order_id}: amount mismatch (gateway ${status.grossAmount ?? "unknown"}, expected ${expectedAmount})`);
+        continue;
+      }
       const previousExpiry = sub.expires_at;
       const addedDays = sub.plan_name === "PRO_ANNUAL" ? 365 : 30;
       const newExpiresAt = new Date(previousExpiry.getTime() + addedDays * 86_400_000);

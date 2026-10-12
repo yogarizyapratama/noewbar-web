@@ -46,6 +46,9 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 	"google.golang.org/protobuf/proto"
 
+	waCompanionReg "go.mau.fi/whatsmeow/proto/waCompanionReg"
+	"go.mau.fi/whatsmeow/store"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -85,6 +88,15 @@ var (
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
+
+func init() {
+	// Report a recognizable device identity so the phone's Linked Devices list
+	// shows "Noewbar Server" on Desktop instead of "?" (the library default is
+	// PlatformType UNKNOWN with OS name "whatsmeow").
+	desc := "Noewbar Server"
+	store.DeviceProps.Os = &desc
+	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_DESKTOP.Enum()
+}
 
 func main() {
 	port := os.Getenv("PORT")

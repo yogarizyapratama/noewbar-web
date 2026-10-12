@@ -126,6 +126,16 @@ export type MessageRow = {
   created_at: string;
 };
 
+export type BillingPlan = {
+  id: string;
+  name: string;
+  price: number;
+  duration_days: number;
+  per_day?: number;
+  per_month?: number;
+  savings?: number;
+};
+
 export type Billing = {
   subscription: {
     planName: string | null;
@@ -134,4 +144,5 @@ export type Billing = {
     daysRemaining: number | null;
     amount: number | null;
   };
+  plans?: BillingPlan[];
 };

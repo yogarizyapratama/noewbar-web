@@ -3,9 +3,10 @@
 /**
  * Live simulator for the landing page.
  *
- * Driven only by a real request to /api/playground. When no catalog is wired up
- * the panel says so and shows nothing invented: no sample products, no fake
- * screenshots, no decorative "connected" badge.
+ * Driven only by a real request to /api/playground. The demo answers from the
+ * built-in demo catalog (or the wired sheet catalog when configured); the
+ * source note from the API is shown honestly. No fake screenshots, no
+ * decorative "connected" badge.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -120,9 +121,7 @@ export function PlaygroundPanel() {
         setStatus({
           configured: Boolean(json.configured),
           catalogAvailable: Boolean(json.total),
-          note: json.configured
-            ? json.warning ?? (json.total ? null : "Katalog terbaca tetapi belum memiliki baris produk.")
-            : "Simulator belum dihubungkan ke katalog.",
+          note: json.note ?? json.warning ?? (json.total ? null : "Katalog terbaca tetapi belum memiliki baris produk."),
           catalogSize: typeof json.total === "number" ? json.total : null,
         });
       } catch {

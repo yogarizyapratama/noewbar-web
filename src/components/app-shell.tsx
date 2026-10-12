@@ -195,7 +195,7 @@ export function AppShell<T extends string>({
                         onClick={() => !isDisabled && go(item.id)}
                         aria-current={isActive ? "page" : undefined}
                         aria-disabled={isDisabled || undefined}
-                        title={collapsed ? item.label : isDisabled ? "Tidak tersedia — langganan tidak aktif" : undefined}
+                        title={collapsed ? item.label : isDisabled ? "Tidak tersedia: langganan tidak aktif" : undefined}
                         className={cn(
                           "group relative flex w-full min-h-[44px] items-center gap-2.5 rounded-lg px-3 text-sm transition-all",
                           collapsed && "justify-center px-0",

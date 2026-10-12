@@ -260,7 +260,7 @@ export default function DashboardPage() {
         return;
       }
       const json = await res.json();
-      setBilling({ subscription: json.subscription });
+      setBilling({ subscription: json.subscription, plans: json.plans ?? undefined });
       setBillingError(false);
     } catch {
       setBillingError(true);
@@ -406,7 +406,9 @@ export default function DashboardPage() {
     const json = await res.json();
 
     if (json.snap_token) {
-      const snapUrl = `https://app.sandbox.midtrans.com/snap/v2/vtweb/${json.snap_token}`;
+      const snapUrl =
+        json.redirect_url ??
+        `https://app.sandbox.midtrans.com/snap/v2/vtweb/${json.snap_token}`;
       window.open(snapUrl, "_blank", "noopener");
       return `Pesanan ${json.order_id} dibuat. Lanjutkan pembayaran di tab baru, lalu kembali ke sini.`;
     }
@@ -585,7 +587,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Subscription expiry banner — persistent, cannot be dismissed when expired */}
+      {/* Subscription expiry banner: persistent, cannot be dismissed when expired */}
       {(isExpired || (isExpiringSoon && !expiryDismissed)) && (
         <div className={`mx-4 mt-4 flex items-start gap-3 rounded-xl border px-4 py-3 sm:mx-6 lg:mx-8 ${
           isExpired

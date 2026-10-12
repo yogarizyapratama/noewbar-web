@@ -36,7 +36,7 @@ Ini bukan preferensi gaya. Melanggarnya merusak jaminan keamanan atau bisnis.
 4. **Backend adalah satu-satunya sumber harga/stok/ongkir.** Jangan pernah membiarkan model menyebut angka yang tidak berasal dari tool. Bila menambah jalur balasan baru, lewatkan tetap melalui `findUnbackedPrices()`.
 5. **Zero-custody.** Jangan pernah menambahkan kode yang menampung dana atau menyatakan "uang diterima".
 6. **Isolasi tenant.** Setiap query order/percakapan wajib memfilter `tenant_id`.
-7. **Tidak ada data demo/dummy/hardcode di UI.** Simulator memakai katalog nyata dari `PLAYGROUND_SHEET_URL` atau menampilkan keadaan kosong yang jujur.
+7. **Tidak ada data demo/dummy/hardcode di UI, kecuali katalog demo bawaan playground publik** (`api/playground`, `DEFAULT_PLAYGROUND_CATALOG`) untuk demo marketing tanpa menyentuh tenant nyata. Simulator memakai katalog nyata dari `PLAYGROUND_SHEET_URL` atau katalog demo bawaan itu; view lain menampilkan keadaan kosong yang jujur.
 8. **Tidak ada kredensial sebagai default kode.** Lihat temuan S-1.
 9. **Skema Prisma: hanya aditif.** Jangan ubah/hapus kolom tabel produksi.
 10. **Jangan pakai `em dash` (—) di UI.** Lihat `DESIGN.md`.

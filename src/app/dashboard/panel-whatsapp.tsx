@@ -19,6 +19,7 @@ import {
   CardHeader,
   EmptyState,
   ErrorState,
+  ConfirmModal,
   PageHeader,
   StatusDot,
   cn,
@@ -45,6 +46,7 @@ export function PanelWhatsapp({
   const [busy, setBusy] = useState(false);
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -61,7 +63,7 @@ export function PanelWhatsapp({
   useEffect(() => clearTimer, [clearTimer]);
 
   const requestQr = useCallback(
-    async (action: "start" | "poll") => {
+    async (action: "start" | "poll" | "logout") => {
       const res = await fetch("/api/wa/qr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -72,10 +74,15 @@ export function PanelWhatsapp({
     []
   );
 
-  /** Poll until WhatsApp emits the code, then stop. */
+  /**
+   * Poll until WhatsApp emits the code or the pairing completes. The window is
+   * 5 minutes: pairing succeeds on the phone (device row appears in the daemon)
+   * but the dashboard only learns it when a poll syncs the DB row, so a short
+   * window leaves the UI stuck on PAIRING after a successful scan.
+   */
   const pollForQr = useCallback(async () => {
     setPolling(true);
-    setCountdown(12);
+    setCountdown(150);
     let attempts = 0;
 
     await new Promise<void>((resolve) => {
@@ -102,14 +109,55 @@ export function PanelWhatsapp({
         } catch {
           /* keep polling, the next tick may succeed */
         }
-        if (attempts >= 12) {
+        if (attempts >= 150) {
           clearTimer();
           setPolling(false);
+          onRefreshHealth();
           resolve();
         }
       }, 2000);
     });
   }, [clearTimer, onRefreshHealth, requestQr]);
+
+  /**
+   * Manual re-check: polls the daemon once so a scan that succeeded while the
+   * auto-poll window was closed still flips the UI to CONNECTED.
+   */
+  async function recheckStatus() {
+    setBusy(true);
+    setError(null);
+    try {
+      const json = await requestQr("poll");
+      if (json.connection_status === "CONNECTED") {
+        setQr(null);
+      } else if (json.daemon_reachable === false) {
+        setError(json.error ?? "Server gateway WhatsApp belum terhubung.");
+      }
+    } catch {
+      /* health refresh below still runs */
+    } finally {
+      setBusy(false);
+      onRefreshHealth();
+    }
+  }
+
+  async function logoutSession() {
+    setConfirmLogout(false);
+    setBusy(true);
+    setError(null);
+    try {
+      const json = await requestQr("logout");
+      if (!json.ok && json.error) {
+        setError(json.error);
+      }
+      setQr(null);
+    } catch {
+      setError("Gagal menghubungi server gateway WhatsApp.");
+    } finally {
+      setBusy(false);
+      onRefreshHealth();
+    }
+  }
 
   async function startPairing() {
     setBusy(true);
@@ -149,7 +197,7 @@ export function PanelWhatsapp({
         description="Pindai QR dengan WhatsApp di HP toko. Sesi disimpan terpisah per toko, jadi nomor satu toko tidak pernah tercampur dengan yang lain."
         icon={<MessageSquare className="h-4 w-4" aria-hidden="true" />}
         actions={
-          <Button variant="secondary" onClick={onRefreshHealth}>
+          <Button variant="secondary" onClick={recheckStatus}>
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Periksa status
           </Button>
@@ -167,10 +215,17 @@ export function PanelWhatsapp({
               : "Nomor belum tertaut. Bot belum bisa membalas siapa pun."
           }
           actions={
-            <Badge tone={connected ? "signal" : daemonDown ? "danger" : "warn"}>
-              <StatusDot ok={connected} pulse={connected} />
-              {connected ? "CONNECTED" : health?.whatsapp?.connection_status ?? "OFFLINE"}
-            </Badge>
+            <>
+              <Badge tone={connected ? "signal" : daemonDown ? "danger" : "warn"}>
+                <StatusDot ok={connected} pulse={connected} />
+                {connected ? "CONNECTED" : health?.whatsapp?.connection_status ?? "OFFLINE"}
+              </Badge>
+              {connected && (
+                <Button variant="secondary" size="sm" onClick={() => setConfirmLogout(true)} loading={busy}>
+                  Putuskan sesi
+                </Button>
+              )}
+            </>
           }
         />
         <CardBody className="p-0">
@@ -277,6 +332,11 @@ export function PanelWhatsapp({
                       {qr.base64 ? " - QR siap dipindai" : ""}
                     </p>
                   )}
+                  {polling && (
+                    <p className="mt-3 rounded border border-signal/25 bg-signal-wash px-3 py-2 text-xs leading-relaxed text-signal-strong" role="status">
+                      Sudah scan? Tunggu sebentar, sistem sedang mengonfirmasi sambungan ke WhatsApp. Kalau lebih dari 1 menit masih begini, tekan Periksa status.
+                    </p>
+                  )}
                   <ol className="mt-4 space-y-2.5">
                     {STEPS.map((s, i) => (
                       <li key={s} className="flex gap-2.5 text-sm text-ink-600">
@@ -317,6 +377,16 @@ export function PanelWhatsapp({
           </CardBody>
         </Card>
       </div>
+      <ConfirmModal
+        open={confirmLogout}
+        title="Putuskan sesi WhatsApp?"
+        description="Bot berhenti membalas sampai nomor ditautkan ulang."
+        confirmLabel="Putuskan sesi"
+        danger
+        busy={busy}
+        onConfirm={logoutSession}
+        onClose={() => setConfirmLogout(false)}
+      />
     </div>
   );
 }

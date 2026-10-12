@@ -30,7 +30,7 @@ Melanggar salah satu berarti merusak jaminan keamanan atau bisnis. Tidak ada pen
 | A4 | **Harga/stok/ongkir hanya dari tool.** Setiap jalur balasan baru wajib melewati `findUnbackedPrices()`. |
 | A5 | **Zero-custody.** Tidak ada kode yang menampung dana atau menyatakan "uang sudah diterima". |
 | A6 | **Isolasi tenant.** Setiap query order/percakapan wajib memfilter `tenant_id: session.sub`. |
-| A7 | **Tidak ada data demo/dummy/hardcode di UI.** Keadaan kosong harus jujur, bukan diisi contoh. |
+| A7 | **Tidak ada data demo/dummy/hardcode di UI, kecuali katalog demo bawaan playground publik** (`api/playground`, `DEFAULT_PLAYGROUND_CATALOG`) yang memang untuk demo marketing dan tidak menyentuh tenant nyata. Di luar itu keadaan kosong harus jujur, bukan diisi contoh. |
 | A8 | **Tidak ada kredensial sebagai default kode.** Hanya lewat `.env`. |
 | A9 | **Skema Prisma hanya aditif.** Jangan ubah/hapus kolom tabel produksi (11 tabel). |
 | A10 | **Tidak ada `em dash` (—) di UI.** Lihat `DESIGN.md`. |

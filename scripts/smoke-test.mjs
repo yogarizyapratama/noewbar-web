@@ -72,7 +72,7 @@ async function main() {
     // A logged-out visitor gets the auth panel, which is the correct render for
     // that state; assert the brand renders rather than a text only members see.
     ["/dashboard", "Noewbar"],
-    ["/superadmin", "operator"],
+    ["/superadmin", "Memuat Konsol"],
   ]) {
     const r = await req(path);
     const html = typeof r.body === "string" ? r.body : "";

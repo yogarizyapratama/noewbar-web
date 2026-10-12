@@ -50,7 +50,8 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { Badge, Button, Modal, StatusDot, cn, rupiah, timeAgo } from "@/components/ui";
+import { Badge, Button, Modal,
+  ConfirmModal, StatusDot, cn, rupiah, timeAgo } from "@/components/ui";
 import { NotificationBell } from "@/components/notification-bell";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { AdminLogin } from "./admin-login";
@@ -249,10 +250,57 @@ function exportWebhooksToCSV(webhooks: ConsoleData["webhooks"]) {
   document.body.removeChild(link);
 }
 
+const VALID_SECTIONS: NavigationSection[] = [
+  "overview",
+  "infrastructure",
+  "tenants",
+  "financials",
+  "superadmin_wa",
+  "broadcast",
+  "fleet",
+  "ai_models",
+  "orders",
+  "webhooks",
+  "system_ops",
+  "killswitch",
+];
+
 export default function SuperadminPage() {
   const [data, setData] = useState<ConsoleData | null>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [activeSection, setActiveSection] = useState<NavigationSection>("overview");
+  const [activeSectionState, setActiveSectionState] = useState<NavigationSection>(() => {
+    if (typeof window !== "undefined") {
+      const q = new URLSearchParams(window.location.search).get("section");
+      if (q && (VALID_SECTIONS as string[]).includes(q)) return q as NavigationSection;
+    }
+    return "overview";
+  });
+
+  const setActiveSection = useCallback((next: NavigationSection) => {
+    setActiveSectionState(next);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("section") !== next) {
+        url.searchParams.set("section", next);
+        window.history.pushState({ section: next }, "", url.toString());
+      }
+    }
+  }, []);
+
+  const activeSection = activeSectionState;
+
+  useEffect(() => {
+    function onPopState() {
+      const q = new URLSearchParams(window.location.search).get("section");
+      if (q && (VALID_SECTIONS as string[]).includes(q)) {
+        setActiveSectionState(q as NavigationSection);
+      } else {
+        setActiveSectionState("overview");
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [msg, setMsg] = useState<{ text: string; tone: "success" | "error" } | null>(null);
@@ -273,6 +321,7 @@ export default function SuperadminPage() {
   const [selectedTenant, setSelectedTenant] = useState<ConsoleData["tenants"][0] | null>(null);
   const [createTenantModal, setCreateTenantModal] = useState(false);
   const [wipeConfirmModal, setWipeConfirmModal] = useState<{ id: string; name: string } | null>(null);
+  const [pendingAct, setPendingAct] = useState<{ payload: Record<string, unknown>; title: string; description: string } | null>(null);
   const [wipeInput, setWipeInput] = useState("");
   const [orderIdSync, setOrderIdSync] = useState("");
 
@@ -477,8 +526,18 @@ export default function SuperadminPage() {
     setRefreshing(false);
   }
 
-  async function act(payload: Record<string, unknown>, confirmText?: string): Promise<void> {
-    if (confirmText && !window.confirm(confirmText)) return;
+  function requestAct(payload: Record<string, unknown>, title: string, description: string) {
+    setPendingAct({ payload, title, description });
+  }
+
+  async function runPendingAct() {
+    if (!pendingAct) return;
+    const payload = pendingAct.payload;
+    setPendingAct(null);
+    await act(payload);
+  }
+
+  async function act(payload: Record<string, unknown>): Promise<void> {
     setBusy(true);
     setMsg(null);
     try {
@@ -1981,9 +2040,10 @@ export default function SuperadminPage() {
                                 variant="secondary"
                                 className="h-7 text-xs px-2.5 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 shadow-flat"
                                 onClick={() =>
-                                  act(
+                                  requestAct(
                                     { action: "restart_instance", instance_key: inst.instance_key },
-                                    `Mulai ulang koneksi soket untuk sesi ${inst.instance_key}?`
+                                    "Mulai ulang soket?",
+                                    `Koneksi soket sesi ${inst.instance_key} dimulai ulang.`
                                   )
                                 }
                               >
@@ -2205,7 +2265,7 @@ export default function SuperadminPage() {
                       <StatusDot ok={true} />
                       <span>
                         <strong>WhatsApp Pengirim:</strong> Terhubung (
-                        {data.superadmin_wa.phone_number || "Super Admin"}) — Pesan akan dikirim langsung ke nomor WhatsApp pemilik toko.
+                        {data.superadmin_wa.phone_number || "Super Admin"}), pesan akan dikirim langsung ke nomor WhatsApp pemilik toko.
                       </span>
                     </div>
                   </div>
@@ -2548,14 +2608,7 @@ export default function SuperadminPage() {
                               {ts(o.created_at)}
                             </td>
                             <td className="px-5 py-4 text-right">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                className="h-7 text-xs px-2.5 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 shadow-flat"
-                                onClick={() => act({ action: "sync_midtrans", order_id: o.order_number })}
-                              >
-                                Cek Midtrans
-                              </Button>
+                              <span className="text-2xs text-ink-400">Order toko, bukan tagihan Midtrans</span>
                             </td>
                           </tr>
                         ))
@@ -2583,7 +2636,7 @@ export default function SuperadminPage() {
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="Order ID Midtrans..."
+                    placeholder="Order ID Midtrans (NOEWBAR-...)"
                     value={orderIdSync}
                     onChange={(e) => setOrderIdSync(e.target.value)}
                     className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs font-mono text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none w-52"
@@ -2846,9 +2899,10 @@ export default function SuperadminPage() {
                       className="bg-danger hover:bg-danger-strong text-white text-xs px-4 py-2 shadow-flat border-none"
                       loading={busy}
                       onClick={() =>
-                        act(
+                        requestAct(
                           { action: "kill_switch", disabled: true },
-                          "PERINGATAN TINGKAT TINGGI: Anda akan mematikan seluruh balasan otomatis bot di SEMUA toko di platform. Lanjutkan?"
+                          "Matikan seluruh bot?",
+                          "Seluruh balasan otomatis bot di SEMUA toko platform dimatikan."
                         )
                       }
                     >
@@ -3239,6 +3293,16 @@ export default function SuperadminPage() {
           </div>
         )}
       </Modal>
+      <ConfirmModal
+        open={!!pendingAct}
+        title={pendingAct?.title ?? ""}
+        description={pendingAct?.description ?? ""}
+        confirmLabel="Ya, lanjutkan"
+        danger
+        busy={busy}
+        onConfirm={runPendingAct}
+        onClose={() => setPendingAct(null)}
+      />
     </div>
   );
 }

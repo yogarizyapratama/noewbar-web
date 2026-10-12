@@ -12,11 +12,12 @@ import { isBotDisabled } from "@/lib/system/killswitch";
  * Public Interactive Playground (chapter 10.A.5).
  *
  * The visitor types a real message and watches the actual `combo-ai` pipeline
- * answer using a real catalog. Nothing is fabricated:
+ * answer using a catalog. Nothing is persisted:
  *
- *   - The catalog comes from PLAYGROUND_SHEET_URL (a real published Google Sheet).
- *   - When that is not configured the endpoint returns an explicit `not_configured`
- *     state and the UI shows an honest empty state. It never invents sample products.
+ *   - The catalog comes from PLAYGROUND_SHEET_URL (a real published Google Sheet)
+ *     when configured, otherwise from DEFAULT_PLAYGROUND_CATALOG, an explicit
+ *     built-in demo catalog for the public marketing demo (exempt from rule A7).
+ *   - The storefront identity is deliberately NOT read from any tenant row.
  *   - Nothing is persisted: no conversation, no order, no stock reservation. Orders
  *     produced by the playground are marked `simulated` so the UI can label them.
  */
@@ -296,6 +297,7 @@ export async function GET() {
     configured: true,
     source: "demo",
     warning: null,
+    note: "Menampilkan katalog demo bawaan untuk demo publik. Hubungkan PLAYGROUND_SHEET_URL untuk katalog nyata.",
     total: DEFAULT_PLAYGROUND_CATALOG.length,
     preview: DEFAULT_PLAYGROUND_CATALOG.slice(0, 4).map((r) => ({
       sku: r.sku,

@@ -377,11 +377,18 @@ export async function verifyPayment(params: {
   const orderStatus = order.order_status as OrderState;
 
   // Verifying the payment is exactly what unlocks fulfilment: the order moves to
-  // PROCESSING. Per the transition table this is only legal from
-  // PENDING_PAYMENT, so `assertOrderTransition` below rejects any other origin.
+  // PROCESSING. That edge is legal from PENDING_PAYMENT; an order still sitting
+  // in PENDING_CONFIRMATION (proof attached before confirmation) is advanced
+  // through PENDING_PAYMENT first so no order is stuck unverifiable.
   const nextOrderStatus: OrderState = "PROCESSING";
 
-  assertOrderTransition(orderStatus, nextOrderStatus);
+  if (orderStatus === "PENDING_CONFIRMATION") {
+    assertOrderTransition(orderStatus, "PENDING_PAYMENT");
+  }
+  assertOrderTransition(
+    orderStatus === "PENDING_CONFIRMATION" ? "PENDING_PAYMENT" : orderStatus,
+    nextOrderStatus
+  );
 
   await prisma.order.update({
     where: { id: params.orderId },

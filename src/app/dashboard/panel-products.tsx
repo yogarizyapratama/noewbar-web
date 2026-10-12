@@ -30,6 +30,7 @@ import {
   Button,
   Card,
   CardBody,
+  ConfirmModal,
   ErrorState,
   InlineLoading,
   Modal,
@@ -79,6 +80,8 @@ export function PanelProducts() {
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
 
   // Form states
@@ -282,13 +285,16 @@ export function PanelProducts() {
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Hapus produk ini dari database katalog?")) return;
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
     await fetch("/api/products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete", id }),
+      body: JSON.stringify({ action: "delete", id: deleteTarget.id }),
     });
+    setDeleteBusy(false);
+    setDeleteTarget(null);
     await loadProducts();
   }
 
@@ -550,7 +556,7 @@ export function PanelProducts() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDelete(p.id)}
+                              onClick={() => setDeleteTarget({ id: p.id, name: p.name })}
                               className="rounded p-1 text-danger hover:bg-danger-wash hover:text-danger-strong"
                               title="Hapus Produk"
                             >
@@ -933,6 +939,16 @@ export function PanelProducts() {
             </div>
           </div>
         </Modal>
+      <ConfirmModal
+        open={!!deleteTarget}
+        title="Hapus produk?"
+        description={deleteTarget ? `"${deleteTarget.name}" dihapus dari database katalog dan tidak bisa dikembalikan.` : ""}
+        confirmLabel="Hapus produk"
+        danger
+        busy={deleteBusy}
+        onConfirm={handleDelete}
+        onClose={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

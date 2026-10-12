@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getTenantSession } from "@/lib/auth";
+import { requireTenant } from "@/lib/auth";
 import {
   uploadObject,
   validateUpload,
@@ -18,7 +18,7 @@ import {
  * - Max 5 photos per product.
  */
 export async function POST(req: Request) {
-  const session = await getTenantSession();
+  const session = await requireTenant();
   if (!session) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
