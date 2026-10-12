@@ -14,7 +14,7 @@
  *   Fleet WhatsApp Control, dan System Maintenance.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -36,11 +36,13 @@ import {
   PanelLeftOpen,
   Plus,
   Power,
+  QrCode,
   RefreshCw,
   Search,
   Server,
   ShieldAlert,
   ShoppingBag,
+  Smartphone,
   Trash2,
   TrendingUp,
   Users,
@@ -80,6 +82,10 @@ export type ConsoleData = {
     active_instances: number | null;
     uptime_reported_at: string | null;
     error: string | null;
+  };
+  superadmin_wa?: {
+    connection_status: string;
+    phone_number: string | null;
   };
   queue: {
     redis: boolean;
@@ -140,8 +146,9 @@ type NavigationSection =
   | "infrastructure"
   | "tenants"
   | "financials"
-  | "fleet"
+  | "superadmin_wa"
   | "broadcast"
+  | "fleet"
   | "ai_models"
   | "orders"
   | "webhooks"
@@ -302,6 +309,130 @@ export default function SuperadminPage() {
       setMsg({ text: "Gagal memuat telemetri server.", tone: "error" });
     }
   }, []);
+
+  // Superadmin WhatsApp Connection State & Handlers
+  const [saQr, setSaQr] = useState<string | null>(null);
+  const [saPolling, setSaPolling] = useState(false);
+  const [saCountdown, setSaCountdown] = useState(0);
+  const [saBusy, setSaBusy] = useState(false);
+  const saTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearSaTimer = useCallback(() => {
+    if (saTimerRef.current) {
+      clearInterval(saTimerRef.current);
+      saTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => clearSaTimer, [clearSaTimer]);
+
+  const pollSaWaStatus = useCallback(async () => {
+    setSaPolling(true);
+    setSaCountdown(15);
+    clearSaTimer();
+    saTimerRef.current = setInterval(async () => {
+      setSaCountdown((c) => (c > 0 ? c - 1 : 0));
+      try {
+        const res = await fetch("/api/superadmin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "superadmin_wa_status" }),
+        });
+        const json = await res.json();
+        if (json.ok) {
+          if (json.qr_base64) {
+            setSaQr(json.qr_base64);
+          }
+          if (json.connection_status === "CONNECTED") {
+            clearSaTimer();
+            setSaPolling(false);
+            setSaQr(null);
+            load();
+            setMsg({ text: "WhatsApp Super Admin berhasil terhubung!", tone: "success" });
+            return;
+          }
+        }
+      } catch {
+        // backoff
+      }
+    }, 2000);
+  }, [clearSaTimer, load]);
+
+  const handleStartSaWa = async () => {
+    setSaBusy(true);
+    setSaQr(null);
+    try {
+      const res = await fetch("/api/superadmin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "superadmin_wa_start" }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        if (json.qr_base64) {
+          setSaQr(json.qr_base64);
+        }
+        pollSaWaStatus();
+      } else {
+        setMsg({ text: json.error ?? "Gagal memulai pairing WhatsApp Super Admin.", tone: "error" });
+      }
+    } catch {
+      setMsg({ text: "Gagal menghubungi server WhatsApp.", tone: "error" });
+    } finally {
+      setSaBusy(false);
+    }
+  };
+
+  const handleLogoutSaWa = async () => {
+    setSaBusy(true);
+    clearSaTimer();
+    setSaPolling(false);
+    setSaQr(null);
+    try {
+      const res = await fetch("/api/superadmin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "superadmin_wa_logout" }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setMsg({ text: "Koneksi WhatsApp Super Admin berhasil diputuskan.", tone: "success" });
+        load();
+      } else {
+        setMsg({ text: json.error ?? "Gagal memutuskan koneksi WhatsApp.", tone: "error" });
+      }
+    } catch {
+      setMsg({ text: "Koneksi gagal saat memutuskan WhatsApp.", tone: "error" });
+    } finally {
+      setSaBusy(false);
+    }
+  };
+
+  const handleRefreshSaWa = async () => {
+    setSaBusy(true);
+    try {
+      const res = await fetch("/api/superadmin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "superadmin_wa_status" }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        if (json.qr_base64) {
+          setSaQr(json.qr_base64);
+        }
+        load();
+        setMsg({
+          text: `Status WhatsApp Super Admin: ${json.connection_status}${json.phone_number ? ` (${json.phone_number})` : ""}`,
+          tone: json.connection_status === "CONNECTED" ? "success" : "error",
+        });
+      }
+    } catch {
+      setMsg({ text: "Gagal mengecek status WhatsApp Super Admin.", tone: "error" });
+    } finally {
+      setSaBusy(false);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -540,15 +671,22 @@ export default function SuperadminPage() {
       group: "SALURAN & AI GATEWAY",
       items: [
         {
-          id: "fleet",
-          label: "Koneksi WhatsApp Toko",
-          badge: `${data.fleet.length}`,
-          icon: <MessageSquare className="h-4 w-4" />,
+          id: "superadmin_wa",
+          label: "Koneksi WA Super Admin",
+          badge: data.superadmin_wa?.connection_status === "CONNECTED" ? "Aktif" : "Offline",
+          badgeTone: data.superadmin_wa?.connection_status === "CONNECTED" ? "signal" : "danger",
+          icon: <Smartphone className="h-4 w-4" />,
         },
         {
           id: "broadcast",
           label: "Siaran Pesan ke Tenant",
           icon: <Bell className="h-4 w-4" />,
+        },
+        {
+          id: "fleet",
+          label: "Koneksi WhatsApp Toko",
+          badge: `${data.fleet.length}`,
+          icon: <MessageSquare className="h-4 w-4" />,
         },
         {
           id: "ai_models",
@@ -869,8 +1007,10 @@ export default function SuperadminPage() {
                     ? "Ringkasan Platform"
                      : activeSection === "tenants"
                     ? "Direktori Toko"
-                    : activeSection === "financials"
+                     : activeSection === "financials"
                     ? "Finansial & Langganan"
+                    : activeSection === "superadmin_wa"
+                    ? "Koneksi WA Super Admin"
                     : activeSection === "fleet"
                     ? "Koneksi WhatsApp"
                     : activeSection === "broadcast"
@@ -890,6 +1030,7 @@ export default function SuperadminPage() {
                 {activeSection === "overview" && "Ringkasan Platform & Operasional Toko"}
                 {activeSection === "tenants" && "Direktori & Manajemen Toko (Tenant)"}
                 {activeSection === "financials" && "Analisis Finansial & Langganan Toko"}
+                {activeSection === "superadmin_wa" && "Pusat Koneksi WhatsApp Resmi Super Admin"}
                 {activeSection === "fleet" && "Koneksi & Fleet WhatsApp Toko"}
                 {activeSection === "broadcast" && "Siaran Pesan WhatsApp ke Tenant"}
                 {activeSection === "ai_models" && "Mesin AI CS & Penggunaan Kuota Token"}
@@ -1859,21 +2000,245 @@ export default function SuperadminPage() {
             </div>
           )}
 
+          {/* ==================================================== SECTION: SUPERADMIN WA CONNECTION */}
+          {activeSection === "superadmin_wa" && (
+            <div className="space-y-6">
+              <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+                {/* Left Card: Status & QR Pairing */}
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-5 shadow-flat">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
+                        Status WhatsApp Super Admin
+                      </h3>
+                      <p className="text-2xs text-ink-500 mt-0.5">
+                        Koneksi WhatsApp resmi platform untuk siaran langsung ke pemilik toko
+                      </p>
+                    </div>
+                    <Badge
+                      tone={data.superadmin_wa?.connection_status === "CONNECTED" ? "signal" : "danger"}
+                    >
+                      <StatusDot ok={data.superadmin_wa?.connection_status === "CONNECTED"} />
+                      {data.superadmin_wa?.connection_status === "CONNECTED" ? "TERHUBUNG" : "OFFLINE"}
+                    </Badge>
+                  </div>
+
+                  {data.superadmin_wa?.connection_status === "CONNECTED" ? (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-950 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="h-4 w-4 text-emerald-700" />
+                          <span className="text-xs font-bold">Nomor WhatsApp Aktif:</span>
+                          <span className="font-mono text-xs font-semibold text-emerald-800">
+                            {data.superadmin_wa.phone_number || "Nomor Terdaftar"}
+                          </span>
+                        </div>
+                        <p className="text-2xs text-emerald-800 leading-relaxed">
+                          Sesi WhatsApp Super Admin ini aktif dan siap digunakan sebagai pengirim pesan broadcast pengumuman, peringatan perpanjangan masa langganan, dan follow-up langsung ke WhatsApp pemilik toko.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 text-xs bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
+                          loading={saBusy}
+                          onClick={handleRefreshSaWa}
+                        >
+                          <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                          Periksa Status Sesi
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 text-xs border border-red-200 text-red-600 hover:bg-red-50"
+                          loading={saBusy}
+                          onClick={handleLogoutSaWa}
+                        >
+                          <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                          Putuskan Koneksi (Logout)
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          className="h-8 text-xs bg-ink text-white hover:bg-ink-800"
+                          onClick={() => setActiveSection("broadcast")}
+                        >
+                          <Bell className="mr-1.5 h-3.5 w-3.5" />
+                          Buka Menu Siaran
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-xs text-ink-600 leading-relaxed">
+                        WhatsApp Super Admin belum terhubung. Klik tombol di bawah untuk menampilkan QR Code dan pindai menggunakan aplikasi WhatsApp di smartphone pengelola.
+                      </p>
+
+                      {!saQr && (
+                        <div>
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            className="h-9 text-xs bg-ink text-white hover:bg-ink-800"
+                            loading={saBusy}
+                            onClick={handleStartSaWa}
+                          >
+                            <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                            Tautkan WhatsApp (Generate QR)
+                          </Button>
+                        </div>
+                      )}
+
+                      {saQr && (
+                        <div className="flex flex-col items-center justify-center p-6 bg-surface-sunken rounded-xl border border-ink-200 space-y-4">
+                          <div className="bg-white p-3 rounded-xl border border-ink-200 shadow-flat">
+                            <img
+                              src={saQr.startsWith("data:") ? saQr : `data:image/png;base64,${saQr}`}
+                              alt="QR Code WhatsApp Super Admin"
+                              className="h-56 w-56 object-contain"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-ink-600">
+                            <RefreshCw className={cn("h-3.5 w-3.5", saPolling && "animate-spin text-signal-strong")} />
+                            <span>Menunggu pemindaian... ({saCountdown}s)</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-xs bg-white hover:bg-ink-50 border border-ink-200"
+                            loading={saBusy}
+                            onClick={handleStartSaWa}
+                          >
+                            Muat Ulang QR
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Card: Panduan Pairing */}
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-4 shadow-flat">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
+                      Panduan Penautan WhatsApp Super Admin
+                    </h3>
+                    <p className="text-2xs text-ink-500 mt-0.5">
+                      Langkah-langkah menautkan nomor resmi untuk kebutuhan sistem
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 text-xs text-ink-700">
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-surface-sunken border border-ink-200">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-2xs font-bold text-white">
+                        1
+                      </span>
+                      <p>
+                        Buka aplikasi <strong>WhatsApp</strong> di smartphone resmi atau nomor admin platform Noewbar.
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-surface-sunken border border-ink-200">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-2xs font-bold text-white">
+                        2
+                      </span>
+                      <p>
+                        Buka menu titik tiga (Android) atau menu <strong>Pengaturan</strong> (iOS), lalu pilih <strong>Perangkat Tertaut</strong> (Linked Devices).
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-surface-sunken border border-ink-200">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-2xs font-bold text-white">
+                        3
+                      </span>
+                      <p>
+                        Tekan <strong>Tautkan Perangkat</strong> dan arahkan kamera ponsel ke QR Code di sebelah kiri.
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-surface-sunken border border-ink-200">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ink text-2xs font-bold text-white">
+                        4
+                      </span>
+                      <p>
+                        Tunggu beberapa detik sampai sistem mendeteksi koneksi dan status berganti menjadi <strong>TERHUBUNG</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-ink-200 pt-3 text-2xs text-ink-500 leading-relaxed">
+                    <strong>Catatan:</strong> Sesi WhatsApp ini terisolasi khusus untuk kebutuhan Super Admin (Broadcast &amp; Follow-up Tenant) dan tidak mengganggu sesi bot AI WhatsApp toko milik tenant.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ==================================================== SECTION: BROADCAST */}
           {activeSection === "broadcast" && (
             <div className="space-y-6">
               <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-5 shadow-flat">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-ink">Siaran Pesan ke Tenant</h3>
-                  <p className="text-2xs text-ink-500 mt-0.5">
-                    Kirim pesan WA dari instance toko yang terhubung ke nomor pemiliknya. Pilih tenant tertentu atau kirim ke semua yang aktif.
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">Siaran Pesan ke Tenant</h3>
+                    <p className="text-2xs text-ink-500 mt-0.5">
+                      Kirim pesan langsung dari nomor WhatsApp Super Admin ke nomor WhatsApp pemilik toko (tenant).
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-7 text-xs bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 self-start sm:self-auto"
+                    onClick={() => setActiveSection("superadmin_wa")}
+                  >
+                    <Smartphone className="mr-1.5 h-3.5 w-3.5" />
+                    Koneksi WA Super Admin
+                  </Button>
                 </div>
+
+                {/* Sender Status Banner */}
+                {data.superadmin_wa?.connection_status === "CONNECTED" ? (
+                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-950 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <StatusDot ok={true} />
+                      <span>
+                        <strong>WhatsApp Pengirim:</strong> Terhubung (
+                        {data.superadmin_wa.phone_number || "Super Admin"}) — Pesan akan dikirim langsung ke nomor WhatsApp pemilik toko.
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-950 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                      <span>
+                        <strong>WhatsApp Super Admin Belum Terhubung:</strong> Anda harus menautkan nomor WhatsApp Super Admin terlebih dahulu sebelum dapat mengirim siaran.
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="h-7 text-xs bg-ink text-white hover:bg-ink-800 border-none shrink-0"
+                      onClick={() => setActiveSection("superadmin_wa")}
+                    >
+                      Tautkan Sekarang
+                    </Button>
+                  </div>
+                )}
 
                 {/* Tenant selector */}
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-ink">Target Penerima</label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-ink">Target Penerima Toko</label>
+                    <span className="text-2xs text-ink-400">
+                      {broadcastSelectedIds.length === 0
+                        ? `Semua Toko (${data.tenants.length})`
+                        : `${broadcastSelectedIds.length} toko dipilih`}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1">
                     <button
                       onClick={() => setBroadcastSelectedIds([])}
                       className={cn(
@@ -1883,7 +2248,7 @@ export default function SuperadminPage() {
                           : "border-ink-200 text-ink-600 hover:bg-ink-50"
                       )}
                     >
-                      Semua Terhubung ({data.fleet.filter((f) => f.connection_status === "CONNECTED").length})
+                      Semua Toko ({data.tenants.length})
                     </button>
                     {data.tenants.map((t) => {
                       const isSelected = broadcastSelectedIds.includes(t.id);
@@ -1903,6 +2268,9 @@ export default function SuperadminPage() {
                           )}
                         >
                           {t.business_name}
+                          {t.owner_whatsapp && (
+                            <span className="ml-1 opacity-70 text-2xs">({t.owner_whatsapp})</span>
+                          )}
                         </button>
                       );
                     })}
@@ -1912,14 +2280,14 @@ export default function SuperadminPage() {
                 {/* Message composer */}
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold text-ink" htmlFor="broadcast-msg">
-                    Isi Pesan
+                    Isi Pesan Siaran
                   </label>
                   <textarea
                     id="broadcast-msg"
                     value={broadcastMsg}
                     onChange={(e) => setBroadcastMsg(e.target.value)}
                     rows={6}
-                    placeholder="Tulis pesan yang akan dikirim ke pemilik toko..."
+                    placeholder="Contoh: Halo Kak [Nama Toko], masa langganan Noewbar Anda akan berakhir dalam 3 hari. Segera perbarui paket untuk memastikan AI CS tetap aktif..."
                     className="w-full rounded-xl border border-ink-200 bg-surface-sunken px-4 py-3 text-sm text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/20 resize-none"
                   />
                   <div className="flex items-center justify-between">
@@ -1929,7 +2297,11 @@ export default function SuperadminPage() {
                       variant="primary"
                       className="h-9 bg-ink text-white hover:bg-ink-800 border-none"
                       loading={broadcastBusy}
-                      disabled={!broadcastMsg.trim() || broadcastBusy}
+                      disabled={
+                        !broadcastMsg.trim() ||
+                        broadcastBusy ||
+                        data.superadmin_wa?.connection_status !== "CONNECTED"
+                      }
                       onClick={async () => {
                         setBroadcastBusy(true);
                         setBroadcastResult(null);
@@ -1946,7 +2318,10 @@ export default function SuperadminPage() {
                           const json = await res.json();
                           if (json.ok) {
                             setBroadcastResult({ total: json.total, sent: json.sent, failed: json.failed });
-                            setMsg({ text: `Pesan terkirim ke ${json.sent} dari ${json.total} tenant.`, tone: json.failed > 0 ? "error" : "success" });
+                            setMsg({
+                              text: `Pesan siaran terkirim ke ${json.sent} dari ${json.total} toko.`,
+                              tone: json.failed > 0 ? "error" : "success",
+                            });
                           } else {
                             setMsg({ text: json.error ?? "Gagal mengirim siaran.", tone: "error" });
                           }
@@ -1958,25 +2333,27 @@ export default function SuperadminPage() {
                       }}
                     >
                       <Bell className="mr-1.5 h-3.5 w-3.5" />
-                      Kirim Siaran
+                      Kirim Siaran via WhatsApp Super Admin
                     </Button>
                   </div>
                 </div>
 
                 {/* Broadcast result */}
                 {broadcastResult && (
-                  <div className={cn(
-                    "flex items-center gap-4 rounded-xl border p-4 text-sm",
-                    broadcastResult.failed === 0
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : "border-amber-200 bg-amber-50 text-amber-800"
-                  )}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-4 rounded-xl border p-4 text-sm",
+                      broadcastResult.failed === 0
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-amber-200 bg-amber-50 text-amber-800"
+                    )}
+                  >
                     <div className="flex-1">
-                      <span className="font-semibold">{broadcastResult.sent} berhasil</span>
+                      <span className="font-semibold">{broadcastResult.sent} berhasil terkirim</span>
                       {broadcastResult.failed > 0 && (
                         <span className="ml-2 text-red-600">· {broadcastResult.failed} gagal</span>
                       )}
-                      <span className="text-ink-500"> dari {broadcastResult.total} target</span>
+                      <span className="text-ink-500"> dari {broadcastResult.total} target toko</span>
                     </div>
                     <button onClick={() => setBroadcastResult(null)} className="shrink-0 text-ink-400 hover:text-ink">
                       <X className="h-4 w-4" />

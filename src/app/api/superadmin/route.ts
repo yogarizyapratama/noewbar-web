@@ -56,6 +56,9 @@ const bodySchema = z.discriminatedUnion("action", [
     message: z.string().min(1).max(4000),
     tenant_ids: z.array(z.string().uuid()).optional(),
   }),
+  z.object({ action: z.literal("superadmin_wa_status") }),
+  z.object({ action: z.literal("superadmin_wa_start") }),
+  z.object({ action: z.literal("superadmin_wa_logout") }),
 ]);
 
 export async function POST(req: NextRequest) {
@@ -239,37 +242,110 @@ export async function POST(req: NextRequest) {
     return ok({ action: "test_ai_gateway", ...health });
   }
 
+  const SUPERADMIN_INSTANCE_KEY = "noewbar-superadmin";
+
+  if (body.action === "superadmin_wa_start") {
+    const admin = await requireAdmin();
+    if (!admin) return fail("Unauthorized", 401);
+
+    const webhookUrl = `${env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/api/wa-webhook`;
+    const initRes = await waDaemon.initInstance(SUPERADMIN_INSTANCE_KEY, webhookUrl);
+    if (!initRes.ok) {
+      return fail(initRes.error, 502);
+    }
+    const qrRes = await waDaemon.getQr(SUPERADMIN_INSTANCE_KEY);
+    return ok({
+      action: "superadmin_wa_start",
+      connection_status: qrRes.ok ? qrRes.data.status : initRes.data.status,
+      qr_base64: qrRes.ok ? qrRes.data.qr_base64 : initRes.data.qr_base64,
+      phone_number: qrRes.ok ? qrRes.data.phone_number : initRes.data.phone_number,
+    });
+  }
+
+  if (body.action === "superadmin_wa_status") {
+    const admin = await requireAdmin();
+    if (!admin) return fail("Unauthorized", 401);
+
+    const [statusRes, qrRes] = await Promise.all([
+      waDaemon.getStatus(SUPERADMIN_INSTANCE_KEY),
+      waDaemon.getQr(SUPERADMIN_INSTANCE_KEY),
+    ]);
+
+    return ok({
+      action: "superadmin_wa_status",
+      connection_status: statusRes.ok ? statusRes.data.connection_status : "OFFLINE",
+      phone_number: statusRes.ok ? statusRes.data.phone_number : null,
+      qr_base64: qrRes.ok ? qrRes.data.qr_base64 : null,
+    });
+  }
+
+  if (body.action === "superadmin_wa_logout") {
+    const admin = await requireAdmin();
+    if (!admin) return fail("Unauthorized", 401);
+
+    const res = await waDaemon.logout(SUPERADMIN_INSTANCE_KEY);
+    return ok({
+      action: "superadmin_wa_logout",
+      success: res.ok,
+      error: res.ok ? null : res.error,
+    });
+  }
+
   if (body.action === "broadcast_tenants") {
     const admin = await requireAdmin();
     if (!admin) return fail("Unauthorized", 401);
 
-    // Find all ACTIVE WA instances for tenants
-    const whereClause = body.tenant_ids?.length
-      ? { tenant_id: { in: body.tenant_ids }, connection_status: "CONNECTED" }
-      : { connection_status: "CONNECTED" };
+    // Verify Super Admin WhatsApp is connected
+    const saStatus = await waDaemon.getStatus(SUPERADMIN_INSTANCE_KEY);
+    if (!saStatus.ok || saStatus.data.connection_status !== "CONNECTED") {
+      return fail(
+        "WhatsApp Super Admin belum terhubung. Silakan buka menu 'Koneksi WA Super Admin' dan scan QR terlebih dahulu sebelum melakukan siaran.",
+        400
+      );
+    }
 
-    const instances = await prisma.waInstance.findMany({
+    // Find target tenants
+    const whereClause = body.tenant_ids?.length
+      ? { id: { in: body.tenant_ids } }
+      : {};
+
+    const targetTenants = await prisma.tenant.findMany({
       where: whereClause,
-      select: { instance_key: true, phone_number: true, tenant: { select: { business_name: true, id: true } } },
+      select: { id: true, business_name: true, owner_whatsapp: true },
+      orderBy: { business_name: "asc" },
     });
 
-    const results: { instance_key: string; tenant: string; ok: boolean; error?: string }[] = [];
-    for (const inst of instances) {
-      if (!inst.phone_number) {
-        results.push({ instance_key: inst.instance_key, tenant: inst.tenant.business_name, ok: false, error: "no phone" });
+    if (targetTenants.length === 0) {
+      return fail("Tidak ada tenant penerima yang ditemukan.", 400);
+    }
+
+    const results: { tenant_id: string; tenant: string; phone: string; ok: boolean; error?: string }[] = [];
+    for (const t of targetTenants) {
+      const phone = t.owner_whatsapp?.replace(/[^\d+]/g, "") || "";
+      if (!phone || phone.length < 8) {
+        results.push({
+          tenant_id: t.id,
+          tenant: t.business_name,
+          phone: t.owner_whatsapp || "-",
+          ok: false,
+          error: "Nomor WhatsApp pemilik tidak valid atau kosong",
+        });
         continue;
       }
       try {
-        // Send to the tenant's own WA number (owner phone = phone_number registered)
-        await waDaemon.sendText({ instanceKey: inst.instance_key, to: inst.phone_number, message: body.message });
-        results.push({ instance_key: inst.instance_key, tenant: inst.tenant.business_name, ok: true });
+        await waDaemon.sendText({
+          instanceKey: SUPERADMIN_INSTANCE_KEY,
+          to: phone,
+          message: body.message,
+        });
+        results.push({ tenant_id: t.id, tenant: t.business_name, phone, ok: true });
         // Notify tenant dashboard via SSE
-        notifyTenant(inst.tenant.id, { type: "billing" });
+        notifyTenant(t.id, { type: "billing" });
       } catch (e) {
-        results.push({ instance_key: inst.instance_key, tenant: inst.tenant.business_name, ok: false, error: String(e) });
+        results.push({ tenant_id: t.id, tenant: t.business_name, phone, ok: false, error: String(e) });
       }
-      // Brief pause to avoid daemon rate limiting
-      await new Promise((r) => setTimeout(r, 300));
+      // Brief pause to avoid rate limiting
+      await new Promise((r) => setTimeout(r, 350));
     }
 
     const sent = results.filter((r) => r.ok).length;
@@ -299,6 +375,7 @@ export async function GET() {
     totalOrdersCount,
     totalConversationsCount,
     totalProductsCount,
+    saWaStatus,
   ] = await Promise.all([
     gatewayHealth(),
     waDaemon.health(),
@@ -330,6 +407,7 @@ export async function GET() {
     prisma.order.count(),
     prisma.conversation.count(),
     prisma.product.count(),
+    waDaemon.getStatus("noewbar-superadmin").catch(() => ({ ok: false as const, error: "offline" })),
   ]);
 
   // 9router latency sample: one real round-trip measured now.
@@ -353,6 +431,10 @@ export async function GET() {
       active_instances: daemonHealth.ok ? daemonHealth.data.active_instances : null,
       uptime_reported_at: daemonHealth.ok ? daemonHealth.data.time : null,
       error: daemonHealth.ok ? null : daemonHealth.error,
+    },
+    superadmin_wa: {
+      connection_status: saWaStatus.ok ? saWaStatus.data.connection_status : "OFFLINE",
+      phone_number: saWaStatus.ok ? saWaStatus.data.phone_number : null,
     },
     queue,
     redis,
