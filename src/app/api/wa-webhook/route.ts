@@ -15,6 +15,7 @@ import { analyzeProductInquiryMedia } from "@/lib/ai/vision-product";
 import { reverseGeocode } from "@/lib/geo/geocode";
 import { notifyTenant } from "@/lib/realtime/event-bus";
 import { submitPaymentProof } from "@/lib/orders/orders";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 
 /**
  * Inbound WhatsApp webhook (chapter 4 + chapter 5).
@@ -117,8 +118,14 @@ export async function POST(req: NextRequest) {
   const tenant = instance.tenant;
 
   // Suspended / expired tenants do not get bot replies.
-  if (tenant.status === "SUSPENDED") {
-    return ok({ accepted: false, reason: "tenant_suspended" });
+  const subInfo = await getTenantSubscriptionInfo(tenant.id);
+  if (subInfo.isExpired) {
+    return ok({
+      accepted: false,
+      reason: "subscription_expired",
+      note: "Langganan toko telah berakhir. Balasan otomatis AI dinonaktifkan.",
+      days_remaining: subInfo.daysRemaining,
+    });
   }
 
   await prisma.waInstance.update({

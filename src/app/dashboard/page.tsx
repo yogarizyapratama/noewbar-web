@@ -191,6 +191,10 @@ export default function DashboardPage() {
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState(false);
 
+  // Subscription expiry UI state
+  const [showExpiryModal, setShowExpiryModal] = useState(false);
+  const [expiryDismissed, setExpiryDismissed] = useState(false);
+
   const loadHealth = useCallback(async () => {
     try {
       const res = await fetch("/api/maintenance", { cache: "no-store" });
@@ -282,6 +286,19 @@ export default function DashboardPage() {
     const t = setInterval(loadHealth, 20000);
     return () => clearInterval(t);
   }, [authed, loadHealth]);
+
+  // Subscription lockout: force to billing when expired, show modal when expiring soon
+  useEffect(() => {
+    if (!health?.subscription) return;
+    const sub = health.subscription;
+    if (sub.is_expired) {
+      // Lock all other tabs
+      if (tab !== "billing") setTab("billing");
+      if (!expiryDismissed) setShowExpiryModal(true);
+    } else if (sub.is_expiring_soon && !expiryDismissed) {
+      setShowExpiryModal(true);
+    }
+  }, [health?.subscription, tab, expiryDismissed, setTab]);
 
   useEffect(() => {
     if (!activeConv) return;
@@ -422,18 +439,84 @@ export default function DashboardPage() {
   }
 
   const waOk = health?.whatsapp?.connection_status === "CONNECTED";
+  const sub = health?.subscription;
+  const isExpired = sub?.is_expired ?? false;
+  const isExpiringSoon = sub?.is_expiring_soon ?? false;
+  const daysLeft = sub?.days_remaining ?? null;
+
+  // Nav: lock non-billing items when subscription expired
+  const navItems = NAV.map((item) => {
+    if (item.id === "pesanan") {
+      return { ...item, badge: (counts.PROOF_SUBMITTED ?? 0) + (counts.UNDER_REVIEW ?? 0) };
+    }
+    if (isExpired && item.id !== "billing") {
+      return { ...item, disabled: true };
+    }
+    return item;
+  });
+
+  const handleNavigate = (nextTab: TabId) => {
+    if (isExpired && nextTab !== "billing") return;
+    setTab(nextTab);
+  };
 
   return (
+    <>
+      {/* ── Expiry / Warning Modal ── */}
+      {showExpiryModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="expiry-modal-title"
+        >
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+            <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-full ${isExpired ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}>
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <h2 id="expiry-modal-title" className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              {isExpired ? "Langganan Anda Telah Berakhir" : "Langganan Hampir Habis"}
+            </h2>
+            <p className="mb-5 text-sm text-zinc-500 dark:text-zinc-400">
+              {isExpired
+                ? "Semua fitur kecuali halaman Langganan telah dinonaktifkan. Perbarui paket untuk mengaktifkan kembali layanan toko Anda."
+                : `Langganan Anda berakhir dalam ${daysLeft} hari. Perbarui sekarang agar layanan tidak terganggu.`}
+            </p>
+            <div className="flex gap-3">
+              <button
+                className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                onClick={() => {
+                  setShowExpiryModal(false);
+                  setTab("billing");
+                  loadBilling();
+                }}
+              >
+                Lihat Paket
+              </button>
+              {!isExpired && (
+                <button
+                  className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  onClick={() => {
+                    setShowExpiryModal(false);
+                    setExpiryDismissed(true);
+                  }}
+                >
+                  Tutup
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     <AppShell<TabId>
       brand="NOEWBAR"
       brandNote={health?.tenant?.business_name ?? "Dashboard Toko"}
-      nav={NAV.map((item) =>
-        item.id === "pesanan"
-          ? { ...item, badge: (counts.PROOF_SUBMITTED ?? 0) + (counts.UNDER_REVIEW ?? 0) }
-          : item
-      )}
+      nav={navItems}
       active={tab}
-      onNavigate={setTab}
+      onNavigate={handleNavigate}
       status={{
         ok: Boolean(health?.ai?.gateway_ok) && waOk,
         label: waOk ? (health?.ai?.gateway_ok ? "Sistem siap" : "AI gangguan") : "WA belum tertaut",
@@ -499,6 +582,39 @@ export default function DashboardPage() {
       {healthError && tab !== "status" && (
         <div className="px-4 pt-4 sm:px-6 lg:px-8">
           <ErrorState title="Status sistem tidak terbaca" description={healthError} compact />
+        </div>
+      )}
+
+      {/* Subscription expiry banner — persistent, cannot be dismissed when expired */}
+      {(isExpired || (isExpiringSoon && !expiryDismissed)) && (
+        <div className={`mx-4 mt-4 flex items-start gap-3 rounded-xl border px-4 py-3 sm:mx-6 lg:mx-8 ${
+          isExpired
+            ? "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+            : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+        }`} role="alert">
+          <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <div className="min-w-0 flex-1 text-sm">
+            <span className="font-semibold">{isExpired ? "Langganan berakhir. " : `Langganan berakhir dalam ${daysLeft} hari. `}</span>
+            <button
+              className="underline underline-offset-2 hover:no-underline"
+              onClick={() => { setTab("billing"); loadBilling(); }}
+            >
+              Perbarui sekarang
+            </button>
+          </div>
+          {!isExpired && (
+            <button
+              className="shrink-0 opacity-60 hover:opacity-100"
+              aria-label="Tutup notifikasi"
+              onClick={() => setExpiryDismissed(true)}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
 
@@ -599,6 +715,28 @@ export default function DashboardPage() {
           onRefresh={loadBilling}
         />
       )}
+
+      {/* Expired state: show informational overlay inside AppShell content area */}
+      {isExpired && tab !== "billing" && (
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-500">
+            <svg className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">Langganan Tidak Aktif</h2>
+          <p className="max-w-sm text-sm text-zinc-500">
+            Fitur ini tidak tersedia karena langganan Anda telah berakhir.
+          </p>
+          <button
+            className="mt-2 rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
+            onClick={() => { setTab("billing"); loadBilling(); }}
+          >
+            Perbarui Langganan
+          </button>
+        </div>
+      )}
     </AppShell>
+    </>
   );
 }

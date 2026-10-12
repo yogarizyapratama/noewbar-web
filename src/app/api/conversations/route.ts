@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { ok, fail } from "@/lib/http";
 import { requireTenant } from "@/lib/auth";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 import { waDaemon } from "@/lib/wa/daemon-client";
 import { notifyTenant } from "@/lib/realtime/event-bus";
 
@@ -35,6 +36,11 @@ const bodySchema = z.discriminatedUnion("action", [
 export async function POST(req: NextRequest) {
   const session = await requireTenant();
   if (!session) return fail("Unauthorized", 401);
+
+  const subInfo = await getTenantSubscriptionInfo(session.sub);
+  if (subInfo.isExpired) {
+    return fail("Langganan Anda telah berakhir. Perbarui paket untuk menggunakan fitur ini.", 403);
+  }
 
   const raw = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(raw);

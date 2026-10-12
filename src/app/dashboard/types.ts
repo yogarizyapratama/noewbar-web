@@ -36,6 +36,15 @@ export type Health = {
   shipping?: TenantShippingSchedule;
   storage?: StorageStats;
   media_uploads?: number;
+  subscription?: {
+    is_expired: boolean;
+    is_expiring_soon: boolean;
+    days_remaining: number;
+    status: string;
+    plan_name: string | null;
+    expires_at: string | null;
+    reason: string | null;
+  };
   ai: { gateway_ok: boolean; model: string; latency_ms: number; error: string | null };
   telegram: { ok: boolean; username: string | null };
   queue: { redis: boolean; waiting: number; delayed: number; pendingInDb: number };

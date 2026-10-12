@@ -10,6 +10,7 @@ import { gatewayHealth } from "@/lib/ai/orchestrator";
 import { safeEqual } from "@/lib/crypto";
 import { env } from "@/lib/env";
 import { publicUrlFor, tenantUsageBytes, TENANT_QUOTA_BYTES } from "@/lib/storage/minio";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 
 /**
  * Maintenance / cron endpoint (chapter 12 + chapter 11).
@@ -77,12 +78,13 @@ export async function GET() {
     include: { wa_instances: true, catalog_settings: true },
   });
 
-  const [daemon, gateway, telegram, queue, storageUsed] = await Promise.all([
+  const [daemon, gateway, telegram, queue, storageUsed, subInfo] = await Promise.all([
     waDaemon.health(),
     gatewayHealth(),
     telegramHealth(),
     nudgeQueueStats(),
     tenantUsageBytes(session.sub),
+    getTenantSubscriptionInfo(session.sub),
   ]);
 
   const scheduler = await schedulerHealth();
@@ -102,6 +104,15 @@ export async function GET() {
           trial_expires_at: tenant.trial_expires_at.toISOString(),
         }
       : null,
+    subscription: {
+      is_expired: subInfo.isExpired,
+      is_expiring_soon: subInfo.isExpiringSoon,
+      days_remaining: subInfo.daysRemaining,
+      status: subInfo.status,
+      plan_name: subInfo.planName,
+      expires_at: subInfo.expiresAt?.toISOString() ?? null,
+      reason: subInfo.reason ?? null,
+    },
     whatsapp: {
       daemon_reachable: daemon.ok,
       connection_status: instance?.connection_status ?? "OFFLINE",

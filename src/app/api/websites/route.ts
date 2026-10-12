@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getTenantSession } from "@/lib/auth";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 import {
   TEMPLATES,
   editSectionWithAi,
@@ -44,6 +45,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
   const tenantId = session.sub;
+
+  const subInfo = await getTenantSubscriptionInfo(tenantId);
+  if (subInfo.isExpired) {
+    return NextResponse.json(
+      { ok: false, error: "Langganan Anda telah berakhir. Perbarui paket untuk menggunakan fitur ini." },
+      { status: 403 }
+    );
+  }
 
   let body: any;
   try {

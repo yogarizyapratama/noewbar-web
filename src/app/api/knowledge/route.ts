@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { ok, fail } from '@/lib/http';
 import { requireTenant } from '@/lib/auth';
+import { getTenantSubscriptionInfo } from '@/lib/billing/subscription-guard';
 import {
   listKnowledgeDocs,
   upsertKnowledgeDoc,
@@ -42,6 +43,11 @@ const bodySchema = z.discriminatedUnion('action', [
 export async function POST(req: NextRequest) {
   const session = await requireTenant();
   if (!session) return fail('Unauthorized', 401);
+
+  const subInfo = await getTenantSubscriptionInfo(session.sub);
+  if (subInfo.isExpired) {
+    return fail('Langganan Anda telah berakhir. Perbarui paket untuk menggunakan fitur ini.', 403);
+  }
 
   const contentType = req.headers.get('content-type') ?? '';
 

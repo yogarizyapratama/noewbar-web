@@ -51,6 +51,11 @@ const bodySchema = z.discriminatedUnion("action", [
     trial_days: z.number().int().min(1).max(365).default(14),
   }),
   z.object({ action: z.literal("test_ai_gateway") }),
+  z.object({
+    action: z.literal("broadcast_tenants"),
+    message: z.string().min(1).max(4000),
+    tenant_ids: z.array(z.string().uuid()).optional(),
+  }),
 ]);
 
 export async function POST(req: NextRequest) {
@@ -232,6 +237,43 @@ export async function POST(req: NextRequest) {
   if (body.action === "test_ai_gateway") {
     const health = await gatewayHealth();
     return ok({ action: "test_ai_gateway", ...health });
+  }
+
+  if (body.action === "broadcast_tenants") {
+    const admin = await requireAdmin();
+    if (!admin) return fail("Unauthorized", 401);
+
+    // Find all ACTIVE WA instances for tenants
+    const whereClause = body.tenant_ids?.length
+      ? { tenant_id: { in: body.tenant_ids }, connection_status: "CONNECTED" }
+      : { connection_status: "CONNECTED" };
+
+    const instances = await prisma.waInstance.findMany({
+      where: whereClause,
+      select: { instance_key: true, phone_number: true, tenant: { select: { business_name: true, id: true } } },
+    });
+
+    const results: { instance_key: string; tenant: string; ok: boolean; error?: string }[] = [];
+    for (const inst of instances) {
+      if (!inst.phone_number) {
+        results.push({ instance_key: inst.instance_key, tenant: inst.tenant.business_name, ok: false, error: "no phone" });
+        continue;
+      }
+      try {
+        // Send to the tenant's own WA number (owner phone = phone_number registered)
+        await waDaemon.sendText({ instanceKey: inst.instance_key, to: inst.phone_number, message: body.message });
+        results.push({ instance_key: inst.instance_key, tenant: inst.tenant.business_name, ok: true });
+        // Notify tenant dashboard via SSE
+        notifyTenant(inst.tenant.id, { type: "billing" });
+      } catch (e) {
+        results.push({ instance_key: inst.instance_key, tenant: inst.tenant.business_name, ok: false, error: String(e) });
+      }
+      // Brief pause to avoid daemon rate limiting
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    const sent = results.filter((r) => r.ok).length;
+    return ok({ action: "broadcast_tenants", total: results.length, sent, failed: results.length - sent, results });
   }
 
   return fail("Unsupported action", 400);

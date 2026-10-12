@@ -9,6 +9,7 @@ import { runAgent } from "@/lib/ai/orchestrator";
 import type { ProductRow, TenantPromoTier, TenantShippingSchedule, TenantVoucher, ToolContext } from "@/lib/ai/types";
 import { publicUrlFor } from "@/lib/storage/minio";
 import { isBotDisabled } from "@/lib/system/killswitch";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 
 /**
  * Tenant WhatsApp AI Simulator.
@@ -50,6 +51,11 @@ export async function POST(req: NextRequest) {
 
   if (isBotDisabled()) {
     return fail("Bot sedang dinonaktifkan sementara oleh operator platform.", 503);
+  }
+
+  const subInfo = await getTenantSubscriptionInfo(session.sub);
+  if (subInfo.isExpired) {
+    return fail("Masa langganan toko Anda telah berakhir. Seluruh fitur AI dan balasan otomatis dinonaktifkan. Silakan perpanjang paket di menu Langganan.", 403);
   }
 
   const raw = await req.json().catch(() => null);

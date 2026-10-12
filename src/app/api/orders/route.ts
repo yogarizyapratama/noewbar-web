@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { ok, fail } from "@/lib/http";
 import { requireTenant } from "@/lib/auth";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 import {
   toSummary,
   verifyPayment,
@@ -72,6 +73,11 @@ export async function POST(req: NextRequest) {
   if (body.action === "sweep_expired") {
     const res = await expireStaleReservations();
     return ok({ action: "sweep_expired", ...res });
+  }
+
+  const subInfo = await getTenantSubscriptionInfo(session.sub);
+  if (subInfo.isExpired) {
+    return fail("Langganan Anda telah berakhir. Perbarui paket untuk menggunakan fitur ini.", 403);
   }
 
   if (body.action === "release") {

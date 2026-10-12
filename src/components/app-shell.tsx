@@ -41,6 +41,7 @@ export type NavItem<T extends string = string> = {
   group?: string;
   badge?: number;
   keywords?: string;
+  disabled?: boolean;
 };
 
 export type PaletteCommand = {
@@ -186,19 +187,23 @@ export function AppShell<T extends string>({
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive = item.id === active;
+                  const isDisabled = item.disabled ?? false;
                   return (
                     <li key={item.id}>
                       <button
                         type="button"
-                        onClick={() => go(item.id)}
+                        onClick={() => !isDisabled && go(item.id)}
                         aria-current={isActive ? "page" : undefined}
-                        title={collapsed ? item.label : undefined}
+                        aria-disabled={isDisabled || undefined}
+                        title={collapsed ? item.label : isDisabled ? "Tidak tersedia — langganan tidak aktif" : undefined}
                         className={cn(
                           "group relative flex w-full min-h-[44px] items-center gap-2.5 rounded-lg px-3 text-sm transition-all",
                           collapsed && "justify-center px-0",
-                          isActive
-                            ? "bg-ink-100 font-semibold text-ink shadow-flat"
-                            : "font-medium text-ink-600 hover:bg-ink-50 hover:text-ink"
+                          isDisabled
+                            ? "cursor-not-allowed opacity-40"
+                            : isActive
+                              ? "bg-ink-100 font-semibold text-ink shadow-flat"
+                              : "font-medium text-ink-600 hover:bg-ink-50 hover:text-ink"
                         )}
                       >
                         <span

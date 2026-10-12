@@ -141,6 +141,7 @@ type NavigationSection =
   | "tenants"
   | "financials"
   | "fleet"
+  | "broadcast"
   | "ai_models"
   | "orders"
   | "webhooks"
@@ -267,6 +268,12 @@ export default function SuperadminPage() {
   const [wipeConfirmModal, setWipeConfirmModal] = useState<{ id: string; name: string } | null>(null);
   const [wipeInput, setWipeInput] = useState("");
   const [orderIdSync, setOrderIdSync] = useState("");
+
+  // Broadcast state
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [broadcastSelectedIds, setBroadcastSelectedIds] = useState<string[]>([]);
+  const [broadcastResult, setBroadcastResult] = useState<{ total: number; sent: number; failed: number } | null>(null);
+  const [broadcastBusy, setBroadcastBusy] = useState(false);
 
   // Create Tenant Form State
   const [newTenant, setNewTenant] = useState({
@@ -537,6 +544,11 @@ export default function SuperadminPage() {
           label: "Koneksi WhatsApp Toko",
           badge: `${data.fleet.length}`,
           icon: <MessageSquare className="h-4 w-4" />,
+        },
+        {
+          id: "broadcast",
+          label: "Siaran Pesan ke Tenant",
+          icon: <Bell className="h-4 w-4" />,
         },
         {
           id: "ai_models",
@@ -855,12 +867,14 @@ export default function SuperadminPage() {
                 <span className="text-signal-strong font-medium capitalize">
                   {activeSection === "overview"
                     ? "Ringkasan Platform"
-                    : activeSection === "tenants"
+                     : activeSection === "tenants"
                     ? "Direktori Toko"
                     : activeSection === "financials"
                     ? "Finansial & Langganan"
                     : activeSection === "fleet"
                     ? "Koneksi WhatsApp"
+                    : activeSection === "broadcast"
+                    ? "Siaran Pesan"
                     : activeSection === "ai_models"
                     ? "Mesin AI & Kuota"
                     : activeSection === "orders"
@@ -877,6 +891,7 @@ export default function SuperadminPage() {
                 {activeSection === "tenants" && "Direktori & Manajemen Toko (Tenant)"}
                 {activeSection === "financials" && "Analisis Finansial & Langganan Toko"}
                 {activeSection === "fleet" && "Koneksi & Fleet WhatsApp Toko"}
+                {activeSection === "broadcast" && "Siaran Pesan WhatsApp ke Tenant"}
                 {activeSection === "ai_models" && "Mesin AI CS & Penggunaan Kuota Token"}
                 {activeSection === "orders" && "Monitoring Transaksi Penjualan Seluruh Toko"}
                 {activeSection === "webhooks" && "Buku Besar Audit Webhook Masuk"}
@@ -1840,6 +1855,134 @@ export default function SuperadminPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================================================== SECTION: BROADCAST */}
+          {activeSection === "broadcast" && (
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-5 shadow-flat">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-ink">Siaran Pesan ke Tenant</h3>
+                  <p className="text-2xs text-ink-500 mt-0.5">
+                    Kirim pesan WA dari instance toko yang terhubung ke nomor pemiliknya. Pilih tenant tertentu atau kirim ke semua yang aktif.
+                  </p>
+                </div>
+
+                {/* Tenant selector */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-ink">Target Penerima</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setBroadcastSelectedIds([])}
+                      className={cn(
+                        "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                        broadcastSelectedIds.length === 0
+                          ? "border-ink bg-ink text-white"
+                          : "border-ink-200 text-ink-600 hover:bg-ink-50"
+                      )}
+                    >
+                      Semua Terhubung ({data.fleet.filter((f) => f.connection_status === "CONNECTED").length})
+                    </button>
+                    {data.tenants.map((t) => {
+                      const isSelected = broadcastSelectedIds.includes(t.id);
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() =>
+                            setBroadcastSelectedIds((prev) =>
+                              isSelected ? prev.filter((id) => id !== t.id) : [...prev, t.id]
+                            )
+                          }
+                          className={cn(
+                            "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                            isSelected
+                              ? "border-ink bg-ink text-white"
+                              : "border-ink-200 text-ink-600 hover:bg-ink-50"
+                          )}
+                        >
+                          {t.business_name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Message composer */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-ink" htmlFor="broadcast-msg">
+                    Isi Pesan
+                  </label>
+                  <textarea
+                    id="broadcast-msg"
+                    value={broadcastMsg}
+                    onChange={(e) => setBroadcastMsg(e.target.value)}
+                    rows={6}
+                    placeholder="Tulis pesan yang akan dikirim ke pemilik toko..."
+                    className="w-full rounded-xl border border-ink-200 bg-surface-sunken px-4 py-3 text-sm text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/20 resize-none"
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-2xs text-ink-400">{broadcastMsg.length}/4000</span>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="h-9 bg-ink text-white hover:bg-ink-800 border-none"
+                      loading={broadcastBusy}
+                      disabled={!broadcastMsg.trim() || broadcastBusy}
+                      onClick={async () => {
+                        setBroadcastBusy(true);
+                        setBroadcastResult(null);
+                        try {
+                          const res = await fetch("/api/superadmin", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              action: "broadcast_tenants",
+                              message: broadcastMsg,
+                              ...(broadcastSelectedIds.length > 0 ? { tenant_ids: broadcastSelectedIds } : {}),
+                            }),
+                          });
+                          const json = await res.json();
+                          if (json.ok) {
+                            setBroadcastResult({ total: json.total, sent: json.sent, failed: json.failed });
+                            setMsg({ text: `Pesan terkirim ke ${json.sent} dari ${json.total} tenant.`, tone: json.failed > 0 ? "error" : "success" });
+                          } else {
+                            setMsg({ text: json.error ?? "Gagal mengirim siaran.", tone: "error" });
+                          }
+                        } catch {
+                          setMsg({ text: "Koneksi gagal saat mengirim siaran.", tone: "error" });
+                        } finally {
+                          setBroadcastBusy(false);
+                        }
+                      }}
+                    >
+                      <Bell className="mr-1.5 h-3.5 w-3.5" />
+                      Kirim Siaran
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Broadcast result */}
+                {broadcastResult && (
+                  <div className={cn(
+                    "flex items-center gap-4 rounded-xl border p-4 text-sm",
+                    broadcastResult.failed === 0
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-amber-200 bg-amber-50 text-amber-800"
+                  )}>
+                    <div className="flex-1">
+                      <span className="font-semibold">{broadcastResult.sent} berhasil</span>
+                      {broadcastResult.failed > 0 && (
+                        <span className="ml-2 text-red-600">· {broadcastResult.failed} gagal</span>
+                      )}
+                      <span className="text-ink-500"> dari {broadcastResult.total} target</span>
+                    </div>
+                    <button onClick={() => setBroadcastResult(null)} className="shrink-0 text-ink-400 hover:text-ink">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
