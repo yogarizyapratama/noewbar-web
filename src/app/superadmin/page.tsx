@@ -46,7 +46,6 @@ import {
   Trash2,
   TrendingUp,
   Users,
-  Webhook,
   X,
   Zap,
 } from "lucide-react";
@@ -98,14 +97,6 @@ export type ConsoleData = {
   };
   redis: boolean;
   telegram: { ok: boolean; username: string | null; error: string | null };
-  webhooks: {
-    id: string;
-    provider: string;
-    event_key: string;
-    event_type: string | null;
-    processed: boolean;
-    created_at: string;
-  }[];
   fleet: {
     instance_key: string;
     tenant: string;
@@ -150,10 +141,6 @@ type NavigationSection =
   | "superadmin_wa"
   | "broadcast"
   | "fleet"
-  | "ai_models"
-  | "orders"
-  | "webhooks"
-  | "system_ops"
   | "killswitch";
 
 type TenantFilter = "all" | "ACTIVE" | "TRIAL" | "SUSPENDED";
@@ -209,47 +196,6 @@ function exportTenantsToCSV(tenants: ConsoleData["tenants"]) {
   document.body.removeChild(link);
 }
 
-function exportOrdersToCSV(orders: ConsoleData["recent_orders"]) {
-  const headers = ["ID Pesanan", "Nomor Order", "Tenant Toko", "Status Pesanan", "Status Pembayaran", "Total Nominal", "Waktu Transaksi"];
-  const rows = orders.map((o) => [
-    o.id,
-    `"${o.order_number}"`,
-    `"${o.tenant.replace(/"/g, '""')}"`,
-    o.order_status,
-    o.payment_status,
-    o.total,
-    `"${o.created_at}"`,
-  ]);
-  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `noewbar_orders_${new Date().toISOString().slice(0, 10)}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-function exportWebhooksToCSV(webhooks: ConsoleData["webhooks"]) {
-  const headers = ["ID Log", "Penyedia", "Kunci Peristiwa", "Tipe Peristiwa", "Status Proses", "Waktu Masuk"];
-  const rows = webhooks.map((w) => [
-    w.id,
-    w.provider,
-    `"${w.event_key.replace(/"/g, '""')}"`,
-    `"${(w.event_type || "-").replace(/"/g, '""')}"`,
-    w.processed ? "Sukses" : "Gagal atau Antre",
-    `"${w.created_at}"`,
-  ]);
-  const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `noewbar_webhooks_${new Date().toISOString().slice(0, 10)}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 const VALID_SECTIONS: NavigationSection[] = [
   "overview",
   "infrastructure",
@@ -258,10 +204,6 @@ const VALID_SECTIONS: NavigationSection[] = [
   "superadmin_wa",
   "broadcast",
   "fleet",
-  "ai_models",
-  "orders",
-  "webhooks",
-  "system_ops",
   "killswitch",
 ];
 
@@ -312,10 +254,6 @@ export default function SuperadminPage() {
   // Filters & Search
   const [tenantFilter, setTenantFilter] = useState<TenantFilter>("all");
   const [tenantQuery, setTenantQuery] = useState("");
-  const [orderQuery, setOrderQuery] = useState("");
-  const [orderFilter, setOrderFilter] = useState<"all" | "VERIFIED" | "PENDING">("all");
-  const [modelSearch, setModelSearch] = useState("");
-  const [webhookProviderFilter, setWebhookProviderFilter] = useState<"all" | "MIDTRANS" | "TELEGRAM">("all");
 
   // Modals & Drawers
   const [selectedTenant, setSelectedTenant] = useState<ConsoleData["tenants"][0] | null>(null);
@@ -323,7 +261,6 @@ export default function SuperadminPage() {
   const [wipeConfirmModal, setWipeConfirmModal] = useState<{ id: string; name: string } | null>(null);
   const [pendingAct, setPendingAct] = useState<{ payload: Record<string, unknown>; title: string; description: string } | null>(null);
   const [wipeInput, setWipeInput] = useState("");
-  const [orderIdSync, setOrderIdSync] = useState("");
 
   // Broadcast state
   const [broadcastMsg, setBroadcastMsg] = useState("");
@@ -685,33 +622,13 @@ export default function SuperadminPage() {
       );
     });
 
-  const filteredOrders = data.recent_orders
-    .filter((o) => (orderFilter === "all" ? true : o.payment_status === orderFilter))
-    .filter((o) => {
-      if (!orderQuery.trim()) return true;
-      const q = orderQuery.toLowerCase().trim();
-      return (
-        o.order_number.toLowerCase().includes(q) ||
-        o.tenant.toLowerCase().includes(q)
-      );
-    });
-
-  const filteredModels = data.gateway.models.filter((m) =>
-    modelSearch.trim() ? m.toLowerCase().includes(modelSearch.toLowerCase().trim()) : true
-  );
-
-  const filteredWebhooks = data.webhooks.filter((w) =>
-    webhookProviderFilter === "all" ? true : w.provider === webhookProviderFilter
-  );
-
   // Navigasi Terstruktur Manajemen Aplikasi Noewbar (SaaS Console)
   const navGroups: NavGroup[] = [
     {
       group: "IKHTISAR PLATFORM",
       items: [
         { id: "overview", label: "Ringkasan Platform", icon: <LayoutDashboard className="h-4 w-4" /> },
-        { id: "infrastructure", label: "Kesehatan Sistem", icon: <Server className="h-4 w-4" /> },
-        { id: "system_ops", label: "Operasi & Pemeliharaan", icon: <Cpu className="h-4 w-4" /> },
+        { id: "infrastructure", label: "Kesehatan & Operasi Sistem", icon: <Server className="h-4 w-4" /> },
       ],
     },
     {
@@ -746,29 +663,6 @@ export default function SuperadminPage() {
           label: "Koneksi WhatsApp Toko",
           badge: `${data.fleet.length}`,
           icon: <MessageSquare className="h-4 w-4" />,
-        },
-        {
-          id: "ai_models",
-          label: "Mesin AI & Kuota Token",
-          badge: data.gateway.ok ? "Aktif" : "Gangguan",
-          icon: <Zap className="h-4 w-4" />,
-        },
-      ],
-    },
-    {
-      group: "TRANSAKSI & AUDIT",
-      items: [
-        {
-          id: "orders",
-          label: "Transaksi Lintas Toko",
-          badge: `${data.recent_orders.length}`,
-          icon: <ShoppingBag className="h-4 w-4" />,
-        },
-        {
-          id: "webhooks",
-          label: "Buku Besar Webhook",
-          badge: `${data.webhooks.length}`,
-          icon: <Webhook className="h-4 w-4" />,
         },
       ],
     },
@@ -848,7 +742,7 @@ export default function SuperadminPage() {
           </div>
 
           {/* Telemetry Pills Strip: Metrik Aplikasi SaaS Nyata */}
-          <div className="hidden xl:flex items-center gap-2.5 text-xs text-ink-600 bg-white border border-ink-200 rounded-lg px-3 py-1 shadow-flat">
+          <div className="hidden xl:flex items-center gap-2.5 whitespace-nowrap text-xs text-ink-600 bg-white border border-ink-200 rounded-lg px-3 py-1 shadow-flat">
             <div className="flex items-center gap-1.5" title="Toko Terdaftar">
               <Users className="h-3 w-3 text-ink-700" />
               <span className="text-ink-400 text-2xs">Toko:</span>
@@ -952,7 +846,7 @@ export default function SuperadminPage() {
         {/* SIDEBAR NAVIGATION */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 lg:static flex flex-col border-r border-ink-200 bg-white transition-all duration-200 ease-in-out shrink-0 w-72 lg:w-auto",
+            "fixed inset-y-0 left-0 z-50 lg:sticky lg:top-0 flex flex-col border-r border-ink-200 bg-white transition-all duration-200 ease-in-out shrink-0 w-72 lg:w-auto lg:h-screen lg:min-h-0",
             sidebarOpen ? "lg:w-64" : "lg:w-16",
             mobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
@@ -970,7 +864,7 @@ export default function SuperadminPage() {
           </div>
 
           {/* Navigation Links Scrollable */}
-          <nav className="flex-1 overflow-y-auto p-3 space-y-4">
+          <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-4">
             {navGroups.map((grp) => (
               <div key={grp.group} className="space-y-1">
                 {sidebarOpen && (
@@ -1074,12 +968,6 @@ export default function SuperadminPage() {
                     ? "Koneksi WhatsApp"
                     : activeSection === "broadcast"
                     ? "Siaran Pesan"
-                    : activeSection === "ai_models"
-                    ? "Mesin AI & Kuota"
-                    : activeSection === "orders"
-                    ? "Transaksi Lintas Toko"
-                    : activeSection === "webhooks"
-                    ? "Buku Besar Webhook"
                     : activeSection === "killswitch"
                     ? "Kontrol Darurat"
                     : activeSection.replace("_", " ")}
@@ -1092,12 +980,8 @@ export default function SuperadminPage() {
                 {activeSection === "superadmin_wa" && "Pusat Koneksi WhatsApp Resmi Super Admin"}
                 {activeSection === "fleet" && "Koneksi & Fleet WhatsApp Toko"}
                 {activeSection === "broadcast" && "Siaran Pesan WhatsApp ke Tenant"}
-                {activeSection === "ai_models" && "Mesin AI CS & Penggunaan Kuota Token"}
-                {activeSection === "orders" && "Monitoring Transaksi Penjualan Seluruh Toko"}
-                {activeSection === "webhooks" && "Buku Besar Audit Webhook Masuk"}
                 {activeSection === "killswitch" && "Protokol Keamanan & Emergency Kill Switch"}
-                {activeSection === "infrastructure" && "Pusat Kesehatan Infrastruktur & Layanan Backend"}
-                {activeSection === "system_ops" && "Operasi Pemeliharaan Rutin Platform"}
+                {activeSection === "infrastructure" && "Pusat Kesehatan & Operasi Sistem"}
               </h1>
             </div>
 
@@ -1122,33 +1006,9 @@ export default function SuperadminPage() {
                     onClick={() => setCreateTenantModal(true)}
                   >
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
-                    Tambah Toko
+                    Toko Baru
                   </Button>
                 </>
-              )}
-              {activeSection === "ai_models" && (
-                <Button
-                  size="sm"
-                  variant="primary"
-                  className="h-8 text-xs bg-ink hover:bg-ink-800 text-white border-none shadow-flat"
-                  loading={busy}
-                  onClick={handleTestAIGateway}
-                >
-                  <Zap className="mr-1.5 h-3.5 w-3.5" />
-                  Uji Latensi AI Real-time
-                </Button>
-              )}
-              {activeSection === "system_ops" && (
-                <Button
-                  size="sm"
-                  variant="primary"
-                  className="h-8 text-xs bg-ink hover:bg-ink-800 text-white border-none shadow-flat"
-                  loading={busy}
-                  onClick={() => act({ action: "trigger_maintenance" })}
-                >
-                  <Cpu className="mr-1.5 h-3.5 w-3.5" />
-                  Eksekusi Sweep 3-in-1
-                </Button>
               )}
             </div>
           </div>
@@ -1345,17 +1205,7 @@ export default function SuperadminPage() {
                         Model: {data.gateway.model}
                       </p>
                     </div>
-                    <div className="mt-3 pt-2.5 border-t border-ink-200">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="w-full text-xs h-7 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
-                        onClick={() => setActiveSection("ai_models")}
-                      >
-                        Kelola Model AI
-                        <ArrowUpRight className="ml-1 h-3 w-3" />
-                      </Button>
-                    </div>
+
                   </div>
 
                   {/* Card 3: Billing & Langganan */}
@@ -1429,15 +1279,7 @@ export default function SuperadminPage() {
                       Aktivitas transaksi live dari pembeli di seluruh tenant.
                     </p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-7 text-xs px-2.5 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
-                    onClick={() => setActiveSection("orders")}
-                  >
-                    Lihat Semua
-                    <ArrowUpRight className="ml-1 h-3 w-3" />
-                  </Button>
+
                 </div>
                 <div className="divide-y divide-ink-100">
                   {data.recent_orders.length === 0 ? (
@@ -1811,7 +1653,7 @@ export default function SuperadminPage() {
                               <div>{t.websites ?? 0} Website Aktif</div>
                             </td>
                             <td className="px-5 py-4 text-right">
-                              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                              <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                                 <Button
                                   size="sm"
                                   variant="secondary"
@@ -2424,411 +2266,9 @@ export default function SuperadminPage() {
             </div>
           )}
 
-          {/* ==================================================== SECTION: AI MODELS & GATEWAY */}
-          {activeSection === "ai_models" && (
-            <div className="space-y-6">
-              {/* Active Model Status Box */}
-              <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-4 shadow-flat">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
-                      Konfigurasi Gateway AI &amp; Model Orchestrator
-                    </h3>
-                    <p className="text-2xs text-ink-500 mt-0.5">
-                      Sistem routing LLM terpusat dengan rotasi kunci otomatis dan fallback upstream.
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="h-8 text-xs bg-ink hover:bg-ink-800 text-white border-none shadow-flat"
-                    loading={busy}
-                    onClick={handleTestAIGateway}
-                  >
-                    <Zap className="mr-1.5 h-3.5 w-3.5" />
-                    Uji Latensi AI Real-time
-                  </Button>
-                </div>
 
-                <div className="grid gap-3 sm:grid-cols-3 text-xs">
-                  <div className="p-3.5 rounded-xl bg-surface-sunken border border-ink-200">
-                    <span className="text-ink-500 text-2xs">Model Aktif Utama:</span>
-                    <p className="font-mono font-bold text-ink text-sm mt-0.5">{data.gateway.model}</p>
-                    <p className="text-2xs text-ink-400 mt-1">Dipakai oleh semua bot toko</p>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-surface-sunken border border-ink-200">
-                    <span className="text-ink-500 text-2xs">Latensi Respon Terakhir:</span>
-                    <p className="font-mono font-bold text-signal-strong text-sm mt-0.5">
-                      {data.gateway.latency_ms ? `${data.gateway.latency_ms} ms` : "Belum diuji"}
-                    </p>
-                    <p className="text-2xs text-ink-400 mt-1">Uji round-trip gateway</p>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-surface-sunken border border-ink-200">
-                    <span className="text-ink-500 text-2xs">Model Siap Pakai:</span>
-                    <p className="font-mono font-bold text-ink text-sm mt-0.5">{data.gateway.models.length} Model</p>
-                    <p className="text-2xs text-ink-400 mt-1">Mendukung multi-turn tool calls</p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Model Catalog Grid */}
-              <div className="rounded-2xl border border-ink-200 bg-white p-5 space-y-4 shadow-flat">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
-                      Katalog Model Terdaftar pada Gateway
-                    </h3>
-                    <p className="text-2xs text-ink-500 mt-0.5">
-                      Daftar model yang tersedia untuk failover chain dan routing cerdas.
-                    </p>
-                  </div>
-                  <div className="relative w-64">
-                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-ink-400" />
-                    <input
-                      type="text"
-                      placeholder="Cari model..."
-                      value={modelSearch}
-                      onChange={(e) => setModelSearch(e.target.value)}
-                      className="w-full rounded-lg border border-ink-200 bg-white pl-8 pr-3 py-1.5 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 max-h-96 overflow-y-auto">
-                  {filteredModels.length === 0 ? (
-                    <p className="col-span-4 text-center py-6 text-xs text-ink-500">
-                      Tidak ada model yang cocok dengan pencarian.
-                    </p>
-                  ) : (
-                    filteredModels.map((m) => (
-                      <div
-                        key={m}
-                        className={cn(
-                          "p-2.5 rounded-xl border text-xs flex items-center justify-between transition-colors",
-                          m === data.gateway.model
-                            ? "border-signal/30 bg-signal-wash text-signal-strong font-semibold"
-                            : "border-ink-200 bg-surface-sunken text-ink-700 hover:border-ink-300"
-                        )}
-                      >
-                        <span className="font-mono text-2xs truncate" title={m}>
-                          {m}
-                        </span>
-                        {m === data.gateway.model && (
-                          <span className="shrink-0 text-[10px] bg-signal text-white px-1.5 py-0.5 rounded font-semibold">
-                            Utama
-                          </span>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ==================================================== SECTION: ORDERS FEED */}
-          {activeSection === "orders" && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-ink-200 p-4 rounded-2xl shadow-flat">
-                <div className="flex items-center gap-1.5 text-xs">
-                  {(["all", "VERIFIED", "PENDING"] as const).map((st) => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => setOrderFilter(st)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
-                        orderFilter === st
-                          ? "bg-ink text-white font-semibold shadow-flat"
-                          : "bg-ink-100 text-ink-600 hover:text-ink hover:bg-ink-200"
-                      )}
-                    >
-                      {st === "all" ? "Semua Status" : st === "VERIFIED" ? "Terbayar" : "Menunggu"}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="relative min-w-[220px]">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-ink-400" />
-                    <input
-                      type="text"
-                      placeholder="Cari order number atau toko..."
-                      value={orderQuery}
-                      onChange={(e) => setOrderQuery(e.target.value)}
-                      className="w-full rounded-lg border border-ink-200 bg-white pl-9 pr-3.5 py-2 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
-                    />
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="border-ink-200 bg-white hover:bg-ink-50 text-ink-700 text-xs shrink-0 flex items-center gap-1.5 h-8 shadow-flat"
-                    onClick={() => exportOrdersToCSV(filteredOrders)}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Ekspor CSV</span>
-                  </Button>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden shadow-flat">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-ink-50 text-2xs uppercase text-ink-500 border-b border-ink-200 tracking-wider">
-                      <tr>
-                        <th className="px-5 py-3.5 font-semibold">Nomor Pesanan</th>
-                        <th className="px-5 py-3.5 font-semibold">Toko Klien</th>
-                        <th className="px-5 py-3.5 font-semibold">Total Nominal</th>
-                        <th className="px-5 py-3.5 font-semibold">Status Pembayaran</th>
-                        <th className="px-5 py-3.5 font-semibold">Waktu Pesan</th>
-                        <th className="px-5 py-3.5 font-semibold text-right">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ink-100 text-ink">
-                      {filteredOrders.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="p-8 text-center text-ink-500">
-                            Tidak ada data pesanan yang sesuai filter.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredOrders.map((o) => (
-                          <tr key={o.id} className="hover:bg-ink-50/60 transition-colors">
-                            <td className="px-5 py-4 font-mono font-semibold text-ink">{o.order_number}</td>
-                            <td className="px-5 py-4 font-semibold text-ink">{o.tenant}</td>
-                            <td className="px-5 py-4 font-mono font-bold text-signal-strong">
-                              Rp {rupiah(o.total)}
-                            </td>
-                            <td className="px-5 py-4">
-                              <Badge tone={o.payment_status === "VERIFIED" ? "signal" : "warn"}>
-                                {o.payment_status === "VERIFIED" ? "Terbayar" : "Menunggu"}
-                              </Badge>
-                            </td>
-                            <td className="px-5 py-4 text-2xs text-ink-500 font-mono">
-                              {ts(o.created_at)}
-                            </td>
-                            <td className="px-5 py-4 text-right">
-                              <span className="text-2xs text-ink-400">Order toko, bukan tagihan Midtrans</span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ==================================================== SECTION: WEBHOOKS */}
-          {activeSection === "webhooks" && (
-            <div className="space-y-4">
-              {/* Quick Midtrans Sync Tool */}
-              <div className="rounded-2xl border border-ink-200 bg-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-flat">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
-                    Sinkronisasi Transaksi Midtrans Manual
-                  </h3>
-                  <p className="text-2xs text-ink-500 mt-0.5">
-                    Verifikasi dan mutakhirkan status pembayaran instan jika terjadi keterlambatan webhook pihak ketiga.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Order ID Midtrans (NOEWBAR-...)"
-                    value={orderIdSync}
-                    onChange={(e) => setOrderIdSync(e.target.value)}
-                    className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs font-mono text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none w-52"
-                  />
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="bg-ink hover:bg-ink-800 text-white text-xs border-none shadow-flat"
-                    disabled={!orderIdSync.trim()}
-                    onClick={() => act({ action: "sync_midtrans", order_id: orderIdSync.trim() })}
-                  >
-                    Cek Status
-                  </Button>
-                </div>
-              </div>
-
-              {/* Webhook Ledger Audit Table */}
-              <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden shadow-flat">
-                <div className="border-b border-ink-100 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
-                      Buku Besar Audit Webhook Masuk
-                    </h3>
-                    <p className="text-2xs text-ink-500 mt-0.5">
-                      Log event yang masuk dengan perlindungan idempotensi untuk mencegah duplikasi pesanan.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 text-xs">
-                      {(["all", "MIDTRANS", "TELEGRAM"] as const).map((prov) => (
-                        <button
-                          key={prov}
-                          type="button"
-                          onClick={() => setWebhookProviderFilter(prov)}
-                          className={cn(
-                            "px-2.5 py-1 rounded text-2xs font-medium transition-colors",
-                            webhookProviderFilter === prov
-                              ? "bg-ink text-white font-semibold shadow-flat"
-                              : "bg-ink-100 text-ink-600 hover:text-ink hover:bg-ink-200"
-                          )}
-                        >
-                          {prov === "all" ? "Semua Provider" : prov}
-                        </button>
-                      ))}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="border-ink-200 bg-white hover:bg-ink-50 text-ink-700 text-xs shrink-0 flex items-center gap-1.5 h-7 px-2.5 shadow-flat"
-                      onClick={() => exportWebhooksToCSV(filteredWebhooks)}
-                    >
-                      <Download className="h-3 w-3" />
-                      <span>Ekspor CSV</span>
-                    </Button>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-ink-50 text-2xs uppercase text-ink-500 border-b border-ink-200 tracking-wider">
-                      <tr>
-                        <th className="px-5 py-3.5 font-semibold">Provider</th>
-                        <th className="px-5 py-3.5 font-semibold">Event Key</th>
-                        <th className="px-5 py-3.5 font-semibold">Tipe Event</th>
-                        <th className="px-5 py-3.5 font-semibold">Status Proses</th>
-                        <th className="px-5 py-3.5 font-semibold text-right">Waktu Masuk</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ink-100 text-ink">
-                      {filteredWebhooks.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="p-8 text-center text-ink-500">
-                            Belum ada catatan event webhook yang terekam.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredWebhooks.map((w) => (
-                          <tr key={w.id} className="hover:bg-ink-50/60 transition-colors">
-                            <td className="px-5 py-4">
-                              <span
-                                className={cn(
-                                  "inline-flex items-center px-2 py-0.5 rounded text-2xs font-semibold font-mono",
-                                  w.provider === "MIDTRANS"
-                                    ? "bg-signal-wash text-signal-strong border border-signal/20"
-                                    : "bg-ink-100 text-ink border border-ink-200"
-                                )}
-                              >
-                                {w.provider}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4 font-mono font-medium text-ink">{w.event_key}</td>
-                            <td className="px-5 py-4 text-ink-500 text-2xs">{w.event_type || "-"}</td>
-                            <td className="px-5 py-4">
-                              <span
-                                className={cn(
-                                  "text-2xs font-semibold",
-                                  w.processed ? "text-signal-strong" : "text-warn-strong"
-                                )}
-                              >
-                                {w.processed ? "Selesai" : "Pending"}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4 text-right text-2xs text-ink-500 font-mono">
-                              {ts(w.created_at)}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ==================================================== SECTION: SYSTEM OPERATIONS */}
-          {activeSection === "system_ops" && (
-            <div className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {/* Op 1: Maintenance Sweep */}
-                <div className="rounded-2xl border border-ink-200 bg-white p-5 flex flex-col justify-between shadow-flat">
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <Cpu className="h-4 w-4 text-ink-700" />
-                      <h3 className="text-xs font-bold text-ink">Maintenance Sweep 3-in-1</h3>
-                    </div>
-                    <p className="mt-2 text-xs text-ink-500 leading-relaxed">
-                      Jalankan siklus sweep berkala: kadaluarsakan pesanan tanpa pembayaran lebih dari 2 jam, kirim antrean nudge WhatsApp anti-ghosting, dan rekonsiliasi masa langganan.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-ink-100">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="w-full justify-center bg-ink hover:bg-ink-800 text-white text-xs border-none shadow-flat"
-                      loading={busy}
-                      onClick={() => act({ action: "trigger_maintenance" })}
-                    >
-                      Jalankan Sweep Sekarang
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Op 2: Midtrans Force Reconcile */}
-                <div className="rounded-2xl border border-ink-200 bg-white p-5 flex flex-col justify-between shadow-flat">
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <Webhook className="h-4 w-4 text-signal-strong" />
-                      <h3 className="text-xs font-bold text-ink">Rekonsiliasi Langganan</h3>
-                    </div>
-                    <p className="mt-2 text-xs text-ink-500 leading-relaxed">
-                      Pindai transaksi pembayaran Midtrans untuk memastikan toko yang telah menyelesaikan transfer langganan otomatis aktif tanpa menunggu intervensi admin.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-ink-100">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="w-full justify-center bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 text-xs shadow-flat"
-                      loading={busy}
-                      onClick={() => act({ action: "reconcile" })}
-                    >
-                      Pindai Status Midtrans
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Op 3: Telegram Alert Ping */}
-                <div className="rounded-2xl border border-ink-200 bg-white p-5 flex flex-col justify-between shadow-flat">
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <Bell className="h-4 w-4 text-ink-700" />
-                      <h3 className="text-xs font-bold text-ink">Tes Notifikasi Telegram</h3>
-                    </div>
-                    <p className="mt-2 text-xs text-ink-500 leading-relaxed">
-                      Kirim pesan pengujian alert darurat ke kanal Telegram pengawas untuk memastikan notifikasi sistem berjalan semestinya.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-ink-100">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="w-full justify-center bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 text-xs shadow-flat"
-                      loading={busy}
-                      onClick={() => act({ action: "test_telegram" })}
-                    >
-                      Kirim Notifikasi Uji
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* ==================================================== SECTION: KILL SWITCH & EMERGENCY */}
           {activeSection === "killswitch" && (

@@ -9,8 +9,7 @@ import { gatewayHealth } from "@/lib/ai/orchestrator";
 import { waDaemon } from "@/lib/wa/daemon-client";
 import { nudgeQueueStats } from "@/lib/queue/nudge-queue";
 import { getKillSwitch, setKillSwitch } from "@/lib/system/killswitch";
-import { recentWebhookEvents } from "@/lib/webhooks/idempotency";
-import { reconcileSubscriptions, fetchMidtransStatus } from "@/lib/billing/midtrans";
+import { reconcileSubscriptions } from "@/lib/billing/midtrans";
 import { telegramHealth, sendTelegramAlert } from "@/lib/alerts/telegram";
 import { redisHealthy } from "@/lib/queue/nudge-queue";
 import { notifyAdmin, notifyTenant } from "@/lib/realtime/event-bus";
@@ -34,7 +33,6 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("tenant_status"), tenant_id: z.string().uuid(), status: z.enum(["TRIAL", "ACTIVE", "GRACE_PERIOD", "SUSPENDED"]) }),
   z.object({ action: z.literal("extend_trial"), tenant_id: z.string().uuid(), days: z.number().int().min(1).max(90).default(7) }),
   z.object({ action: z.literal("wipe_tenant"), tenant_id: z.string().uuid(), confirm: z.literal("HAPUS") }),
-  z.object({ action: z.literal("sync_midtrans"), order_id: z.string().min(3) }),
   z.object({ action: z.literal("reconcile") }),
   z.object({ action: z.literal("restart_instance"), instance_key: z.string().min(1) }),
   z.object({ action: z.literal("fleet") }),
@@ -154,11 +152,6 @@ export async function POST(req: NextRequest) {
     });
     notifyAdmin({ type: "fleet" });
     return ok({ action: "wipe_tenant", tenant_id: body.tenant_id, wiped: true });
-  }
-
-  if (body.action === "sync_midtrans") {
-    const status = await fetchMidtransStatus(body.order_id);
-    return ok({ action: "sync_midtrans", order_id: body.order_id, ...status });
   }
 
   if (body.action === "reconcile") {
@@ -366,7 +359,6 @@ export async function GET() {
     queue,
     telegram,
     redis,
-    webhooks,
     tenants,
     instances,
     subscriptionCounts,
@@ -382,7 +374,6 @@ export async function GET() {
     nudgeQueueStats(),
     telegramHealth(),
     redisHealthy(),
-    recentWebhookEvents(15),
     prisma.tenant.findMany({
       orderBy: { created_at: "desc" },
       take: 50,
@@ -439,7 +430,6 @@ export async function GET() {
     queue,
     redis,
     telegram: { ok: telegram.ok, username: telegram.username ?? null, error: telegram.error ?? null },
-    webhooks,
     fleet: instances.map((i) => ({
       instance_key: i.instance_key,
       tenant: i.tenant.business_name,
@@ -484,6 +474,7 @@ export async function GET() {
     recent_orders: recentOrders.map((o) => ({
       id: o.id,
       order_number: o.order_number,
+      tenant_id: o.tenant_id,
       tenant: o.tenant.business_name,
       order_status: o.order_status,
       payment_status: o.payment_status,

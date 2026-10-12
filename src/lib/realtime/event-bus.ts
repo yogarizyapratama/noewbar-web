@@ -12,16 +12,16 @@
  */
 
 export type RealtimeEvent =
-  | { type: "chat" }
-  | { type: "order" }
-  | { type: "proof" }
-  | { type: "verified" }
-  | { type: "billing" }
-  | { type: "wa_status" }
-  | { type: "killswitch" }
-  | { type: "fleet" }
-  | { type: "alert" }
-  | { type: "reload" };
+  | { type: "chat"; detail?: string }
+  | { type: "order"; detail?: string }
+  | { type: "proof"; detail?: string }
+  | { type: "verified"; detail?: string }
+  | { type: "billing"; detail?: string }
+  | { type: "wa_status"; detail?: string }
+  | { type: "killswitch"; detail?: string }
+  | { type: "fleet"; detail?: string }
+  | { type: "alert"; detail?: string }
+  | { type: "reload"; detail?: string };
 
 type Listener = (event: RealtimeEvent) => void;
 

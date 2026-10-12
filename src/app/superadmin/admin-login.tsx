@@ -83,7 +83,7 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 
           <div>
             <p className="text-xs text-ink-500 leading-relaxed mb-5">
-              Gerbang otentikasi administrator infrastruktur. Akses ini mengontrol seluruh node tenant, gateway bot, dan operasi server.
+              Masuk untuk mengelola toko, langganan, dan koneksi WhatsApp platform.
             </p>
 
             <form onSubmit={submit} className="space-y-4">
@@ -171,9 +171,9 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         </div>
 
         {/* Security Assurance Note */}
-        <div className="rounded-xl border border-ink-200 bg-white p-3.5 text-center text-2xs text-ink-500 leading-relaxed shadow-flat">
-          Kredensial diamankan dengan enkripsi Argon2id berstandar OWASP. Seluruh aktivitas sesi dicatat dalam ledger audit sistem.
-        </div>
+        <p className="text-center text-2xs text-ink-400 leading-relaxed">
+          Sesi operator dicatat di ledger audit sistem.
+        </p>
       </div>
     </main>
   );

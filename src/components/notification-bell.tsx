@@ -198,13 +198,14 @@ export function NotificationBell({
         }
       } else {
         // Scope Admin (Superadmin Platform)
+        const detail = typeof data.detail === "string" ? data.detail : undefined;
         switch (eventType) {
           case "killswitch":
             notifItem = {
               id: `ks-${Date.now()}`,
               type: "killswitch",
               title: "Status Emergency Kill-Switch",
-              description: "Saklar darurat bot global diubah statusnya oleh operator.",
+              description: detail ?? "Saklar darurat bot global diubah statusnya oleh operator.",
               timestamp: now,
               read: false,
               targetTab: "killswitch",
@@ -214,8 +215,8 @@ export function NotificationBell({
             notifItem = {
               id: `fleet-${Date.now()}`,
               type: "fleet",
-              title: "Aktivitas Fleet & Tenant",
-              description: "Pembaruan instance WhatsApp atau perubahan status tenant toko.",
+              title: detail ? `Fleet WhatsApp: ${detail}` : "Aktivitas Fleet & Tenant",
+              description: detail ?? "Pembaruan instance WhatsApp atau perubahan status tenant toko.",
               timestamp: now,
               read: false,
               targetTab: "fleet",
@@ -226,10 +227,10 @@ export function NotificationBell({
               id: `alert-${Date.now()}`,
               type: "alert",
               title: "Operasi Pemeliharaan Platform",
-              description: "Siklus sweep pemeliharaan sistem atau uji saluran alert dieksekusi.",
+              description: detail ?? "Siklus sweep pemeliharaan sistem atau uji saluran alert dieksekusi.",
               timestamp: now,
               read: false,
-              targetTab: "system_ops",
+              targetTab: "infrastructure",
             };
             break;
           case "billing":
@@ -237,17 +238,42 @@ export function NotificationBell({
               id: `admin-bill-${Date.now()}`,
               type: "billing",
               title: "Transaksi Webhook Midtrans",
-              description: "Webhook pembayaran langganan baru masuk dan direkonsiliasi.",
+              description: detail ?? "Webhook pembayaran langganan baru masuk dan direkonsiliasi.",
               timestamp: now,
               read: false,
               targetTab: "financials",
+            };
+            break;
+          case "wa_status":
+            notifItem = {
+              id: `admin-wa-${Date.now()}`,
+              type: "wa_status",
+              title: "Status WhatsApp Berubah",
+              description: detail ?? "Status koneksi WhatsApp diperbarui.",
+              timestamp: now,
+              read: false,
+              targetTab: "fleet",
             };
             break;
         }
       }
 
       if (notifItem) {
-        setNotifications((prev) => [notifItem!, ...prev.slice(0, 49)]);
+        // Dedupe: collapse same-type events arriving within 5s into one item
+        // (a single admin click fans out multiple same-type events).
+        setNotifications((prev) => {
+          const first = prev[0];
+          const incomingAt = Date.parse(notifItem!.timestamp);
+          if (
+            first &&
+            first.type === notifItem!.type &&
+            first.title === notifItem!.title &&
+            incomingAt - Date.parse(first.timestamp) < 5000
+          ) {
+            return prev;
+          }
+          return [notifItem!, ...prev.slice(0, 49)];
+        });
         setHasNewAlert(true);
       }
     };
@@ -380,7 +406,7 @@ export function NotificationBell({
                 {scope === "tenant" ? "Notifikasi Toko" : "Notifikasi Konsol Platform"}
               </h4>
               {unreadCount > 0 && (
-                <span className="rounded-full bg-indigo-600 px-1.5 py-0.2 text-[10px] font-bold text-white font-mono">
+                <span className="whitespace-nowrap rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white font-mono">
                   {unreadCount} baru
                 </span>
               )}
@@ -412,7 +438,7 @@ export function NotificationBell({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="text-slate-400 hover:text-white p-1"
+                className="text-slate-400 hover:text-ink p-1"
                 aria-label="Tutup"
               >
                 <X className="h-4 w-4" />
@@ -462,12 +488,24 @@ export function NotificationBell({
           </div>
 
           {/* List Item Notifikasi */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/40">
+          <div
+            className={cn(
+              "max-h-80 overflow-y-auto divide-y",
+              isDark ? "divide-slate-800/40" : "divide-ink-100"
+            )}
+          >
             {filteredList.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-500 space-y-1">
-                <CheckCheck className="h-6 w-6 mx-auto text-slate-600 mb-2" />
+              <div
+                className={cn(
+                  "p-8 text-center text-xs space-y-1",
+                  isDark ? "text-slate-500" : "text-ink-500"
+                )}
+              >
+                <CheckCheck
+                  className={cn("h-6 w-6 mx-auto mb-2", isDark ? "text-slate-600" : "text-ink-300")}
+                />
                 <p className="font-medium">Tidak ada notifikasi baru</p>
-                <p className="text-2xs text-slate-500">
+                <p className={cn("text-2xs", isDark ? "text-slate-500" : "text-ink-400")}>
                   {filter === "unread"
                     ? "Semua notifikasi sudah dibaca."
                     : "Event real-time akan muncul di sini secara otomatis."}
@@ -513,11 +551,21 @@ export function NotificationBell({
                       >
                         {item.title}
                       </p>
-                      <span className="text-[10px] font-mono shrink-0 text-slate-500">
+                      <span
+                        className={cn(
+                          "text-[10px] font-mono shrink-0",
+                          isDark ? "text-slate-500" : "text-ink-400"
+                        )}
+                      >
                         {timeAgo(item.timestamp)}
                       </span>
                     </div>
-                    <p className="text-2xs text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
+                    <p
+                      className={cn(
+                        "text-2xs mt-0.5 line-clamp-2 leading-relaxed",
+                        isDark ? "text-slate-400" : "text-ink-500"
+                      )}
+                    >
                       {item.description}
                     </p>
                     {item.targetTab && (
@@ -541,6 +589,16 @@ export function NotificationBell({
               ))
             )}
           </div>
+          {notifications.length > 0 && (
+            <div
+              className={cn(
+                "px-4 py-2 border-t text-2xs",
+                isDark ? "border-slate-800 text-slate-500" : "border-ink-100 text-ink-400"
+              )}
+            >
+              Menampilkan {filteredList.length} dari {notifications.length} notifikasi
+            </div>
+          )}
         </div>
       )}
     </div>
