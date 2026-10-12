@@ -251,8 +251,8 @@ export function PanelSimulator({
         icon={<Bot className="h-4 w-4" aria-hidden="true" />}
         actions={
           <div className="flex items-center gap-2">
-            <Badge tone={health?.catalog.configured ? "signal" : "warn"}>
-              {health?.catalog.configured ? "Katalog Aktif" : "Katalog Belum Diatur"}
+            <Badge tone={health?.catalog?.configured ? "signal" : "warn"}>
+              {health?.catalog?.configured ? "Katalog Aktif" : "Katalog Belum Diatur"}
             </Badge>
             <Button variant="secondary" size="sm" onClick={onRefreshHealth}>
               <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />

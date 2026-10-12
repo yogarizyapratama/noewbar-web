@@ -51,7 +51,7 @@ export function PanelWhatsapp({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const connected = health?.whatsapp?.connection_status === "CONNECTED";
-  const daemonDown = health ? health.whatsapp.daemon_reachable === false : false;
+  const daemonDown = health?.whatsapp ? health.whatsapp.daemon_reachable === false : false;
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
