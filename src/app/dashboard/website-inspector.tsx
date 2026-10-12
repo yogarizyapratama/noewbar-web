@@ -522,6 +522,67 @@ export function WebsiteInspector({
                   <div className="space-y-2">
                     {(content.items || []).map((it: any, idx: number) => (
                       <div key={idx} className="rounded-lg border border-ink-200 p-2 bg-ink-50/50 space-y-1.5">
+                        <div className="flex items-center justify-between pb-1 border-b border-ink-100">
+                          <span className="font-mono text-2xs font-bold text-ink-500">Foto #{idx + 1}</span>
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const items = [...content.items];
+                                if (idx === 0) return;
+                                const [rem] = items.splice(idx, 1);
+                                items.splice(idx - 1, 0, rem);
+                                onUpdateContent({ items });
+                              }}
+                              disabled={idx === 0}
+                              className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                              title="Pindahkan ke atas / sebelumnya"
+                            >
+                              <ArrowUp className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const items = [...content.items];
+                                if (idx === items.length - 1) return;
+                                const [rem] = items.splice(idx, 1);
+                                items.splice(idx + 1, 0, rem);
+                                onUpdateContent({ items });
+                              }}
+                              disabled={idx === (content.items || []).length - 1}
+                              className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                              title="Pindahkan ke bawah / berikutnya"
+                            >
+                              <ArrowDown className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if ((content.items || []).length >= 6) return;
+                                const items = [...content.items];
+                                const clone = JSON.parse(JSON.stringify(items[idx]));
+                                items.splice(idx + 1, 0, clone);
+                                onUpdateContent({ items });
+                              }}
+                              disabled={(content.items || []).length >= 6}
+                              className="p-1 text-ink-400 hover:text-signal disabled:opacity-30 rounded"
+                              title="Duplikat foto ini"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const copy = content.items.filter((_: any, i: number) => i !== idx);
+                                onUpdateContent({ items: copy });
+                              }}
+                              className="p-1 text-danger hover:bg-danger-wash rounded"
+                              title="Hapus foto ini"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -540,17 +601,6 @@ export function WebsiteInspector({
                             placeholder="URL Foto https://..."
                             className="flex-1 rounded border border-ink-200 bg-white px-2 py-1 text-2xs text-ink"
                           />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const copy = content.items.filter((_: any, i: number) => i !== idx);
-                              onUpdateContent({ items: copy });
-                            }}
-                            className="p-1 text-danger hover:bg-danger-wash rounded"
-                            title="Hapus foto ini"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
                         </div>
                         <input
                           type="text"
@@ -646,6 +696,85 @@ export function WebsiteInspector({
                     placeholder="Hubungi Owner via WA"
                     className="w-full rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-xs text-ink focus:border-signal focus:outline-none"
                   />
+                </div>
+
+                {/* Bullet Points Manager */}
+                <div className="border-t border-ink-100 pt-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-2xs font-bold uppercase text-ink-600">
+                      Poin Keunggulan ({(content.bullet_points || []).length})
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const pts = Array.isArray(content.bullet_points) ? [...content.bullet_points] : [];
+                        pts.push("Poin keunggulan baru");
+                        onUpdateContent({ bullet_points: pts });
+                      }}
+                      className="inline-flex items-center gap-1 text-2xs font-bold text-signal hover:underline"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Tambah Poin
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    {(content.bullet_points || []).map((pt: string, idx: number) => (
+                      <div key={idx} className="flex items-center gap-1.5 rounded-lg border border-ink-200 p-1.5 bg-ink-50/50">
+                        <input
+                          type="text"
+                          value={pt}
+                          onChange={(e) => {
+                            const copy = [...content.bullet_points];
+                            copy[idx] = e.target.value;
+                            onUpdateContent({ bullet_points: copy });
+                          }}
+                          placeholder={`Poin #${idx + 1}`}
+                          className="flex-1 rounded border border-ink-200 bg-white px-2 py-1 text-2xs text-ink"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pts = [...content.bullet_points];
+                            if (idx === 0) return;
+                            const [rem] = pts.splice(idx, 1);
+                            pts.splice(idx - 1, 0, rem);
+                            onUpdateContent({ bullet_points: pts });
+                          }}
+                          disabled={idx === 0}
+                          className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                          title="Naikkan"
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pts = [...content.bullet_points];
+                            if (idx === pts.length - 1) return;
+                            const [rem] = pts.splice(idx, 1);
+                            pts.splice(idx + 1, 0, rem);
+                            onUpdateContent({ bullet_points: pts });
+                          }}
+                          disabled={idx === (content.bullet_points || []).length - 1}
+                          className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                          title="Turunkan"
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pts = (content.bullet_points || []).filter((_: any, i: number) => i !== idx);
+                            onUpdateContent({ bullet_points: pts });
+                          }}
+                          className="p-1 text-danger hover:bg-danger-wash rounded"
+                          title="Hapus poin"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
@@ -762,18 +891,64 @@ export function WebsiteInspector({
                   </div>
                   {(content.items || []).map((it: any, idx: number) => (
                     <div key={idx} className="rounded-lg border border-ink-200 p-2.5 bg-ink-50/50 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-2xs font-bold text-ink-500">#{idx + 1}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const copy = content.items.filter((_: any, i: number) => i !== idx);
-                            onUpdateContent({ items: copy });
-                          }}
-                          className="p-1 text-danger hover:bg-danger-wash rounded"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                      <div className="flex items-center justify-between pb-1 border-b border-ink-100">
+                        <span className="font-mono text-2xs font-bold text-ink-500">Item #{idx + 1}</span>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const items = [...content.items];
+                              if (idx === 0) return;
+                              const [rem] = items.splice(idx, 1);
+                              items.splice(idx - 1, 0, rem);
+                              onUpdateContent({ items });
+                            }}
+                            disabled={idx === 0}
+                            className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                            title="Naikkan urutan"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const items = [...content.items];
+                              if (idx === items.length - 1) return;
+                              const [rem] = items.splice(idx, 1);
+                              items.splice(idx + 1, 0, rem);
+                              onUpdateContent({ items });
+                            }}
+                            disabled={idx === (content.items || []).length - 1}
+                            className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                            title="Turunkan urutan"
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const items = [...content.items];
+                              const clone = JSON.parse(JSON.stringify(items[idx]));
+                              items.splice(idx + 1, 0, clone);
+                              onUpdateContent({ items });
+                            }}
+                            className="p-1 text-ink-400 hover:text-signal rounded"
+                            title="Duplikat keunggulan ini"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const copy = content.items.filter((_: any, i: number) => i !== idx);
+                              onUpdateContent({ items: copy });
+                            }}
+                            className="p-1 text-danger hover:bg-danger-wash rounded"
+                            title="Hapus keunggulan ini"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                       <input
                         type="text"
@@ -841,18 +1016,64 @@ export function WebsiteInspector({
                   </div>
                   {(content.items || []).map((it: any, idx: number) => (
                     <div key={idx} className="rounded-lg border border-ink-200 p-2.5 bg-ink-50/50 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-2xs font-bold text-ink-500">#{idx + 1}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const copy = content.items.filter((_: any, i: number) => i !== idx);
-                            onUpdateContent({ items: copy });
-                          }}
-                          className="p-1 text-danger hover:bg-danger-wash rounded"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                      <div className="flex items-center justify-between pb-1 border-b border-ink-100">
+                        <span className="font-mono text-2xs font-bold text-ink-500">Ulasan #{idx + 1}</span>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const items = [...content.items];
+                              if (idx === 0) return;
+                              const [rem] = items.splice(idx, 1);
+                              items.splice(idx - 1, 0, rem);
+                              onUpdateContent({ items });
+                            }}
+                            disabled={idx === 0}
+                            className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                            title="Naikkan urutan"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const items = [...content.items];
+                              if (idx === items.length - 1) return;
+                              const [rem] = items.splice(idx, 1);
+                              items.splice(idx + 1, 0, rem);
+                              onUpdateContent({ items });
+                            }}
+                            disabled={idx === (content.items || []).length - 1}
+                            className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                            title="Turunkan urutan"
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const items = [...content.items];
+                              const clone = JSON.parse(JSON.stringify(items[idx]));
+                              items.splice(idx + 1, 0, clone);
+                              onUpdateContent({ items });
+                            }}
+                            className="p-1 text-ink-400 hover:text-signal rounded"
+                            title="Duplikat testimoni ini"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const copy = content.items.filter((_: any, i: number) => i !== idx);
+                              onUpdateContent({ items: copy });
+                            }}
+                            className="p-1 text-danger hover:bg-danger-wash rounded"
+                            title="Hapus testimoni ini"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-1.5">
                         <input
@@ -931,18 +1152,64 @@ export function WebsiteInspector({
                   </div>
                   {(content.items || []).map((it: any, idx: number) => (
                     <div key={idx} className="rounded-lg border border-ink-200 p-2.5 bg-ink-50/50 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-2xs font-bold text-ink-500">#{idx + 1}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const copy = content.items.filter((_: any, i: number) => i !== idx);
-                            onUpdateContent({ items: copy });
-                          }}
-                          className="p-1 text-danger hover:bg-danger-wash rounded"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                      <div className="flex items-center justify-between pb-1 border-b border-ink-100">
+                        <span className="font-mono text-2xs font-bold text-ink-500">FAQ #{idx + 1}</span>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const items = [...content.items];
+                              if (idx === 0) return;
+                              const [rem] = items.splice(idx, 1);
+                              items.splice(idx - 1, 0, rem);
+                              onUpdateContent({ items });
+                            }}
+                            disabled={idx === 0}
+                            className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                            title="Naikkan urutan"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const items = [...content.items];
+                              if (idx === items.length - 1) return;
+                              const [rem] = items.splice(idx, 1);
+                              items.splice(idx + 1, 0, rem);
+                              onUpdateContent({ items });
+                            }}
+                            disabled={idx === (content.items || []).length - 1}
+                            className="p-1 text-ink-400 hover:text-ink disabled:opacity-30 rounded"
+                            title="Turunkan urutan"
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const items = [...content.items];
+                              const clone = JSON.parse(JSON.stringify(items[idx]));
+                              items.splice(idx + 1, 0, clone);
+                              onUpdateContent({ items });
+                            }}
+                            className="p-1 text-ink-400 hover:text-signal rounded"
+                            title="Duplikat FAQ ini"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const copy = content.items.filter((_: any, i: number) => i !== idx);
+                              onUpdateContent({ items: copy });
+                            }}
+                            className="p-1 text-danger hover:bg-danger-wash rounded"
+                            title="Hapus FAQ ini"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                       <input
                         type="text"

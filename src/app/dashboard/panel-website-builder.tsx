@@ -23,6 +23,8 @@ import {
   Camera,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Copy,
   Download,
@@ -30,6 +32,7 @@ import {
   Eye,
   EyeOff,
   Globe,
+  GripVertical,
   Layers,
   Layout,
   MessageCircle,
@@ -463,6 +466,10 @@ export function PanelWebsiteBuilder() {
   } | null>(null);
   const [mediaUrlInput, setMediaUrlInput] = useState("");
 
+  // Drag and drop section reordering state
+  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null);
+  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<number | null>(null);
+
   function openMediaModal(target: {
     type: "image" | "video";
     secId: string;
@@ -855,6 +862,165 @@ export function PanelWebsiteBuilder() {
     next[idx] = next[targetIdx];
     next[targetIdx] = temp;
     setSections(next);
+  }
+
+  function reorderSection(sourceIdx: number, destIdx: number) {
+    if (sourceIdx === destIdx) return;
+    setSections((prev) => {
+      const next = [...prev];
+      const [removed] = next.splice(sourceIdx, 1);
+      next.splice(destIdx, 0, removed);
+      return next;
+    });
+  }
+
+  function handleMoveSectionItem(
+    secId: string,
+    fromIndex: number,
+    toIndex: number
+  ) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== secId) return s;
+        const currentItems = Array.isArray(s.content?.items) ? [...s.content.items] : [];
+        if (fromIndex < 0 || fromIndex >= currentItems.length) return s;
+        if (toIndex < 0 || toIndex >= currentItems.length) return s;
+        const [removed] = currentItems.splice(fromIndex, 1);
+        currentItems.splice(toIndex, 0, removed);
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            items: currentItems,
+          },
+        };
+      })
+    );
+  }
+
+  function handleDuplicateSectionItem(
+    secId: string,
+    index: number
+  ) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== secId) return s;
+        const currentItems = Array.isArray(s.content?.items) ? [...s.content.items] : [];
+        if (!currentItems[index]) return s;
+        const clone = JSON.parse(JSON.stringify(currentItems[index]));
+        currentItems.splice(index + 1, 0, clone);
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            items: currentItems,
+          },
+        };
+      })
+    );
+  }
+
+  function handleDeleteSectionItem(
+    secId: string,
+    index: number
+  ) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== secId) return s;
+        const currentItems = Array.isArray(s.content?.items) ? [...s.content.items] : [];
+        if (currentItems.length <= 1) return s;
+        currentItems.splice(index, 1);
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            items: currentItems,
+          },
+        };
+      })
+    );
+  }
+
+  function handleAddSectionItem(
+    secId: string,
+    templateItem: any
+  ) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== secId) return s;
+        const currentItems = Array.isArray(s.content?.items) ? [...s.content.items] : [];
+        currentItems.push(templateItem);
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            items: currentItems,
+          },
+        };
+      })
+    );
+  }
+
+  function handleMoveBulletPoint(
+    secId: string,
+    fromIndex: number,
+    toIndex: number
+  ) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== secId) return s;
+        const pts = Array.isArray(s.content?.bullet_points) ? [...s.content.bullet_points] : [];
+        if (fromIndex < 0 || fromIndex >= pts.length) return s;
+        if (toIndex < 0 || toIndex >= pts.length) return s;
+        const [removed] = pts.splice(fromIndex, 1);
+        pts.splice(toIndex, 0, removed);
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            bullet_points: pts,
+          },
+        };
+      })
+    );
+  }
+
+  function handleDeleteBulletPoint(
+    secId: string,
+    index: number
+  ) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== secId) return s;
+        const pts = Array.isArray(s.content?.bullet_points) ? [...s.content.bullet_points] : [];
+        if (pts.length <= 1) return s;
+        pts.splice(index, 1);
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            bullet_points: pts,
+          },
+        };
+      })
+    );
+  }
+
+  function handleAddBulletPoint(secId: string) {
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.id !== secId) return s;
+        const pts = Array.isArray(s.content?.bullet_points) ? [...s.content.bullet_points] : [];
+        pts.push(`Poin keunggulan #${pts.length + 1}`);
+        return {
+          ...s,
+          content: {
+            ...s.content,
+            bullet_points: pts,
+          },
+        };
+      })
+    );
   }
 
   function toggleSectionVisibility(id: string) {
@@ -1777,15 +1943,53 @@ export function PanelWebsiteBuilder() {
                   {sections.map((sec, idx) => (
                     <div
                       key={sec.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/plain", String(idx));
+                        e.dataTransfer.effectAllowed = "move";
+                        setDraggedSectionIndex(idx);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        if (dragOverSectionIndex !== idx) {
+                          setDragOverSectionIndex(idx);
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverSectionIndex === idx) {
+                          setDragOverSectionIndex(null);
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const srcIdx =
+                          draggedSectionIndex ??
+                          parseInt(e.dataTransfer.getData("text/plain"), 10);
+                        if (!isNaN(srcIdx) && srcIdx !== idx) {
+                          reorderSection(srcIdx, idx);
+                        }
+                        setDraggedSectionIndex(null);
+                        setDragOverSectionIndex(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedSectionIndex(null);
+                        setDragOverSectionIndex(null);
+                      }}
                       onClick={() => setSelectedSecId(sec.id)}
                       className={cn(
-                        "flex items-center justify-between rounded-lg p-2 text-xs font-semibold cursor-pointer transition-all border",
+                        "flex items-center justify-between rounded-lg p-2 text-xs font-semibold cursor-pointer transition-all border select-none",
                         selectedSecId === sec.id
                           ? "border-signal bg-signal-wash text-signal-strong shadow-flat"
-                          : "border-transparent hover:bg-ink-50 text-ink"
+                          : "border-transparent hover:bg-ink-50 text-ink",
+                        dragOverSectionIndex === idx &&
+                          draggedSectionIndex !== idx &&
+                          "border-signal bg-signal-wash/40 scale-[0.99]",
+                        draggedSectionIndex === idx && "opacity-40"
                       )}
                     >
-                      <div className="flex items-center gap-2 truncate">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <GripVertical className="h-3.5 w-3.5 text-ink-300 hover:text-ink-600 cursor-grab active:cursor-grabbing shrink-0" />
                         <span className="font-mono text-2xs text-ink-400 w-4">{idx + 1}</span>
                         <span className="capitalize text-2xs">{sec.type.replace("_", " ")}</span>
                         {!sec.visibility && (
@@ -2258,8 +2462,59 @@ export function PanelWebsiteBuilder() {
                                 <div
                                   key={i}
                                   style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
-                                  className="rounded-xl border overflow-hidden shadow-xs transition-all text-left"
+                                  className="group/card relative rounded-xl border overflow-hidden shadow-xs transition-all text-left"
                                 >
+                                  {/* Floating Card Actions Pill */}
+                                  <div className="absolute top-2 right-2 z-10 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5 bg-slate-900/90 backdrop-blur-xs text-white rounded-lg p-1 shadow-md border border-white/20">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveSectionItem(sec.id, i, i - 1);
+                                      }}
+                                      disabled={i === 0}
+                                      title="Geser ke kiri"
+                                      className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <ChevronLeft className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveSectionItem(sec.id, i, i + 1);
+                                      }}
+                                      disabled={i === (sec.content?.items || []).length - 1}
+                                      title="Geser ke kanan"
+                                      className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <ChevronRight className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDuplicateSectionItem(sec.id, i);
+                                      }}
+                                      title="Duplikat foto ini"
+                                      className="p-1 rounded hover:bg-white/20 text-white transition-colors"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteSectionItem(sec.id, i);
+                                      }}
+                                      disabled={(sec.content?.items || []).length <= 1}
+                                      title="Hapus foto ini"
+                                      className="p-1 rounded hover:bg-rose-500/30 text-rose-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
                                   <div className="aspect-square w-full bg-black/10">
                                     <InlineCanvasImage
                                       src={it.image_url || "/placeholder-product.svg"}
@@ -2292,6 +2547,23 @@ export function PanelWebsiteBuilder() {
                                   </div>
                                 </div>
                               ))}
+
+                              {(sec.content?.items || []).length < 6 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddSectionItem(sec.id, {
+                                      image_url: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=600&q=80",
+                                      caption: "Foto Baru",
+                                    });
+                                  }}
+                                  className="rounded-xl border-2 border-dashed border-ink-300 hover:border-signal p-4 flex flex-col items-center justify-center gap-2 text-ink-500 hover:text-signal hover:bg-signal-wash/30 transition-all min-h-[140px]"
+                                >
+                                  <Plus className="h-5 w-5" />
+                                  <span className="text-2xs font-bold">+ Tambah Foto</span>
+                                </button>
+                              )}
                             </div>
                           </div>
                         )}
@@ -2347,21 +2619,76 @@ export function PanelWebsiteBuilder() {
                                     badgeLabel="Edit Paragraf"
                                   />
                                 </p>
-                                {Array.isArray(sec.content?.bullet_points) && sec.content.bullet_points.length > 0 && (
-                                  <ul className="mt-3 space-y-1 text-2xs">
+                                {Array.isArray(sec.content?.bullet_points) && (
+                                  <div className="mt-3 space-y-1 text-2xs">
                                     {sec.content.bullet_points.map((pt: string, idx: number) => (
-                                      <li key={idx} className="flex items-center gap-1.5" style={{ color: theme.text }}>
-                                        <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                                        <InlineCanvasText
-                                          value={pt}
-                                          fallback={`Poin keunggulan ${idx + 1}`}
-                                          onSave={(val) => handleUpdateSectionBulletPoint(sec.id, idx, val)}
-                                          onSelectSec={() => setSelectedSecId(sec.id)}
-                                          badgeLabel="Edit Poin"
-                                        />
-                                      </li>
+                                      <div
+                                        key={idx}
+                                        className="group/pt flex items-center justify-between gap-1.5 rounded-md px-1.5 py-1 hover:bg-black/5 transition-colors"
+                                        style={{ color: theme.text }}
+                                      >
+                                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                          <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                                          <InlineCanvasText
+                                            value={pt}
+                                            fallback={`Poin keunggulan ${idx + 1}`}
+                                            onSave={(val) => handleUpdateSectionBulletPoint(sec.id, idx, val)}
+                                            onSelectSec={() => setSelectedSecId(sec.id)}
+                                            badgeLabel="Edit Poin"
+                                          />
+                                        </div>
+                                        <div className="opacity-0 group-hover/pt:opacity-100 focus-within:opacity-100 flex items-center gap-0.5 shrink-0 bg-slate-900/80 text-white rounded p-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleMoveBulletPoint(sec.id, idx, idx - 1);
+                                            }}
+                                            disabled={idx === 0}
+                                            title="Naikkan poin"
+                                            className="p-0.5 hover:bg-white/20 rounded disabled:opacity-30 transition-colors"
+                                          >
+                                            <ChevronUp className="h-2.5 w-2.5" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleMoveBulletPoint(sec.id, idx, idx + 1);
+                                            }}
+                                            disabled={idx === sec.content.bullet_points.length - 1}
+                                            title="Turunkan poin"
+                                            className="p-0.5 hover:bg-white/20 rounded disabled:opacity-30 transition-colors"
+                                          >
+                                            <ChevronDown className="h-2.5 w-2.5" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteBulletPoint(sec.id, idx);
+                                            }}
+                                            disabled={sec.content.bullet_points.length <= 1}
+                                            title="Hapus poin"
+                                            className="p-0.5 hover:bg-rose-500/40 text-rose-300 rounded disabled:opacity-30 transition-colors"
+                                          >
+                                            <Trash2 className="h-2.5 w-2.5" />
+                                          </button>
+                                        </div>
+                                      </div>
                                     ))}
-                                  </ul>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAddBulletPoint(sec.id);
+                                      }}
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline pt-1"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                      + Tambah Poin Baru
+                                    </button>
+                                  </div>
                                 )}
                                 <div className="mt-4">
                                   <span
@@ -2521,12 +2848,63 @@ export function PanelWebsiteBuilder() {
                                 <div
                                   key={i}
                                   style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
-                                  className="rounded-xl border p-3.5 text-xs shadow-xs transition-all text-left"
+                                  className="group/card relative rounded-xl border p-3.5 text-xs shadow-xs transition-all text-left"
                                 >
+                                  {/* Floating Card Actions Pill */}
+                                  <div className="absolute top-2 right-2 z-10 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5 bg-slate-900/90 backdrop-blur-xs text-white rounded-lg p-1 shadow-md border border-white/20">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveSectionItem(sec.id, i, i - 1);
+                                      }}
+                                      disabled={i === 0}
+                                      title="Geser ke kiri / urutan sebelumnya"
+                                      className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <ChevronLeft className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveSectionItem(sec.id, i, i + 1);
+                                      }}
+                                      disabled={i === (sec.content?.items || []).length - 1}
+                                      title="Geser ke kanan / urutan berikutnya"
+                                      className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <ChevronRight className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDuplicateSectionItem(sec.id, i);
+                                      }}
+                                      title="Duplikat keunggulan ini"
+                                      className="p-1 rounded hover:bg-white/20 text-white transition-colors"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteSectionItem(sec.id, i);
+                                      }}
+                                      disabled={(sec.content?.items || []).length <= 1}
+                                      title="Hapus keunggulan ini"
+                                      className="p-1 rounded hover:bg-rose-500/30 text-rose-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
                                   <div className="h-7 w-7 rounded-lg bg-emerald-500/20 text-emerald-600 flex items-center justify-center font-bold mb-2">
                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                   </div>
-                                  <div style={{ color: theme.cardText }} className="font-bold">
+                                  <div style={{ color: theme.cardText }} className="font-bold pr-14">
                                     <InlineCanvasText
                                       value={it.title}
                                       fallback={`Keunggulan #${i + 1}`}
@@ -2547,6 +2925,22 @@ export function PanelWebsiteBuilder() {
                                   </div>
                                 </div>
                               ))}
+
+                              {/* + Tambah Card Keunggulan Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddSectionItem(sec.id, {
+                                    title: "Keunggulan Baru",
+                                    desc: "Jelaskan manfaat atau garansi yang didapat pembeli...",
+                                  });
+                                }}
+                                className="rounded-xl border-2 border-dashed border-ink-300 hover:border-signal p-4 flex flex-col items-center justify-center gap-2 text-ink-500 hover:text-signal hover:bg-signal-wash/30 transition-all min-h-[110px]"
+                              >
+                                <Plus className="h-5 w-5" />
+                                <span className="text-2xs font-bold">+ Tambah Keunggulan</span>
+                              </button>
                             </div>
                           </div>
                         )}
@@ -2635,9 +3029,60 @@ export function PanelWebsiteBuilder() {
                                 <div
                                   key={i}
                                   style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
-                                  className="rounded-xl border p-3.5 text-xs shadow-xs transition-all text-left"
+                                  className="group/card relative rounded-xl border p-3.5 text-xs shadow-xs transition-all text-left"
                                 >
-                                  <div style={{ color: theme.cardMuted }} className="italic">
+                                  {/* Floating Card Actions Pill */}
+                                  <div className="absolute top-2 right-2 z-10 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5 bg-slate-900/90 backdrop-blur-xs text-white rounded-lg p-1 shadow-md border border-white/20">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveSectionItem(sec.id, i, i - 1);
+                                      }}
+                                      disabled={i === 0}
+                                      title="Geser ke kiri / urutan sebelumnya"
+                                      className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <ChevronLeft className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveSectionItem(sec.id, i, i + 1);
+                                      }}
+                                      disabled={i === (sec.content?.items || []).length - 1}
+                                      title="Geser ke kanan / urutan berikutnya"
+                                      className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <ChevronRight className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDuplicateSectionItem(sec.id, i);
+                                      }}
+                                      title="Duplikat testimoni ini"
+                                      className="p-1 rounded hover:bg-white/20 text-white transition-colors"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteSectionItem(sec.id, i);
+                                      }}
+                                      disabled={(sec.content?.items || []).length <= 1}
+                                      title="Hapus testimoni ini"
+                                      className="p-1 rounded hover:bg-rose-500/30 text-rose-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
+                                  <div style={{ color: theme.cardMuted }} className="italic pr-12">
                                     &ldquo;
                                     <InlineCanvasText
                                       value={it.text}
@@ -2670,6 +3115,24 @@ export function PanelWebsiteBuilder() {
                                   </div>
                                 </div>
                               ))}
+
+                              {/* + Tambah Card Testimoni Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddSectionItem(sec.id, {
+                                    name: "Pelanggan Baru",
+                                    role: "Pelanggan Terverifikasi",
+                                    text: "Kualitas barang sangat bagus dan pengiriman super cepat!",
+                                    rating: 5,
+                                  });
+                                }}
+                                className="rounded-xl border-2 border-dashed border-ink-300 hover:border-signal p-4 flex flex-col items-center justify-center gap-2 text-ink-500 hover:text-signal hover:bg-signal-wash/30 transition-all min-h-[100px]"
+                              >
+                                <Plus className="h-5 w-5" />
+                                <span className="text-2xs font-bold">+ Tambah Testimoni</span>
+                              </button>
                             </div>
                           </div>
                         )}
@@ -2697,9 +3160,60 @@ export function PanelWebsiteBuilder() {
                                 <div
                                   key={i}
                                   style={{ backgroundColor: theme.cardBg, borderColor: theme.cardBorder }}
-                                  className="rounded-xl border p-3 text-xs shadow-xs transition-all"
+                                  className="group/card relative rounded-xl border p-3 text-xs shadow-xs transition-all"
                                 >
-                                  <div style={{ color: theme.cardText }} className="font-bold">
+                                  {/* Floating Card Actions Pill */}
+                                  <div className="absolute top-2 right-2 z-10 opacity-0 group-hover/card:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5 bg-slate-900/90 backdrop-blur-xs text-white rounded-lg p-1 shadow-md border border-white/20">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveSectionItem(sec.id, i, i - 1);
+                                      }}
+                                      disabled={i === 0}
+                                      title="Naikkan urutan pertanyaan"
+                                      className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <ChevronUp className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveSectionItem(sec.id, i, i + 1);
+                                      }}
+                                      disabled={i === (sec.content?.items || []).length - 1}
+                                      title="Turunkan urutan pertanyaan"
+                                      className="p-1 rounded hover:bg-white/20 text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <ChevronDown className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDuplicateSectionItem(sec.id, i);
+                                      }}
+                                      title="Duplikat pertanyaan ini"
+                                      className="p-1 rounded hover:bg-white/20 text-white transition-colors"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteSectionItem(sec.id, i);
+                                      }}
+                                      disabled={(sec.content?.items || []).length <= 1}
+                                      title="Hapus pertanyaan ini"
+                                      className="p-1 rounded hover:bg-rose-500/30 text-rose-300 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+
+                                  <div style={{ color: theme.cardText }} className="font-bold pr-16">
                                     <InlineCanvasText
                                       value={it.q}
                                       fallback="Pertanyaan yang sering diajukan?"
@@ -2720,6 +3234,22 @@ export function PanelWebsiteBuilder() {
                                   </div>
                                 </div>
                               ))}
+
+                              {/* + Tambah FAQ Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddSectionItem(sec.id, {
+                                    q: "Pertanyaan baru?",
+                                    a: "Jawaban penjelasan...",
+                                  });
+                                }}
+                                className="w-full rounded-xl border-2 border-dashed border-ink-300 hover:border-signal p-3 flex items-center justify-center gap-1.5 text-ink-500 hover:text-signal hover:bg-signal-wash/30 transition-all text-2xs font-bold"
+                              >
+                                <Plus className="h-4 w-4" />
+                                <span>+ Tambah Tanya Jawab (FAQ)</span>
+                              </button>
                             </div>
                           </div>
                         )}
