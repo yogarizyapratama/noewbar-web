@@ -2,7 +2,7 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import prisma from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { TOOL_SCHEMAS, executeTool } from "@/lib/ai/micro-tools";
-import { buildSystemPrompt, MAX_HISTORY_MESSAGES, MAX_TOOL_ROUNDS, SAFE_FALLBACK_REPLY } from "@/lib/ai/prompts";
+import { buildSystemPrompt, fenceUntrusted, MAX_HISTORY_MESSAGES, MAX_TOOL_ROUNDS, SAFE_FALLBACK_REPLY } from "@/lib/ai/prompts";
 import { recordToolTraces } from "@/lib/ai/micro-tools";
 import type {
   OutboundMedia,
@@ -197,25 +197,52 @@ export function sanitizeAgentReply(raw: string): string {
   // 5. Clean any leftover think tags
   text = text.replace(/<\/?think>/gi, "");
 
-  // 3. Remove echoed <pesan_pembeli> blocks if model leaked them
+  // 6. Remove echoed <pesan_pembeli> blocks if model leaked them
   text = text.replace(/<pesan_pembeli>[\s\S]*?<\/pesan_pembeli>/gi, "");
   text = text.replace(/<\/?pesan_pembeli>/gi, "");
 
-  // 4. Remove [JID pembeli: ...] lines if model leaked them
+  // 7. Remove any leaked system or prompt delimiter blocks and leftover tags
+  text = text.replace(/<(?:system|instruction|prompt|context|aturan_toko|developer_prompt)>[\s\S]*?<\/(?:system|instruction|prompt|context|aturan_toko|developer_prompt)>\s*/gi, "");
+  text = text.replace(/<\/?(?:system|instruction|prompt|context|aturan_toko|developer_prompt)>/gi, "");
+
+  // 8. Remove [JID pembeli: ...] lines if model leaked them
   text = text.replace(/\[JID pembeli:[^\]]*\]/gi, "");
   text = text.replace(/\[Konteks Gambar Produk[^\]]*\]/gi, "");
   text = text.replace(/\[Lokasi pembeli[^\]]*\]/gi, "");
 
-  // 5. Remove leading artifact tags like [JAWABAN], [BALASAN], [RESPONSE], [ANSWER], [CHAT], etc.
-  text = text.replace(/^\s*\[(?:jawaban|balasan|response|answer|chat|cs|pesan)\]\s*:?\s*/i, "");
+  // 9. Remove leading artifact tags like [JAWABAN], [BALASAN], [RESPONSE], [ANSWER], [CHAT], [CS], etc.
+  text = text.replace(/^\s*\[(?:jawaban|balasan|response|answer|chat|cs|pesan|draft)\]\s*:?\s*/i, "");
 
-  // 6. Remove standalone [JAWABAN] or [BALASAN] anywhere if left behind
-  text = text.replace(/\[(?:jawaban|balasan|response|answer)\]/gi, "");
+  // 10. Remove standalone [JAWABAN] or [BALASAN] anywhere if left behind
+  text = text.replace(/\[(?:jawaban|balasan|response|answer|chat)\]/gi, "");
 
-  // 7. Remove accidental leaked CoT / internal monologue sentences (e.g. "Sekarang saya perlu mencari...")
+  // 11. Remove leaked prefix roles: "CS: ", "Admin: ", "Bot: ", "Assistant: "
+  text = text.replace(/^(?:CS|Admin CS|Admin|Bot|Assistant|Asisten)\s*:\s*/i, "");
+
+  // 12. Strip accidental markdown codeblock wrapper if whole message was wrapped in ``` ... ```
+  if (/^```(?:markdown|text|json)?\s*[\s\S]*?```$/i.test(text.trim())) {
+    text = text.trim().replace(/^```(?:markdown|text|json)?\s*/i, "").replace(/\s*```$/, "");
+  }
+
+  // 13. Strip accidental raw JSON string wrapper: {"reply": "..."} or {"message": "..."}
+  if (text.trim().startsWith("{") && text.trim().endsWith("}")) {
+    try {
+      const parsed = JSON.parse(text.trim());
+      if (typeof parsed?.reply === "string") text = parsed.reply;
+      else if (typeof parsed?.message === "string") text = parsed.message;
+      else if (typeof parsed?.content === "string") text = parsed.content;
+    } catch {
+      // ignore
+    }
+  }
+
+  // 14. Remove accidental leaked CoT / internal monologue sentences (e.g. "Sekarang saya perlu mencari...")
   text = text.replace(/(?:Sekarang,?\s+)?saya\s+(?:perlu|harus|akan)\s+(?:mencari|mengecek|memanggil|menggunakan)[\s\S]*?(?:tool_[a-z_]+)[\s\S]*?\.\s*/gi, "");
 
-  // 8. Replace em-dash and en-dash with standard comma or hyphen
+  // 15. Normalize robotic AI self-identifications to natural human CS phrasing
+  text = text.replace(/\bsebagai\s+(?:ai|kecerdasan buatan|model bahasa|llm|asisten virtual|bot)\b[,\s]*/gi, "sebagai tim CS toko, ");
+
+  // 16. Replace em-dash and en-dash with standard comma or hyphen
   text = text.replace(/[\u2014\u2013]/g, ", ");
 
   return text.trim();
@@ -274,7 +301,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
     })),
     {
       role: "user",
-      content: input.incomingText,
+      content: fenceUntrusted(input.incomingText),
     },
   ];
 
@@ -293,7 +320,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
           messages,
           tools: TOOL_SCHEMAS,
           tool_choice: "auto",
-          temperature: 0.4,
+          temperature: 0.3,
           max_tokens: 900,
           // CRITICAL: the routed upstream rejects a turn that asks for more than one
           // tool at a time (400 "This model only supports single tool-calls at
@@ -349,7 +376,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
       const rawContent = msg.content ?? "";
       const isDangling =
         round < 2 &&
-        /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)|(?:tunggu|mohon tunggu)\s+sebentar|sebentar\s+ya\s+kak)/i.test(
+        /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)\s*(?:dulu|sebentar|stok|ongkir)?|(?:tunggu|mohon tunggu|sebentar|bentar)\s*(?:sebentar|dulu|ya\s+kak|kak)|sedang\s+(?:kami|saya)\s+(?:cek|hitung))/i.test(
           rawContent
         ) &&
         !rawContent.includes("Rp");
@@ -443,7 +470,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
   }
 
   const isDangling =
-    /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)\s+(?:dulu|sebentar|stok|ongkir)|(?:tunggu|mohon tunggu)\s+sebentar|sebentar\s+ya\s+kak)/i.test(
+    /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)\s*(?:dulu|sebentar|stok|ongkir)?|(?:tunggu|mohon tunggu|sebentar|bentar)\s*(?:sebentar|dulu|ya\s+kak|kak)|sedang\s+(?:kami|saya)\s+(?:cek|hitung))/i.test(
       replyText
     ) && !replyText.includes("Rp");
   if (isDangling && toolOutcomes.length > 0) {
@@ -465,7 +492,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
     try {
       const { content: composed, model: composedModel } = await chatWithFallback({
         messages: finalMessages,
-        temperature: 0.4,
+        temperature: 0.3,
         max_tokens: 900,
       });
       replyText = composed;

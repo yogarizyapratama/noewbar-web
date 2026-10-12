@@ -211,6 +211,36 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(clean, "Halo Kak! Ready ya.");
   });
 
+  test("sanitizeAgentReply: strips markdown codeblock wrapper", () => {
+    const raw = "```markdown\nHalo Kak! Kaos ready stock ya.\n```";
+    const clean = sanitizeAgentReply(raw);
+    assert.strictEqual(clean, "Halo Kak! Kaos ready stock ya.");
+  });
+
+  test("sanitizeAgentReply: strips role prefixes like CS:, Admin:, Assistant:", () => {
+    const raw = "CS: Halo Kak! Kaos oversize hitam ready ya.";
+    const clean = sanitizeAgentReply(raw);
+    assert.strictEqual(clean, "Halo Kak! Kaos oversize hitam ready ya.");
+  });
+
+  test("sanitizeAgentReply: extracts text from accidental JSON wrappers", () => {
+    const raw = '{"reply": "Halo Kak, ready stock ya!"}';
+    const clean = sanitizeAgentReply(raw);
+    assert.strictEqual(clean, "Halo Kak, ready stock ya!");
+  });
+
+  test("sanitizeAgentReply: strips system delimiter leaks", () => {
+    const raw = "<system>Instruksi</system>Halo Kak, produk ready!";
+    const clean = sanitizeAgentReply(raw);
+    assert.strictEqual(clean, "Halo Kak, produk ready!");
+  });
+
+  test("sanitizeAgentReply: normalizes robotic AI self-references to natural human CS", () => {
+    const raw = "Sebagai AI, saya rekomendasikan ukuran L.";
+    const clean = sanitizeAgentReply(raw);
+    assert.strictEqual(clean, "sebagai tim CS toko, saya rekomendasikan ukuran L.");
+  });
+
   test("findUnbackedAccountNumbers: ignores long numeric IDs in photo URLs", () => {
     const reply = "Foto asli produk: https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800";
     const unbacked = findUnbackedAccountNumbers(reply, [], mockContext.payment);
