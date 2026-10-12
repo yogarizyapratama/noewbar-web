@@ -1875,6 +1875,13 @@ export default function SuperadminPage() {
                             </td>
                             <td className="px-5 py-4 text-2xs text-ink-500">
                               {inst.last_seen ? timeAgo(inst.last_seen) : "-"}
+                              {inst.connection_status === "CONNECTED" &&
+                                inst.last_seen &&
+                                Date.now() - new Date(inst.last_seen).getTime() > 5 * 60 * 1000 && (
+                                  <span className="ml-1.5 rounded bg-warn-wash px-1.5 py-0.5 font-medium text-warn-strong">
+                                    basi, refresh
+                                  </span>
+                                )}
                             </td>
                             <td className="px-5 py-4 text-right">
                               <Button

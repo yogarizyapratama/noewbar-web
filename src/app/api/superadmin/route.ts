@@ -405,6 +405,37 @@ export async function GET() {
   let gatewayLatencyMs: number | null = null;
   if (gateway.ok) gatewayLatencyMs = gateway.latencyMs;
 
+  // Fleet self-healing: the daemon is the ground truth for socket state. A
+  // logout from the phone itself would otherwise leave the DB row (and the
+  // fleet badge) stale CONNECTED. Best-effort per instance; a daemon hiccup
+  // or DB blip keeps the stored row instead of failing the whole console.
+  await Promise.all(
+    instances.map(async (inst) => {
+      try {
+        const live = await waDaemon.getStatus(inst.instance_key);
+        if (!live.ok) return;
+        if (
+          live.data.connection_status !== inst.connection_status ||
+          (live.data.phone_number || null) !== inst.phone_number
+        ) {
+          await prisma.waInstance.update({
+            where: { id: inst.id },
+            data: {
+              connection_status: live.data.connection_status,
+              phone_number: live.data.phone_number || null,
+              last_seen: new Date(),
+            },
+          });
+          inst.connection_status = live.data.connection_status;
+          inst.phone_number = live.data.phone_number || null;
+          inst.last_seen = new Date();
+        }
+      } catch {
+        /* keep the stored row for this instance */
+      }
+    })
+  );
+
   return ok({
     kill_switch: getKillSwitch(),
     superadmin_hash_configured: superadminHashConfigured(),
