@@ -120,11 +120,11 @@ export function PanelChat({
               <MessageSquare className="h-3.5 w-3.5" />
             </span>
             <h1 className="text-xl font-bold text-ink tracking-tight">WhatsApp Live Chat</h1>
-            <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 border border-emerald-200">
+            <span className="rounded-md bg-emerald-50 text-emerald-800 text-[10px] font-bold px-2 py-0.5 border border-emerald-200">
               Sinkronisasi Aktif
             </span>
           </div>
-          <p className="text-xs text-ink-500 mt-0.5">
+          <p className="text-xs text-ink-600 mt-0.5">
             Kelola dan pantau interaksi pelanggan WhatsApp secara real-time layaknya WhatsApp Web resmi.
           </p>
         </div>
@@ -186,10 +186,10 @@ export function PanelChat({
                 type="button"
                 onClick={() => setChatFilter("all")}
                 className={cn(
-                  "px-2.5 py-1 rounded-full font-medium whitespace-nowrap transition-colors",
+                  "px-3 py-1.5 min-h-[36px] flex items-center rounded-md font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
                   chatFilter === "all"
                     ? "bg-[#00a884] text-white font-semibold"
-                    : "bg-[#f0f2f5] text-[#54656f] hover:bg-[#e9edef]"
+                    : "bg-[#f0f2f5] text-ink-700 hover:bg-[#e9edef]"
                 )}
               >
                 Semua
@@ -198,10 +198,10 @@ export function PanelChat({
                 type="button"
                 onClick={() => setChatFilter("takeover")}
                 className={cn(
-                  "px-2.5 py-1 rounded-full font-medium whitespace-nowrap transition-colors",
+                  "px-3 py-1.5 min-h-[36px] flex items-center rounded-md font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500",
                   chatFilter === "takeover"
                     ? "bg-amber-600 text-white font-semibold"
-                    : "bg-[#f0f2f5] text-[#54656f] hover:bg-[#e9edef]"
+                    : "bg-[#f0f2f5] text-ink-700 hover:bg-[#e9edef]"
                 )}
               >
                 Takeover Manual
@@ -210,10 +210,10 @@ export function PanelChat({
                 type="button"
                 onClick={() => setChatFilter("bot")}
                 className={cn(
-                  "px-2.5 py-1 rounded-full font-medium whitespace-nowrap transition-colors",
+                  "px-3 py-1.5 min-h-[36px] flex items-center rounded-md font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
                   chatFilter === "bot"
                     ? "bg-[#00a884] text-white font-semibold"
-                    : "bg-[#f0f2f5] text-[#54656f] hover:bg-[#e9edef]"
+                    : "bg-[#f0f2f5] text-ink-700 hover:bg-[#e9edef]"
                 )}
               >
                 Bot AI
@@ -518,35 +518,35 @@ export function PanelChat({
               )}
 
               {/* Canned Quick Responses Toolbar */}
-              <div className="bg-[#f0f2f5] px-3.5 pt-2 pb-1 border-t border-[#d1d7db] flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-                <span className="text-[10px] font-bold text-[#54656f] uppercase shrink-0 mr-1">
+              <div className="bg-[#f0f2f5] px-3.5 pt-2 pb-1.5 border-t border-[#d1d7db] flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+                <span className="text-[10px] font-bold text-ink-700 uppercase shrink-0 mr-1">
                   Balas Cepat:
                 </span>
                 <button
                   type="button"
                   onClick={() => insertCannedResponse("Halo kak! Ada yang bisa kami bantu seputar produk hari ini? 😊")}
-                  className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 border border-[#d1d7db] text-2xs text-[#111b21] whitespace-nowrap transition-colors"
+                  className="px-3 py-1.5 min-h-[36px] flex items-center rounded-md bg-white hover:bg-emerald-50 border border-ink-200 text-xs text-ink-800 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                 >
                   👋 Salam Sapa
                 </button>
                 <button
                   type="button"
                   onClick={() => insertCannedResponse("Baik kak, pesanan kakak sedang kami siapkan untuk pengiriman hari ini ya! 📦")}
-                  className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 border border-[#d1d7db] text-2xs text-[#111b21] whitespace-nowrap transition-colors"
+                  className="px-3 py-1.5 min-h-[36px] flex items-center rounded-md bg-white hover:bg-emerald-50 border border-ink-200 text-xs text-ink-800 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                 >
                   📦 Info Pengiriman
                 </button>
                 <button
                   type="button"
                   onClick={() => insertCannedResponse("Pembayaran bisa ditransfer ke rekening BCA kami: 1234567890 a.n Toko Noewbar. Mohon kirimkan bukti fotonya ya kak! 💳")}
-                  className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 border border-[#d1d7db] text-2xs text-[#111b21] whitespace-nowrap transition-colors"
+                  className="px-3 py-1.5 min-h-[36px] flex items-center rounded-md bg-white hover:bg-emerald-50 border border-ink-200 text-xs text-ink-800 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                 >
                   💳 Info Rekening
                 </button>
                 <button
                   type="button"
                   onClick={() => insertCannedResponse("Kakak bisa cek katalog lengkap produk dan promo kami di link website toko ya! 🛍️")}
-                  className="px-2.5 py-1 rounded-full bg-white hover:bg-emerald-50 border border-[#d1d7db] text-2xs text-[#111b21] whitespace-nowrap transition-colors"
+                  className="px-3 py-1.5 min-h-[36px] flex items-center rounded-md bg-white hover:bg-emerald-50 border border-ink-200 text-xs text-ink-800 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                 >
                   🛍️ Kirim Katalog
                 </button>
@@ -555,7 +555,7 @@ export function PanelChat({
               {/* WhatsApp Web Input Bar */}
               <form
                 onSubmit={submit}
-                className="bg-[#f0f2f5] px-3.5 pb-3 pt-1.5 flex items-center gap-2.5 shrink-0"
+                className="bg-[#f0f2f5] px-3.5 pb-3 pt-2 flex items-center gap-2.5 shrink-0"
               >
                 <input
                   type="text"
@@ -566,16 +566,16 @@ export function PanelChat({
                   }
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
-                  className="flex-1 rounded-lg bg-white px-3.5 py-2 text-xs text-[#111b21] placeholder:text-[#8696a0] border border-[#d1d7db] focus:outline-none focus:ring-1 focus:ring-[#00a884]"
+                  className="flex-1 min-h-[44px] rounded-lg bg-white px-3.5 py-2.5 text-xs sm:text-sm text-ink placeholder:text-ink-500 border border-ink-300 focus:outline-none focus:ring-2 focus:ring-signal"
                 />
                 <button
                   type="submit"
                   disabled={!reply.trim() || sending}
                   className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition-all shadow-sm",
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white transition-colors shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal focus-visible:ring-offset-2",
                     reply.trim() && !sending
-                      ? "bg-[#00a884] hover:bg-[#008f6f] cursor-pointer"
-                      : "bg-[#8696a0] cursor-not-allowed opacity-60"
+                      ? "bg-signal hover:bg-emerald-700 cursor-pointer"
+                      : "bg-ink-300 text-ink-500 cursor-not-allowed"
                   )}
                   aria-label="Kirim Pesan WhatsApp"
                 >

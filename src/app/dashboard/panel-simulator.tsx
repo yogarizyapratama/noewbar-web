@@ -510,14 +510,14 @@ export function PanelSimulator({
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   disabled={simBusy}
-                  className="flex-1 rounded-full border border-ink-300 bg-white px-4 py-2.5 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
+                  className="flex-1 min-h-[44px] rounded-lg border border-ink-300 bg-white px-4 py-2.5 text-xs sm:text-sm text-ink placeholder:text-ink-500 focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal"
                 />
                 <Button
                   type="submit"
                   variant="primary"
                   disabled={!inputMessage.trim() || simBusy}
                   loading={simBusy}
-                  className="rounded-full h-10 w-10 p-0 flex items-center justify-center shrink-0"
+                  className="rounded-lg h-11 w-11 p-0 flex items-center justify-center shrink-0 min-h-[44px] min-w-[44px]"
                 >
                   <Send className="h-4 w-4" aria-hidden="true" />
                 </Button>

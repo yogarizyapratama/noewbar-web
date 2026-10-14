@@ -116,9 +116,9 @@ export function ProductCard({ product, waLink }: ProductCardProps) {
           )}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-slate-900 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-600 transition-all"
+          className="inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-600 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
         >
-          <MessageCircle className="h-3.5 w-3.5" />
+          <MessageCircle className="h-4 w-4" />
           Pesan via WhatsApp
         </a>
       </div>

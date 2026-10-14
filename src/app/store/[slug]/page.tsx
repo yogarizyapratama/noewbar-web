@@ -132,10 +132,10 @@ export default async function PublicStorePage({
                       {section.content?.badge && (
                         <div
                           className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold mb-4 border",
+                            "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold mb-4 border",
                             theme.isDark
                               ? "bg-white/10 text-emerald-300 border-white/20"
-                              : "bg-emerald-100/80 text-emerald-800 border-emerald-200"
+                              : "bg-emerald-50 text-emerald-800 border-emerald-200"
                           )}
                         >
                           <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
@@ -167,7 +167,7 @@ export default async function PublicStorePage({
                           }
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-bold text-white shadow-md hover:bg-emerald-700 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
                         >
                           <MessageCircle className="h-4 w-4" />
                           {section.content?.cta_primary_text || "Pesan via WhatsApp"}
@@ -175,10 +175,10 @@ export default async function PublicStorePage({
                         <a
                           href="#katalog"
                           className={cn(
-                            "inline-flex items-center gap-2 rounded-xl border px-5 py-3.5 text-sm font-semibold shadow-sm transition-all",
+                            "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-semibold shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
                             theme.isDark
                               ? "border-white/20 bg-white/10 text-white hover:bg-white/20"
-                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                              : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
                           )}
                         >
                           <ShoppingBag className="h-4 w-4" />
@@ -409,10 +409,10 @@ export default async function PublicStorePage({
                   {section.content?.badge && (
                     <span
                       className={cn(
-                        "inline-block rounded-full px-3 py-1 text-xs font-bold mb-3 border",
+                        "inline-block rounded-md px-2.5 py-1 text-xs font-bold mb-3 border",
                         theme.isDark
                           ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                          : "bg-emerald-100 text-emerald-800 border-emerald-200"
+                          : "bg-emerald-50 text-emerald-800 border-emerald-200"
                       )}
                     >
                       {section.content.badge}
@@ -469,7 +469,7 @@ export default async function PublicStorePage({
                         }
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-xs font-bold text-white shadow-lg hover:bg-emerald-700 transition-all hover:scale-105"
+                        className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-xs hover:bg-emerald-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
                       >
                         <MessageCircle className="h-4 w-4" />
                         {section.content.button_text}
@@ -552,10 +552,10 @@ export default async function PublicStorePage({
                       {section.content?.badge && (
                         <span
                           className={cn(
-                            "inline-block rounded-full px-3 py-1 text-xs font-semibold mb-3 border",
+                            "inline-block rounded-md px-2.5 py-1 text-xs font-semibold mb-3 border",
                             theme.isDark
                               ? "bg-white/10 text-white border-white/20"
-                              : "bg-slate-200 text-slate-700 border-slate-300"
+                              : "bg-slate-100 text-slate-800 border-slate-200"
                           )}
                         >
                           {section.content.badge}
@@ -592,10 +592,10 @@ export default async function PublicStorePage({
                             target="_blank"
                             rel="noopener noreferrer"
                             className={cn(
-                              "inline-flex items-center gap-2 rounded-xl px-6 py-3 text-xs font-bold shadow-sm transition-all",
+                              "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
                               theme.isDark
                                 ? "bg-white text-slate-900 hover:bg-slate-100"
-                                : "bg-slate-900 text-white hover:bg-emerald-600"
+                                : "bg-slate-900 text-white hover:bg-slate-800"
                             )}
                           >
                             <MessageCircle className="h-4 w-4" />
@@ -634,7 +634,7 @@ export default async function PublicStorePage({
               >
                 <div className="mx-auto max-w-4xl px-5 text-center">
                   {section.content?.badge && (
-                    <span className="inline-block rounded-full bg-amber-400 text-slate-950 px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider mb-3 shadow-sm">
+                    <span className="inline-block rounded-md bg-amber-400 text-slate-950 px-3 py-1 text-xs font-extrabold uppercase tracking-wider mb-3 border border-amber-500/30 shadow-xs">
                       {section.content.badge}
                     </span>
                   )}
@@ -674,7 +674,7 @@ export default async function PublicStorePage({
                       }
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-7 py-3.5 text-xs font-bold text-slate-950 shadow-xl hover:bg-amber-300 transition-all hover:scale-105"
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-amber-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-xs hover:bg-amber-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
                     >
                       <MessageCircle className="h-4 w-4" />
                       {section.content?.button_text || "Klaim Promo via WhatsApp"}
@@ -721,7 +721,7 @@ export default async function PublicStorePage({
                       }
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-xl bg-white px-7 py-4 text-sm font-bold text-emerald-900 shadow-xl hover:bg-emerald-50 transition-all hover:scale-105"
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-white px-7 py-3.5 text-sm font-bold text-emerald-900 shadow-md hover:bg-emerald-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-600"
                     >
                       <MessageCircle className="h-5 w-5 text-emerald-700" />
                       {section.content?.button_text || "Chat WhatsApp Toko"}
@@ -768,8 +768,8 @@ export default async function PublicStorePage({
         href={waLink(`Halo ${tenant.business_name}, saya melihat website resmi Anda dan ingin bertanya.`)}
         target="_blank"
         rel="noopener noreferrer"
-        title="Chat WhatsApp Sekarang"
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-2xl hover:bg-emerald-700 hover:scale-110 active:scale-95 transition-all"
+        aria-label="Chat WhatsApp Sekarang"
+        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
       >
         <MessageCircle className="h-7 w-7" />
         <span className="sr-only">Chat WhatsApp</span>

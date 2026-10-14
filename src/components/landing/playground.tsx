@@ -326,7 +326,7 @@ export function PlaygroundPanel() {
               type="button"
               onClick={() => send(p)}
               disabled={pending}
-              className="rounded-sm border border-ink-200 bg-white px-2.5 py-1.5 text-2xs font-medium text-ink-600 transition-colors hover:border-ink-300 hover:text-ink disabled:opacity-50"
+              className="inline-flex min-h-[36px] items-center rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 transition-colors hover:border-ink-400 hover:text-ink disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal sm:min-h-[30px] sm:py-1 sm:text-2xs"
             >
               {p}
             </button>

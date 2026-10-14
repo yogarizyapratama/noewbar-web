@@ -398,13 +398,13 @@ export function PanelProducts() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-500" />
           <input
             type="text"
             placeholder="Cari nama produk, SKU, atau bahan..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-ink-200 bg-white pl-9 pr-4 py-2 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-1 focus:ring-signal"
+            className="w-full min-h-[44px] rounded-lg border border-ink-300 bg-white pl-10 pr-4 py-2.5 text-xs sm:text-sm text-ink placeholder:text-ink-500 focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal"
           />
         </div>
 
@@ -412,7 +412,8 @@ export function PanelProducts() {
           <select
             value={selectedCat}
             onChange={(e) => setSelectedCat(e.target.value)}
-            className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs text-ink focus:outline-none"
+            aria-label="Filter Kategori"
+            className="min-h-[44px] rounded-lg border border-ink-300 bg-white px-3 py-2 text-xs sm:text-sm text-ink focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal"
           >
             <option value="ALL">Semua Kategori</option>
             {categories.map((c) => (
@@ -425,7 +426,8 @@ export function PanelProducts() {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="rounded-lg border border-ink-200 bg-white px-3 py-2 text-xs text-ink focus:outline-none"
+            aria-label="Filter Status"
+            className="min-h-[44px] rounded-lg border border-ink-300 bg-white px-3 py-2 text-xs sm:text-sm text-ink focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal"
           >
             <option value="ALL">Semua Status</option>
             <option value="ACTIVE">Aktif</option>
@@ -537,30 +539,33 @@ export function PanelProducts() {
                           </Badge>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+                          <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => openEdit(p)}
-                              className="rounded p-1 text-ink-500 hover:bg-ink-100 hover:text-ink"
+                              className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md p-1.5 text-ink-600 hover:bg-ink-100 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                              aria-label={`Edit Produk ${p.name}`}
                               title="Edit Produk"
                             >
-                              <Edit2 className="h-3.5 w-3.5" />
+                              <Edit2 className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleArchive(p.id, p.status)}
-                              className="rounded p-1 text-ink-500 hover:bg-ink-100 hover:text-ink"
+                              className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md p-1.5 text-ink-600 hover:bg-ink-100 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                              aria-label={p.status === "ARCHIVED" ? `Aktifkan Produk ${p.name}` : `Arsipkan Produk ${p.name}`}
                               title={p.status === "ARCHIVED" ? "Aktifkan" : "Arsipkan"}
                             >
-                              <Archive className="h-3.5 w-3.5" />
+                              <Archive className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => setDeleteTarget({ id: p.id, name: p.name })}
-                              className="rounded p-1 text-danger hover:bg-danger-wash hover:text-danger-strong"
+                              className="inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md p-1.5 text-danger hover:bg-danger-wash hover:text-danger-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+                              aria-label={`Hapus Produk ${p.name}`}
                               title="Hapus Produk"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         </td>

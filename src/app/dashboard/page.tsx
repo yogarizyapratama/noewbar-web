@@ -480,23 +480,23 @@ export default function DashboardPage() {
           aria-modal="true"
           aria-labelledby="expiry-modal-title"
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
-            <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-full ${isExpired ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600"}`}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-overlay border border-ink-200">
+            <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl border ${isExpired ? "bg-danger-wash text-danger-strong border-danger/25" : "bg-warn-wash text-warn-strong border-warn/25"}`}>
               <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
               </svg>
             </div>
-            <h2 id="expiry-modal-title" className="mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            <h2 id="expiry-modal-title" className="mb-2 text-lg font-bold text-ink">
               {isExpired ? "Langganan Anda Telah Berakhir" : "Langganan Hampir Habis"}
             </h2>
-            <p className="mb-5 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mb-5 text-sm text-ink-600 leading-relaxed">
               {isExpired
                 ? "Semua fitur kecuali halaman Langganan telah dinonaktifkan. Perbarui paket untuk mengaktifkan kembali layanan toko Anda."
                 : `Langganan Anda berakhir dalam ${daysLeft} hari. Perbarui sekarang agar layanan tidak terganggu.`}
             </p>
             <div className="flex gap-3">
               <button
-                className="flex-1 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="flex-1 min-h-[44px] rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                 onClick={() => {
                   setShowExpiryModal(false);
                   setTab("billing");
@@ -507,7 +507,7 @@ export default function DashboardPage() {
               </button>
               {!isExpired && (
                 <button
-                  className="rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="min-h-[44px] rounded-lg border border-ink-300 px-4 py-2.5 text-sm font-medium text-ink-700 transition hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                   onClick={() => {
                     setShowExpiryModal(false);
                     setExpiryDismissed(true);
@@ -735,17 +735,17 @@ export default function DashboardPage() {
       {/* Expired state: show informational overlay inside AppShell content area */}
       {isExpired && tab !== "billing" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-500">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-danger/25 bg-danger-wash text-danger-strong">
             <svg className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
           </div>
-          <h2 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200">Langganan Tidak Aktif</h2>
-          <p className="max-w-sm text-sm text-zinc-500">
+          <h2 className="text-lg font-bold text-ink">Langganan Tidak Aktif</h2>
+          <p className="max-w-sm text-sm text-ink-600 leading-relaxed">
             Fitur ini tidak tersedia karena langganan Anda telah berakhir.
           </p>
           <button
-            className="mt-2 rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
+            className="mt-2 min-h-[44px] rounded-lg bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-ink-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
             onClick={() => { setTab("billing"); loadBilling(); }}
           >
             Perbarui Langganan

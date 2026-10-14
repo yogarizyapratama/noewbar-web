@@ -733,12 +733,12 @@ export default function SuperadminPage() {
                     Console
                   </span>
                   {ks.disabled ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-danger/20 bg-danger-wash px-2 py-0.5 text-[10px] font-bold text-danger-strong animate-pulse">
+                    <span className="inline-flex items-center gap-1 rounded border border-danger/20 bg-danger-wash px-2 py-0.5 text-[10px] font-bold text-danger-strong animate-pulse">
                       <span className="h-1.5 w-1.5 rounded-full bg-danger" />
                       Kill-Switch Aktif
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-signal/20 bg-signal-wash px-2 py-0.5 text-[10px] font-medium text-signal-strong">
+                    <span className="inline-flex items-center gap-1 rounded border border-signal/20 bg-signal-wash px-2 py-0.5 text-[10px] font-medium text-signal-strong">
                       <span className="h-1.5 w-1.5 rounded-full bg-signal" />
                       Sistem Stabil
                     </span>

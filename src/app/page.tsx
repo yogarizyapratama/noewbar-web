@@ -273,7 +273,7 @@ export default function LandingPage() {
               <p className="font-mono text-3xl font-bold tracking-tight text-white sm:text-4xl">
                 {s.value}
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-ink-300">{s.label}</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink-200">{s.label}</p>
             </div>
           ))}
         </div>

@@ -231,13 +231,13 @@ export function PanelWhatsapp({
         <CardBody className="p-0">
           <dl className="divide-y divide-ink-200">
             <div className="flex items-baseline justify-between gap-4 px-5 py-2.5">
-              <dt className="text-xs text-ink-500">Nomor terpasang</dt>
+              <dt className="text-xs text-ink-600">Nomor terpasang</dt>
               <dd className="font-mono text-xs font-medium text-ink">
                 {health?.whatsapp?.phone_number ?? "belum terhubung"}
               </dd>
             </div>
             <div className="flex items-baseline justify-between gap-4 px-5 py-2.5">
-              <dt className="text-xs text-ink-500">Server WhatsApp</dt>
+              <dt className="text-xs text-ink-600">Server WhatsApp</dt>
               <dd
                 className={cn(
                   "font-mono text-xs font-medium",
@@ -248,7 +248,7 @@ export function PanelWhatsapp({
               </dd>
             </div>
             <div className="flex items-baseline justify-between gap-4 px-5 py-2.5">
-              <dt className="text-xs text-ink-500">Catatan sistem</dt>
+              <dt className="text-xs text-ink-600">Catatan sistem</dt>
               <dd className="truncate font-mono text-xs font-medium text-ink">
                 {health?.whatsapp?.error ?? "normal"}
               </dd>

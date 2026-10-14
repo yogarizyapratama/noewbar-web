@@ -371,22 +371,22 @@ export function NotificationBell({
           if (hasNewAlert) setHasNewAlert(false);
         }}
         className={cn(
-          "relative p-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 flex items-center justify-center",
+          "relative p-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal flex items-center justify-center",
           isDark
             ? "text-slate-400 hover:text-white hover:bg-slate-800"
-            : "text-ink-500 hover:text-ink hover:bg-ink-50 border border-ink-200"
+            : "text-ink-600 hover:text-ink hover:bg-ink-100 border border-ink-200"
         )}
         aria-label="Notifikasi Real-time"
         title="Lihat notifikasi real-time"
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white shadow-sm font-mono">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white shadow-xs font-mono">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
         {hasNewAlert && (
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-indigo-500 animate-ping" />
+          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-signal animate-ping" />
         )}
       </button>
 
@@ -394,7 +394,7 @@ export function NotificationBell({
       {open && (
         <div
           className={cn(
-            "absolute right-0 mt-2 z-50 w-80 sm:w-96 rounded-2xl border shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150",
+            "absolute right-0 mt-2 z-50 w-80 sm:w-96 rounded-2xl border shadow-overlay overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150",
             isDark
               ? "bg-slate-900 border-slate-750 text-slate-100"
               : "bg-white border-ink-200 text-ink"
@@ -404,16 +404,16 @@ export function NotificationBell({
           <div
             className={cn(
               "px-4 py-3 border-b flex items-center justify-between",
-              isDark ? "border-slate-800 bg-slate-950/80" : "border-ink-100 bg-ink-50/60"
+              isDark ? "border-slate-800 bg-slate-950/80" : "border-ink-200 bg-ink-50/80"
             )}
           >
             <div className="flex items-center gap-2">
-              <Bell className="h-4 w-4 text-indigo-500" />
-              <h4 className="text-xs font-bold tracking-tight">
+              <Bell className="h-4 w-4 text-signal" />
+              <h4 className="text-xs font-bold tracking-tight text-ink">
                 {scope === "tenant" ? "Notifikasi Toko" : "Notifikasi Konsol Platform"}
               </h4>
               {unreadCount > 0 && (
-                <span className="whitespace-nowrap rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold text-white font-mono">
+                <span className="whitespace-nowrap rounded-md bg-signal px-2 py-0.5 text-[10px] font-bold text-white font-mono">
                   {unreadCount} baru
                 </span>
               )}
@@ -424,8 +424,8 @@ export function NotificationBell({
                   type="button"
                   onClick={markAllAsRead}
                   className={cn(
-                    "font-medium transition-colors hover:underline",
-                    isDark ? "text-indigo-400" : "text-indigo-600"
+                    "font-medium transition-colors hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-signal",
+                    isDark ? "text-emerald-400" : "text-signal-strong"
                   )}
                   title="Tandai semua telah dibaca"
                 >
@@ -464,14 +464,14 @@ export function NotificationBell({
               type="button"
               onClick={() => setFilter("all")}
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition-colors",
+                "min-h-[32px] px-3 py-1 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
                 filter === "all"
                   ? isDark
-                    ? "bg-indigo-600 text-white font-semibold"
-                    : "bg-ink-900 text-white font-semibold"
+                    ? "bg-signal text-white font-semibold"
+                    : "bg-ink text-white font-semibold"
                   : isDark
                   ? "text-slate-400 hover:text-white hover:bg-slate-800"
-                  : "text-ink-500 hover:text-ink hover:bg-ink-50"
+                  : "text-ink-600 hover:text-ink hover:bg-ink-100"
               )}
             >
               Semua ({notifications.length})
@@ -480,14 +480,14 @@ export function NotificationBell({
               type="button"
               onClick={() => setFilter("unread")}
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition-colors",
+                "min-h-[32px] px-3 py-1 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
                 filter === "unread"
                   ? isDark
-                    ? "bg-indigo-600 text-white font-semibold"
-                    : "bg-ink-900 text-white font-semibold"
+                    ? "bg-signal text-white font-semibold"
+                    : "bg-ink text-white font-semibold"
                   : isDark
                   ? "text-slate-400 hover:text-white hover:bg-slate-800"
-                  : "text-ink-500 hover:text-ink hover:bg-ink-50"
+                  : "text-ink-600 hover:text-ink hover:bg-ink-100"
               )}
             >
               Belum Dibaca ({unreadCount})
@@ -527,8 +527,8 @@ export function NotificationBell({
                     "p-3.5 flex items-start gap-3 cursor-pointer transition-colors text-xs",
                     !item.read
                       ? isDark
-                        ? "bg-indigo-950/20 hover:bg-indigo-950/40"
-                        : "bg-indigo-50/40 hover:bg-indigo-50/70"
+                        ? "bg-emerald-950/20 hover:bg-emerald-950/40"
+                        : "bg-signal-wash/60 hover:bg-signal-wash"
                       : isDark
                       ? "hover:bg-slate-850/60"
                       : "hover:bg-ink-50/60"
