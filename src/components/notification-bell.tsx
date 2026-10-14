@@ -12,7 +12,7 @@
  * - Zero em-dash di seluruh teks.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bell,
   Check,
@@ -44,10 +44,12 @@ export function NotificationBell({
   scope,
   theme = "light",
   onNavigate,
+  externalEvent,
 }: {
   scope: "tenant" | "admin";
   theme?: "light" | "dark";
   onNavigate?: (targetTab: string) => void;
+  externalEvent?: { type?: string; [key: string]: unknown } | null;
 }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -107,175 +109,180 @@ export function NotificationBell({
     }
   }, [notifications, storageKey]);
 
-  // 2. Realtime SSE Listener
+  // 2. Realtime Event Processor
+  const processEvent = useCallback((data: { type?: string; [key: string]: unknown }) => {
+    const eventType = data.type as AppNotification["type"];
+    if (!eventType) return;
+
+    let notifItem: AppNotification | null = null;
+    const now = new Date().toISOString();
+
+    if (scope === "tenant") {
+      switch (eventType) {
+        case "order":
+          notifItem = {
+            id: `order-${Date.now()}`,
+            type: "order",
+            title: "Pesanan Baru Masuk",
+            description: "Pelanggan baru saja menyelesaikan pembuatan pesanan.",
+            timestamp: now,
+            read: false,
+            targetTab: "pesanan",
+          };
+          break;
+        case "proof":
+          notifItem = {
+            id: `proof-${Date.now()}`,
+            type: "proof",
+            title: "Bukti Transfer Baru Diunggah",
+            description: "Pembeli telah mengirimkan foto bukti transfer pembayaran, mohon verifikasi.",
+            timestamp: now,
+            read: false,
+            targetTab: "pesanan",
+          };
+          break;
+        case "verified":
+          notifItem = {
+            id: `verified-${Date.now()}`,
+            type: "verified",
+            title: "Pembayaran Terverifikasi",
+            description: "Pesanan telah dikonfirmasi lunas dan siap diproses pengiriman.",
+            timestamp: now,
+            read: false,
+            targetTab: "pesanan",
+          };
+          break;
+        case "chat":
+          notifItem = {
+            id: `chat-${Date.now()}`,
+            type: "chat",
+            title: "Pesan WhatsApp Masuk",
+            description: "Percakapan baru dari pembeli masuk dan ditangani oleh bot.",
+            timestamp: now,
+            read: false,
+            targetTab: "chat",
+          };
+          break;
+        case "wa_status":
+          notifItem = {
+            id: `wa-${Date.now()}`,
+            type: "wa_status",
+            title: "Perubahan Sesi WhatsApp",
+            description: "Status koneksi daemon WhatsMeow toko Anda telah diperbarui.",
+            timestamp: now,
+            read: false,
+            targetTab: "whatsapp",
+          };
+          break;
+        case "billing":
+          notifItem = {
+            id: `bill-${Date.now()}`,
+            type: "billing",
+            title: "Status Langganan Diperbarui",
+            description: "Perubahan paket langganan atau siklus billing toko telah dicatat.",
+            timestamp: now,
+            read: false,
+            targetTab: "billing",
+          };
+          break;
+      }
+    } else {
+      // Scope Admin (Superadmin Platform)
+      const detail = typeof data.detail === "string" ? data.detail : undefined;
+      switch (eventType) {
+        case "killswitch":
+          notifItem = {
+            id: `ks-${Date.now()}`,
+            type: "killswitch",
+            title: "Status Emergency Kill-Switch",
+            description: detail ?? "Saklar darurat bot global diubah statusnya oleh operator.",
+            timestamp: now,
+            read: false,
+            targetTab: "killswitch",
+          };
+          break;
+        case "fleet":
+          notifItem = {
+            id: `fleet-${Date.now()}`,
+            type: "fleet",
+            title: detail ? `Fleet WhatsApp: ${detail}` : "Aktivitas Fleet & Tenant",
+            description: detail ?? "Pembaruan instance WhatsApp atau perubahan status tenant toko.",
+            timestamp: now,
+            read: false,
+            targetTab: "fleet",
+          };
+          break;
+        case "alert":
+          notifItem = {
+            id: `alert-${Date.now()}`,
+            type: "alert",
+            title: "Operasi Pemeliharaan Platform",
+            description: detail ?? "Siklus sweep pemeliharaan sistem atau uji saluran alert dieksekusi.",
+            timestamp: now,
+            read: false,
+            targetTab: "infrastructure",
+          };
+          break;
+        case "billing":
+          notifItem = {
+            id: `admin-bill-${Date.now()}`,
+            type: "billing",
+            title: "Transaksi Webhook Midtrans",
+            description: detail ?? "Webhook pembayaran langganan baru masuk dan direkonsiliasi.",
+            timestamp: now,
+            read: false,
+            targetTab: "financials",
+          };
+          break;
+        case "wa_status":
+          notifItem = {
+            id: `admin-wa-${Date.now()}`,
+            type: "wa_status",
+            title: "Status WhatsApp Berubah",
+            description: detail ?? "Status koneksi WhatsApp diperbarui.",
+            timestamp: now,
+            read: false,
+            targetTab: "fleet",
+          };
+          break;
+      }
+    }
+
+    if (notifItem) {
+      // Dedupe: collapse same-type events arriving within 5s into one item
+      // (a single admin click fans out multiple same-type events).
+      setNotifications((prev) => {
+        const first = prev[0];
+        const incomingAt = Date.parse(notifItem!.timestamp);
+        if (
+          first &&
+          first.type === notifItem!.type &&
+          first.title === notifItem!.title &&
+          incomingAt - Date.parse(first.timestamp) < 5000
+        ) {
+          return prev;
+        }
+        return [notifItem!, ...prev.slice(0, 49)];
+      });
+      setHasNewAlert(true);
+    }
+  }, [scope]);
+
+  // Use external event stream if parent provides one, otherwise fallback to own EventSource
   useEffect(() => {
+    if (externalEvent !== undefined) {
+      if (externalEvent) processEvent(externalEvent);
+      return;
+    }
     if (typeof window === "undefined") return;
     const url = `/api/realtime?scope=${scope}`;
     const es = new EventSource(url);
 
     es.onmessage = (ev) => {
-      let data: { type?: string; [key: string]: unknown } = {};
       try {
-        data = JSON.parse(ev.data);
-      } catch {
-        return;
-      }
-
-      const eventType = data.type as AppNotification["type"];
-      if (!eventType) return;
-
-      let notifItem: AppNotification | null = null;
-      const now = new Date().toISOString();
-
-      if (scope === "tenant") {
-        switch (eventType) {
-          case "order":
-            notifItem = {
-              id: `order-${Date.now()}`,
-              type: "order",
-              title: "Pesanan Baru Masuk",
-              description: "Pelanggan baru saja menyelesaikan pembuatan pesanan.",
-              timestamp: now,
-              read: false,
-              targetTab: "pesanan",
-            };
-            break;
-          case "proof":
-            notifItem = {
-              id: `proof-${Date.now()}`,
-              type: "proof",
-              title: "Bukti Transfer Baru Diunggah",
-              description: "Pembeli telah mengirimkan foto bukti transfer pembayaran, mohon verifikasi.",
-              timestamp: now,
-              read: false,
-              targetTab: "pesanan",
-            };
-            break;
-          case "verified":
-            notifItem = {
-              id: `verified-${Date.now()}`,
-              type: "verified",
-              title: "Pembayaran Terverifikasi",
-              description: "Pesanan telah dikonfirmasi lunas dan siap diproses pengiriman.",
-              timestamp: now,
-              read: false,
-              targetTab: "pesanan",
-            };
-            break;
-          case "chat":
-            notifItem = {
-              id: `chat-${Date.now()}`,
-              type: "chat",
-              title: "Pesan WhatsApp Masuk",
-              description: "Percakapan baru dari pembeli masuk dan ditangani oleh bot.",
-              timestamp: now,
-              read: false,
-              targetTab: "chat",
-            };
-            break;
-          case "wa_status":
-            notifItem = {
-              id: `wa-${Date.now()}`,
-              type: "wa_status",
-              title: "Perubahan Sesi WhatsApp",
-              description: "Status koneksi daemon WhatsMeow toko Anda telah diperbarui.",
-              timestamp: now,
-              read: false,
-              targetTab: "whatsapp",
-            };
-            break;
-          case "billing":
-            notifItem = {
-              id: `bill-${Date.now()}`,
-              type: "billing",
-              title: "Status Langganan Diperbarui",
-              description: "Perubahan paket langganan atau siklus billing toko telah dicatat.",
-              timestamp: now,
-              read: false,
-              targetTab: "billing",
-            };
-            break;
-        }
-      } else {
-        // Scope Admin (Superadmin Platform)
-        const detail = typeof data.detail === "string" ? data.detail : undefined;
-        switch (eventType) {
-          case "killswitch":
-            notifItem = {
-              id: `ks-${Date.now()}`,
-              type: "killswitch",
-              title: "Status Emergency Kill-Switch",
-              description: detail ?? "Saklar darurat bot global diubah statusnya oleh operator.",
-              timestamp: now,
-              read: false,
-              targetTab: "killswitch",
-            };
-            break;
-          case "fleet":
-            notifItem = {
-              id: `fleet-${Date.now()}`,
-              type: "fleet",
-              title: detail ? `Fleet WhatsApp: ${detail}` : "Aktivitas Fleet & Tenant",
-              description: detail ?? "Pembaruan instance WhatsApp atau perubahan status tenant toko.",
-              timestamp: now,
-              read: false,
-              targetTab: "fleet",
-            };
-            break;
-          case "alert":
-            notifItem = {
-              id: `alert-${Date.now()}`,
-              type: "alert",
-              title: "Operasi Pemeliharaan Platform",
-              description: detail ?? "Siklus sweep pemeliharaan sistem atau uji saluran alert dieksekusi.",
-              timestamp: now,
-              read: false,
-              targetTab: "infrastructure",
-            };
-            break;
-          case "billing":
-            notifItem = {
-              id: `admin-bill-${Date.now()}`,
-              type: "billing",
-              title: "Transaksi Webhook Midtrans",
-              description: detail ?? "Webhook pembayaran langganan baru masuk dan direkonsiliasi.",
-              timestamp: now,
-              read: false,
-              targetTab: "financials",
-            };
-            break;
-          case "wa_status":
-            notifItem = {
-              id: `admin-wa-${Date.now()}`,
-              type: "wa_status",
-              title: "Status WhatsApp Berubah",
-              description: detail ?? "Status koneksi WhatsApp diperbarui.",
-              timestamp: now,
-              read: false,
-              targetTab: "fleet",
-            };
-            break;
-        }
-      }
-
-      if (notifItem) {
-        // Dedupe: collapse same-type events arriving within 5s into one item
-        // (a single admin click fans out multiple same-type events).
-        setNotifications((prev) => {
-          const first = prev[0];
-          const incomingAt = Date.parse(notifItem!.timestamp);
-          if (
-            first &&
-            first.type === notifItem!.type &&
-            first.title === notifItem!.title &&
-            incomingAt - Date.parse(first.timestamp) < 5000
-          ) {
-            return prev;
-          }
-          return [notifItem!, ...prev.slice(0, 49)];
-        });
-        setHasNewAlert(true);
-      }
+        const data = JSON.parse(ev.data);
+        processEvent(data);
+      } catch {}
     };
 
     es.onerror = () => {
@@ -283,7 +290,7 @@ export function NotificationBell({
     };
 
     return () => es.close();
-  }, [scope]);
+  }, [externalEvent, processEvent, scope]);
 
   // Click outside listener untuk menutup dropdown
   useEffect(() => {

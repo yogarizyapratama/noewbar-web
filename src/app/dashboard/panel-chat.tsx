@@ -355,15 +355,15 @@ export function PanelChat({
                   </button>
 
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#dfe5e7] text-[#54656f] font-bold text-xs">
-                    {(active.buyer_name || active.buyer_jid.slice(0, 2)).slice(0, 2).toUpperCase()}
+                    {(active.buyer_name || (active.buyer_jid ? active.buyer_jid.slice(0, 2) : "WA")).slice(0, 2).toUpperCase()}
                   </div>
 
                   <div className="min-w-0">
                     <p className="font-bold text-xs text-[#111b21] truncate">
-                      {active.buyer_name || active.buyer_jid.replace(/@s\.whatsapp\.net$/, "")}
+                      {active.buyer_name || (active.buyer_jid ? active.buyer_jid.replace(/@s\.whatsapp\.net$/, "") : "-")}
                     </p>
                     <p className="text-[10px] text-[#667781] flex items-center gap-1.5 truncate">
-                      <span className="font-mono">{active.buyer_jid.split("@")[0]}</span>
+                      <span className="font-mono">{active.buyer_jid ? active.buyer_jid.split("@")[0] : "-"}</span>
                       <span>&bull;</span>
                       <span className="text-[#00a884] font-medium">WhatsApp Online</span>
                     </p>

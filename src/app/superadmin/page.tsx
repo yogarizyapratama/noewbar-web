@@ -249,6 +249,7 @@ export default function SuperadminPage() {
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [liveEvent, setLiveEvent] = useState<string | null>(null);
+  const [realtimeEvent, setRealtimeEvent] = useState<{ type?: string; [key: string]: unknown } | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   // Filters & Search
@@ -316,7 +317,16 @@ export default function SuperadminPage() {
     setSaPolling(true);
     setSaCountdown(15);
     clearSaTimer();
+    let attempts = 0;
+    const maxAttempts = 30; // 60 seconds
     saTimerRef.current = setInterval(async () => {
+      attempts += 1;
+      if (attempts >= maxAttempts) {
+        clearSaTimer();
+        setSaPolling(false);
+        setMsg({ text: "Waktu pairing WhatsApp habis. Silakan muat ulang QR jika belum terhubung.", tone: "error" });
+        return;
+      }
       setSaCountdown((c) => (c > 0 ? c - 1 : 0));
       try {
         const res = await fetch("/api/superadmin", {
@@ -342,7 +352,7 @@ export default function SuperadminPage() {
         // backoff
       }
     }, 2000);
-  }, [clearSaTimer, load]);
+  }, [clearSaTimer, load, setMsg]);
 
   const handleStartSaWa = async () => {
     setSaBusy(true);
@@ -436,12 +446,14 @@ export default function SuperadminPage() {
     if (!authed) return;
     const es = new EventSource("/api/realtime?scope=admin");
     es.onmessage = (ev) => {
-      let type = "";
+      let data: { type?: string; [key: string]: unknown } = {};
       try {
-        type = (JSON.parse(ev.data) as { type?: string }).type ?? "";
+        data = JSON.parse(ev.data);
       } catch {
         return;
       }
+      setRealtimeEvent(data);
+      const type = data.type ?? "";
       if (type === "fleet" || type === "killswitch" || type === "billing" || type === "alert") {
         setLiveEvent(type);
         load();
@@ -805,6 +817,7 @@ export default function SuperadminPage() {
             <NotificationBell
               scope="admin"
               theme="light"
+              externalEvent={realtimeEvent}
               onNavigate={(targetTab) => setActiveSection(targetTab as NavigationSection)}
             />
 

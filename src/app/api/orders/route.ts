@@ -70,14 +70,14 @@ export async function POST(req: NextRequest) {
 
   const body = parsed.data;
 
-  if (body.action === "sweep_expired") {
-    const res = await expireStaleReservations();
-    return ok({ action: "sweep_expired", ...res });
-  }
-
   const subInfo = await getTenantSubscriptionInfo(session.sub);
   if (subInfo.isExpired) {
     return fail("Langganan Anda telah berakhir. Perbarui paket untuk menggunakan fitur ini.", 403);
+  }
+
+  if (body.action === "sweep_expired") {
+    const res = await expireStaleReservations(session.sub);
+    return ok({ action: "sweep_expired", ...res });
   }
 
   if (body.action === "release") {

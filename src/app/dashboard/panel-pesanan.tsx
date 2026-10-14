@@ -92,7 +92,7 @@ export function PanelPesanan({
       `"${o.order_status_label}"`,
       `"${o.payment_status_label}"`,
       `"${(o.buyer_name ?? "").replace(/"/g, '""')}"`,
-      `"${o.buyer_jid.split("@")[0]}"`,
+      `"${o.buyer_jid ? o.buyer_jid.split("@")[0] : "-"}"`,
       o.total_amount,
       `"${o.courier ?? ""}"`,
       `"${(o.destination_subdistrict ?? "").replace(/"/g, '""')}"`,
@@ -262,7 +262,7 @@ export function PanelPesanan({
                     <p className="mt-1.5 text-sm text-ink-600">
                       {o.buyer_name ?? "Tanpa nama"}{" "}
                       <span className="font-mono text-xs text-ink-400">
-                        {o.buyer_jid.split("@")[0]}
+                        {o.buyer_jid ? o.buyer_jid.split("@")[0] : "-"}
                       </span>
                     </p>
                     <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-500">
@@ -299,7 +299,7 @@ export function PanelPesanan({
                       {o.items.map((it) => (
                         <tr key={it.sku}>
                           <td className="py-2 font-mono text-ink-600">{it.sku}</td>
-                          <td className="py-2 text-ink">
+                          <td className="py-2 text-ink break-words max-w-xs">
                             {it.name}
                             {it.variant ? (
                               <span className="text-ink-500"> - {it.variant}</span>

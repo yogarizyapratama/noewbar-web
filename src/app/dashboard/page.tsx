@@ -9,7 +9,7 @@
  * catalog, orders with owner-only verification, conversation takeover, billing.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   CreditCard,
@@ -184,6 +184,10 @@ export default function DashboardPage() {
 
   const [conversations, setConversations] = useState<ConversationRow[]>([]);
   const [activeConv, setActiveConv] = useState<string | null>(null);
+  const activeConvRef = useRef<string | null>(activeConv);
+  useEffect(() => {
+    activeConvRef.current = activeConv;
+  }, [activeConv]);
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
 
@@ -306,6 +310,8 @@ export default function DashboardPage() {
     return () => clearInterval(t);
   }, [activeConv, loadThread]);
 
+  const [realtimeEvent, setRealtimeEvent] = useState<{ type?: string; [key: string]: unknown } | null>(null);
+
   // Server-Sent Events: the backend pushes "something changed" so open
   // dashboards refresh immediately instead of waiting for the next poll.
   useEffect(() => {
@@ -313,17 +319,19 @@ export default function DashboardPage() {
     const es = new EventSource("/api/realtime?scope=tenant");
 
     es.onmessage = (ev) => {
-      let type = "";
+      let data: { type?: string; [key: string]: unknown } = {};
       try {
-        type = (JSON.parse(ev.data) as { type?: string }).type ?? "";
+        data = JSON.parse(ev.data);
       } catch {
         return;
       }
+      setRealtimeEvent(data);
+      const type = data.type ?? "";
       if (!type) return;
       setLive(type);
       if (type === "chat") {
         loadConversations();
-        if (activeConv) loadThread(activeConv);
+        if (activeConvRef.current) loadThread(activeConvRef.current);
       } else if (type === "order" || type === "proof" || type === "verified") {
         loadOrders();
       } else if (type === "billing" || type === "wa_status") {
@@ -337,7 +345,7 @@ export default function DashboardPage() {
     };
 
     return () => es.close();
-  }, [authed, activeConv, loadConversations, loadThread, loadOrders, loadHealth, loadBilling]);
+  }, [authed, loadConversations, loadThread, loadOrders, loadHealth, loadBilling]);
 
   useEffect(() => {
     if (!live) return;
@@ -534,6 +542,7 @@ export default function DashboardPage() {
           <NotificationBell
             scope="tenant"
             theme="light"
+            externalEvent={realtimeEvent}
             onNavigate={(targetTab) => setTab(targetTab as TabId)}
           />
         </div>
@@ -648,16 +657,21 @@ export default function DashboardPage() {
 
       {tab === "website" && <PanelWebsiteBuilder />}
 
-      {tab === "promos" && health && (
-        <PanelPromos
-          initialPromoRules={health.promos?.promo_rules ?? []}
-          initialVouchers={health.promos?.voucher_rules ?? []}
-          initialShipping={health.shipping}
-          onRefresh={() => {
-            loadHealth();
-          }}
-        />
-      )}
+      {tab === "promos" &&
+        (health ? (
+          <PanelPromos
+            initialPromoRules={health.promos?.promo_rules ?? []}
+            initialVouchers={health.promos?.voucher_rules ?? []}
+            initialShipping={health.shipping}
+            onRefresh={() => {
+              loadHealth();
+            }}
+          />
+        ) : (
+          <div className="rounded-2xl border border-ink-100 bg-white p-8 text-center text-ink-600 shadow-sm">
+            <p className="text-sm">Memuat pengaturan promosi dan diskon...</p>
+          </div>
+        ))}
 
       {tab === "whatsapp" && <PanelWhatsapp health={health} onRefreshHealth={loadHealth} />}
 

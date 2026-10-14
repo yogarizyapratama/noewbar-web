@@ -535,7 +535,7 @@ export function PanelStatus({
                           </span>
                         </div>
                         <p className="mt-1 text-xs text-ink-600 truncate">
-                          {ord.buyer_name || "Pelanggan WhatsApp"} ({ord.buyer_jid.split("@")[0]})
+                          {ord.buyer_name || "Pelanggan WhatsApp"} ({ord.buyer_jid ? ord.buyer_jid.split("@")[0] : "-"})
                           {ord.items.length > 0 && (
                             <span className="text-ink-400 ml-1">
                               • {ord.items[0].name} {ord.items.length > 1 ? `+${ord.items.length - 1} item` : ""}
@@ -703,7 +703,7 @@ export function PanelStatus({
                   >
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-ink truncate">
-                        {conv.buyer_name || conv.buyer_jid.split("@")[0]}
+                        {conv.buyer_name || (conv.buyer_jid ? conv.buyer_jid.split("@")[0] : "-")}
                       </span>
                       <span className="text-[10px] text-ink-400 font-mono">
                         {timeAgo(conv.last_interaction)}

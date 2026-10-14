@@ -43,7 +43,7 @@ const bodySchema = z.discriminatedUnion("action", [
     business_name: z.string().min(2),
     owner_name: z.string().min(2),
     email: z.string().email(),
-    password: z.string().min(6),
+    password: z.string().min(8),
     owner_whatsapp: z.string().min(8),
     status: z.enum(["TRIAL", "ACTIVE"]).default("TRIAL"),
     trial_days: z.number().int().min(1).max(365).default(14),

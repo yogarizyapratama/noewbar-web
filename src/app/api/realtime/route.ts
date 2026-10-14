@@ -32,50 +32,56 @@ export async function GET(req: NextRequest) {
 
   // SSE framing.
   const encoder = new TextEncoder();
+  let cleanup: (() => void) | null = null;
+
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(encoder.encode("retry: 5000\n\n"));
 
-      const unsubscribe = eventBus.subscribe(channel, (event) => {
+      let cleanedUp = false;
+      let heartbeat: NodeJS.Timeout | null = null;
+      let unsubscribe: (() => void) | null = null;
+
+      const doCleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        if (heartbeat) clearInterval(heartbeat);
+        unsubscribe?.();
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
+      };
+      cleanup = doCleanup;
+
+      unsubscribe = eventBus.subscribe(channel, (event) => {
         try {
           // Send as a DEFAULT message event (no `event:` line): the browser
           // client listens via `EventSource.onmessage`, which only receives
           // unnamed events. The type travels inside the JSON payload.
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         } catch {
-          // Client gone; the unsubscribe below will clean up.
+          doCleanup();
         }
       });
 
       // Heartbeat every 25s keeps proxies from killing the connection.
-      const heartbeat = setInterval(() => {
+      heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(": ping\n\n"));
         } catch {
-          clearInterval(heartbeat);
-          unsubscribe();
-          try {
-            controller.close();
-          } catch {
-            /* already closed */
-          }
+          doCleanup();
         }
       }, 25_000);
 
       // Cleanup when the client disconnects.
       req.signal.addEventListener("abort", () => {
-        clearInterval(heartbeat);
-        unsubscribe();
-        try {
-          controller.close();
-        } catch {
-          /* already closed */
-        }
+        doCleanup();
       });
     },
     cancel() {
-      // ReadableStream cancel path: nothing extra needed, listeners are tied to
-      // the abort signal above.
+      cleanup?.();
     },
   });
 

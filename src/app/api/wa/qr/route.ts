@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { ok, fail } from "@/lib/http";
 import { requireTenant } from "@/lib/auth";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 import { waDaemon } from "@/lib/wa/daemon-client";
 import { env } from "@/lib/env";
 import { generateInstanceKey } from "@/lib/crypto";
@@ -36,6 +37,13 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return fail("Invalid action", 422, parsed.error.issues);
 
   const { action } = parsed.data;
+
+  if (action === "start") {
+    const subInfo = await getTenantSubscriptionInfo(session.sub);
+    if (subInfo.isExpired) {
+      return fail("Langganan toko Anda telah berakhir. Perbarui paket untuk menghubungkan WhatsApp.", 403);
+    }
+  }
 
   // Always operate on an instance owned by the session's tenant.
   let instance = parsed.data.instance_key

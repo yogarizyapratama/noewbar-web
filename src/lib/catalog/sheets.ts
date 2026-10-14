@@ -43,10 +43,43 @@ function normaliseHeader(raw: string): string {
   return raw.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+export function isSafePublicUrl(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === "localhost" ||
+      hostname.endsWith(".localhost") ||
+      hostname.endsWith(".local") ||
+      hostname === "0.0.0.0" ||
+      hostname === "::1" ||
+      hostname === "[::1]"
+    ) {
+      return false;
+    }
+    const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (match) {
+      const o1 = Number(match[1]);
+      const o2 = Number(match[2]);
+      if (o1 === 127) return false;
+      if (o1 === 10) return false;
+      if (o1 === 172 && o2 >= 16 && o2 <= 31) return false;
+      if (o1 === 192 && o2 === 168) return false;
+      if (o1 === 169 && o2 === 254) return false;
+      if (o1 === 0) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Converts a published Sheets URL into its CSV export endpoint. */
 export function toCsvExportUrl(url: string): string | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
+  if (!isSafePublicUrl(trimmed)) return null;
 
   // Already a CSV export or a raw CSV link.
   if (trimmed.includes("output=csv") || trimmed.endsWith(".csv")) return trimmed;

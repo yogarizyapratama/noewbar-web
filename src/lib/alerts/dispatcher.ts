@@ -68,7 +68,7 @@ export async function escalateToOwner(input: EscalationInput): Promise<DispatchR
   }
 
   const lines = [
-    `Pembeli: ${input.buyerName ?? "Tanpa nama"} (${input.buyerJid.split("@")[0]})`,
+    `Pembeli: ${input.buyerName ?? "Tanpa nama"} (${input.buyerJid ? input.buyerJid.split("@")[0] : "-"})`,
     `Alasan: ${humanReason(input.reason)}`,
     "",
     `Ringkasan: ${input.summary}`,

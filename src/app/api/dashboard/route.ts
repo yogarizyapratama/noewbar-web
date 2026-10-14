@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { ok, fail } from "@/lib/http";
 import { requireTenant } from "@/lib/auth";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 import { fetchCatalog, verifyStructure, toCsvExportUrl } from "@/lib/catalog/sheets";
 import { uploadObject, validateUpload, tenantProductKey, tenantQrisKey, publicUrlFor, objectExists, tenantUsageBytes, TENANT_QUOTA_BYTES, type MediaKind } from "@/lib/storage/minio";
 
@@ -155,6 +156,13 @@ export async function POST(req: NextRequest) {
   const parsed = actionSchema.safeParse(raw);
   if (!parsed.success) return fail("Aksi tidak valid", 422, parsed.error.issues);
   const body = parsed.data;
+
+  if (body.action !== "verify_sheet" && body.action !== "media_exists") {
+    const subInfo = await getTenantSubscriptionInfo(session.sub);
+    if (subInfo.isExpired) {
+      return fail("Langganan toko Anda telah berakhir. Perbarui paket untuk mengubah pengaturan toko.", 403);
+    }
+  }
 
   if (body.action === "verify_sheet") {
     const csvUrl = toCsvExportUrl(body.sheets_url);
@@ -383,7 +391,10 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // media_exists
+  // media_exists - prevent cross-tenant key enumeration
+  if (!body.key.startsWith(`tenants/${session.sub}/`)) {
+    return fail("Akses kunci berkas ditolak", 403);
+  }
   const exists = await objectExists(body.key);
   return ok({ action: "media_exists", key: body.key, exists, url: publicUrlFor(body.key) });
 }
@@ -395,6 +406,11 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await requireTenant();
   if (!session) return fail("Unauthorized", 401);
+
+  const subInfo = await getTenantSubscriptionInfo(session.sub);
+  if (subInfo.isExpired) {
+    return fail("Langganan toko Anda telah berakhir. Perbarui paket untuk mengunggah berkas.", 403);
+  }
 
   const form = await req.formData().catch(() => null);
   if (!form) return fail("Expected multipart/form-data", 400);

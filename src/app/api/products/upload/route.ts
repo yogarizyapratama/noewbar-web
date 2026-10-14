@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireTenant } from "@/lib/auth";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 import {
   uploadObject,
   validateUpload,
@@ -21,6 +22,14 @@ export async function POST(req: Request) {
   const session = await requireTenant();
   if (!session) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const subInfo = await getTenantSubscriptionInfo(session.sub);
+  if (subInfo.isExpired) {
+    return NextResponse.json(
+      { ok: false, error: "Langganan Anda telah berakhir. Perbarui paket untuk mengunggah foto." },
+      { status: 403 }
+    );
   }
 
   const formData = await req.formData().catch(() => null);

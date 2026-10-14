@@ -49,6 +49,9 @@ export function verifyMidtransSignature(params: {
   serverKey: string;
   signatureKey: string;
 }): boolean {
+  if (!params.serverKey || params.serverKey.trim() === "") {
+    return false;
+  }
   const payload = `${params.orderId}${params.statusCode}${params.grossAmount}${params.serverKey}`;
   const computed = crypto.createHash("sha512").update(payload).digest("hex");
 
@@ -133,9 +136,16 @@ export async function processMidtransNotification(
     });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      return { status: "DUPLICATE", reason: `Event ${eventKey} already processed` };
+      const existing = await prisma.webhookEvent.findUnique({
+        where: { event_key: eventKey },
+      });
+      if (existing?.processed) {
+        return { status: "DUPLICATE", reason: `Event ${eventKey} already processed` };
+      }
+      // If the event row exists but was not completed, proceed so retry can settle it.
+    } else {
+      throw err;
     }
-    throw err;
   }
 
   // 3. Locate the subscription.
@@ -182,12 +192,15 @@ export async function processMidtransNotification(
   }
 
   // 4. Fair grace-period arithmetic (chapter 14.4).
-  // The new term always extends from the PREVIOUS expires_at, never from the
-  // payment date. A renewal paid during the 3-day grace period therefore keeps the
-  // monthly billing cycle aligned instead of drifting forward each time.
-  const previousExpiry = subscription.expires_at;
+  // The new term extends from previous expires_at only if active and unexpired.
+  // Expired or new subscriptions activate from current timestamp.
+  const now = new Date();
+  const baseTime =
+    subscription.status === "ACTIVE" && subscription.expires_at > now
+      ? subscription.expires_at.getTime()
+      : now.getTime();
   const addedDays = subscription.plan_name === "PRO_ANNUAL" ? 365 : 30;
-  const newExpiresAt = new Date(previousExpiry.getTime() + addedDays * 24 * 60 * 60 * 1000);
+  const newExpiresAt = new Date(baseTime + addedDays * 24 * 60 * 60 * 1000);
 
   await prisma.$transaction([
     prisma.subscription.update({
@@ -415,9 +428,13 @@ export async function reconcileSubscriptions(): Promise<{
         errors.push(`${sub.midtrans_order_id}: amount mismatch (gateway ${status.grossAmount ?? "unknown"}, expected ${expectedAmount})`);
         continue;
       }
-      const previousExpiry = sub.expires_at;
+      const now = new Date();
+      const baseTime =
+        sub.status === "ACTIVE" && sub.expires_at > now
+          ? sub.expires_at.getTime()
+          : now.getTime();
       const addedDays = sub.plan_name === "PRO_ANNUAL" ? 365 : 30;
-      const newExpiresAt = new Date(previousExpiry.getTime() + addedDays * 86_400_000);
+      const newExpiresAt = new Date(baseTime + addedDays * 86_400_000);
 
       await prisma.$transaction([
         prisma.subscription.update({

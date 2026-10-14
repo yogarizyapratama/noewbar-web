@@ -369,9 +369,21 @@ export function getEmbedVideoUrl(url?: string): { isEmbed: boolean; url: string 
     };
   }
 
-  // Already embed url
+  // Already embed url from trusted video providers
   if (trimmed.includes("/embed/")) {
-    return { isEmbed: true, url: trimmed, isMp4: false };
+    try {
+      const parsed = new URL(trimmed);
+      const host = parsed.hostname.toLowerCase();
+      if (
+        host === "www.youtube.com" ||
+        host === "youtube.com" ||
+        host === "www.youtube-nocookie.com" ||
+        host === "youtube-nocookie.com" ||
+        host === "player.vimeo.com"
+      ) {
+        return { isEmbed: true, url: trimmed, isMp4: false };
+      }
+    } catch {}
   }
 
   // MP4 or WebM video file
@@ -379,7 +391,19 @@ export function getEmbedVideoUrl(url?: string): { isEmbed: boolean; url: string 
     return { isEmbed: false, url: trimmed, isMp4: true };
   }
 
-  return { isEmbed: false, url: trimmed, isMp4: false };
+  return { isEmbed: false, url: null, isMp4: false };
+}
+
+/** Sanitizes public URLs to prevent javascript: and dangerous XSS schemes. */
+export function sanitizeSafeUrl(url?: string | null): string | null {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (/^(javascript|data|vbscript):/i.test(trimmed)) return null;
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^(mailto|tel):/i.test(trimmed)) return trimmed;
+  return null;
 }
 
 export type SectionBlueprint = {

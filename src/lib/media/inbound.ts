@@ -44,8 +44,17 @@ export async function ingestInboundMedia(params: {
   messageId?: string;
 }): Promise<IngestedMedia> {
   try {
-    // 1. Fetch the transient file from the daemon (secret-gated).
-    const bytes = await safeFetchWithSecret(params.daemonMediaUrl, env.WHATSMEOW_SECRET);
+    // 1. Validate URL strictly targets the internal Whatsmeow daemon to avoid leaking secret or SSRF.
+    const daemonBase = env.WHATSMEOW_URL.replace(/\/$/, "");
+    const targetUrl = params.daemonMediaUrl.startsWith("/")
+      ? `${daemonBase}${params.daemonMediaUrl}`
+      : params.daemonMediaUrl;
+
+    if (!targetUrl.startsWith(daemonBase)) {
+      return { ok: false, error: "daemon media URL tidak valid / tidak terpercaya" };
+    }
+
+    const bytes = await safeFetchWithSecret(targetUrl, env.WHATSMEOW_SECRET);
     if (!bytes || bytes.length === 0) {
       return { ok: false, error: "daemon media kosong/tidak terbaca" };
     }

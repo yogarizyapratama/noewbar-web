@@ -71,8 +71,10 @@ async function reservedQtyForSku(tenantId: string, sku: string): Promise<number>
     WHERE o."tenant_id" = ${tenantId}::uuid
       AND o."stock_reserved" = true
       AND o."stock_released" = false
-      AND o."reservation_expires_at" > NOW()
-      AND o."order_status" NOT IN ('CANCELLED', 'EXPIRED')
+      AND (
+        (o."order_status" IN ('DRAFT', 'PENDING_CONFIRMATION', 'PENDING_PAYMENT') AND o."reservation_expires_at" > NOW())
+        OR o."order_status" IN ('PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'COMPLETED')
+      )
       AND item->>'sku' = ${sku}
   `;
   return Number(rows[0]?.reserved ?? 0);
@@ -100,7 +102,33 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     return { ok: false, error: "Cart is empty", code: "EMPTY_CART" };
   }
 
-  // 1. Atomic availability check: requested qty must fit inside catalog stock
+  // 1. Shipping tariff for the chosen courier (calculate first so latency does not delay reservation).
+  const subtotal = input.lines.reduce((sum, l) => sum + l.line_total, 0);
+
+  let shipping;
+  try {
+    shipping = await calculateShippingRates({
+      originSubdistrict: input.originSubdistrict,
+      destinationSubdistrict: input.destinationSubdistrict,
+      orderTotalAmount: subtotal,
+      courierFilter: input.courier,
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Shipping calculation failed",
+      code: "SHIPPING_FAILED",
+    };
+  }
+
+  const chosen =
+    shipping.rates.find((r) => r.courier === (input.courier ?? "JNT")) ?? shipping.rates[0];
+
+  if (!chosen) {
+    return { ok: false, error: "No courier rate available", code: "SHIPPING_FAILED" };
+  }
+
+  // 2. Atomic availability check right before DB insert: requested qty must fit inside catalog stock
   //    minus reservations currently held by other live orders (chapter 16).
   const wanted = new Map<string, number>();
   for (const line of input.lines) {
@@ -125,32 +153,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         code: "STOCK_UNAVAILABLE",
       };
     }
-  }
-
-  // 2. Shipping tariff for the chosen courier.
-  const subtotal = input.lines.reduce((sum, l) => sum + l.line_total, 0);
-
-  let shipping;
-  try {
-    shipping = await calculateShippingRates({
-      originSubdistrict: input.originSubdistrict,
-      destinationSubdistrict: input.destinationSubdistrict,
-      orderTotalAmount: subtotal,
-      courierFilter: input.courier,
-    });
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "Shipping calculation failed",
-      code: "SHIPPING_FAILED",
-    };
-  }
-
-  const chosen =
-    shipping.rates.find((r) => r.courier === (input.courier ?? "JNT")) ?? shipping.rates[0];
-
-  if (!chosen) {
-    return { ok: false, error: "No courier rate available", code: "SHIPPING_FAILED" };
   }
 
   const shippingTariff = chosen.total_tariff;
@@ -245,9 +247,10 @@ export async function releaseReservation(orderId: string): Promise<boolean> {
  * Expires stale reservations. Called by the cron/sweeper. Idempotent by design:
  * the `stock_released` flag plus the status filter mean a second run is a no-op.
  */
-export async function expireStaleReservations(): Promise<{ expired: number; released: number }> {
+export async function expireStaleReservations(tenantId?: string): Promise<{ expired: number; released: number }> {
   const stale = await prisma.order.findMany({
     where: {
+      ...(tenantId ? { tenant_id: tenantId } : {}),
       order_status: "PENDING_PAYMENT",
       stock_reserved: true,
       stock_released: false,
@@ -291,6 +294,13 @@ export async function submitPaymentProof(params: {
 }): Promise<{ ok: true; paymentStatus: PaymentState } | { ok: false; error: string }> {
   const order = await prisma.order.findUnique({ where: { id: params.orderId } });
   if (!order) return { ok: false, error: "Order not found" };
+
+  if (order.order_status === "EXPIRED" || order.order_status === "CANCELLED") {
+    return {
+      ok: false,
+      error: `Cannot submit payment proof for ${order.order_status.toLowerCase()} order`,
+    };
+  }
 
   const from = order.payment_status as PaymentState;
 
@@ -382,13 +392,20 @@ export async function verifyPayment(params: {
   // through PENDING_PAYMENT first so no order is stuck unverifiable.
   const nextOrderStatus: OrderState = "PROCESSING";
 
-  if (orderStatus === "PENDING_CONFIRMATION") {
-    assertOrderTransition(orderStatus, "PENDING_PAYMENT");
+  try {
+    if (orderStatus === "PENDING_CONFIRMATION") {
+      assertOrderTransition(orderStatus, "PENDING_PAYMENT");
+    }
+    assertOrderTransition(
+      orderStatus === "PENDING_CONFIRMATION" ? "PENDING_PAYMENT" : orderStatus,
+      nextOrderStatus
+    );
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Invalid order transition",
+    };
   }
-  assertOrderTransition(
-    orderStatus === "PENDING_CONFIRMATION" ? "PENDING_PAYMENT" : orderStatus,
-    nextOrderStatus
-  );
 
   await prisma.order.update({
     where: { id: params.orderId },
@@ -400,6 +417,7 @@ export async function verifyPayment(params: {
       // the reservation is now a real order: hold the stock permanently
       stock_reserved: true,
       stock_released: false,
+      reservation_expires_at: null,
     },
   });
 

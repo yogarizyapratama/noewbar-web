@@ -16,6 +16,7 @@ import {
   getEmbedVideoUrl,
   getSectionTheme,
   getStorefrontPadding,
+  sanitizeSafeUrl,
 } from "@/lib/website/types";
 import { cn } from "@/lib/utils";
 
@@ -157,13 +158,12 @@ export default async function PublicStorePage({
                       <div className="mt-8 flex flex-wrap gap-3">
                         <a
                           href={
-                            section.content?.custom_url?.trim()
-                              ? section.content.custom_url.trim()
-                              : makeWaLink(
-                                  section.content?.custom_message?.trim() ||
-                                    `Halo ${tenant.business_name}, saya ingin memesan produk dari website resmi.`,
-                                  section.content?.custom_whatsapp
-                                )
+                            sanitizeSafeUrl(section.content?.custom_url) ||
+                            makeWaLink(
+                              section.content?.custom_message?.trim() ||
+                                `Halo ${tenant.business_name}, saya ingin memesan produk dari website resmi.`,
+                              section.content?.custom_whatsapp
+                            )
                           }
                           target="_blank"
                           rel="noopener noreferrer"
@@ -460,13 +460,12 @@ export default async function PublicStorePage({
                     <div className="mt-8">
                       <a
                         href={
-                          section.content?.custom_url?.trim()
-                            ? section.content.custom_url.trim()
-                            : makeWaLink(
-                                section.content?.custom_message?.trim() ||
-                                  `Halo ${tenant.business_name}, saya tertarik dengan produk di video ${section.content?.title || ""}.`,
-                                section.content?.custom_whatsapp
-                              )
+                          sanitizeSafeUrl(section.content?.custom_url) ||
+                          makeWaLink(
+                            section.content?.custom_message?.trim() ||
+                              `Halo ${tenant.business_name}, saya tertarik dengan produk di video ${section.content?.title || ""}.`,
+                            section.content?.custom_whatsapp
+                          )
                         }
                         target="_blank"
                         rel="noopener noreferrer"
@@ -666,13 +665,12 @@ export default async function PublicStorePage({
                   <div className="mt-8">
                     <a
                       href={
-                        section.content?.custom_url?.trim()
-                          ? section.content.custom_url.trim()
-                          : makeWaLink(
-                              section.content?.custom_message?.trim() ||
-                                `Halo ${tenant.business_name}, saya ingin klaim ${section.content?.title || "promo flash sale"} sekarang!`,
-                              section.content?.custom_whatsapp
-                            )
+                        sanitizeSafeUrl(section.content?.custom_url) ||
+                        makeWaLink(
+                          section.content?.custom_message?.trim() ||
+                            `Halo ${tenant.business_name}, saya ingin klaim ${section.content?.title || "promo flash sale"} sekarang!`,
+                          section.content?.custom_whatsapp
+                        )
                       }
                       target="_blank"
                       rel="noopener noreferrer"
@@ -714,13 +712,12 @@ export default async function PublicStorePage({
                   <div className="mt-8">
                     <a
                       href={
-                        section.content?.custom_url?.trim()
-                          ? section.content.custom_url.trim()
-                          : makeWaLink(
-                              section.content?.custom_message?.trim() ||
-                                `Halo ${tenant.business_name}, saya ingin tanya ketersediaan produk.`,
-                              section.content?.custom_whatsapp
-                            )
+                        sanitizeSafeUrl(section.content?.custom_url) ||
+                        makeWaLink(
+                          section.content?.custom_message?.trim() ||
+                            `Halo ${tenant.business_name}, saya ingin tanya ketersediaan produk.`,
+                          section.content?.custom_whatsapp
+                        )
                       }
                       target="_blank"
                       rel="noopener noreferrer"

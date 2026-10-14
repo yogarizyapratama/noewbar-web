@@ -3,6 +3,7 @@ import IORedis, { type Redis } from "ioredis";
 import prisma from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { waDaemon } from "@/lib/wa/daemon-client";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 
 /**
  * BullMQ anti-ghosting nudge scheduler (chapters 4, 6, 8.C.3).
@@ -208,6 +209,12 @@ export async function deliverNudge(nudgeId: string): Promise<{ delivered: boolea
     return { delivered: false, reason: "human_takeover" };
   }
 
+  const subInfo = await getTenantSubscriptionInfo(conversation.tenant_id);
+  if (subInfo.isExpired) {
+    await prisma.scheduledNudge.update({ where: { id: nudgeId }, data: { status: "CANCELLED" } });
+    return { delivered: false, reason: "tenant_subscription_expired" };
+  }
+
   const instance = await prisma.waInstance.findFirst({
     where: { tenant_id: conversation.tenant_id, connection_status: "CONNECTED" },
     select: { instance_key: true },
@@ -277,10 +284,12 @@ export async function sweepDueNudges(limit = 20): Promise<number> {
  */
 export function ensureNudgeWorker(): boolean {
   if (g.__noewbarWorkerStarted) return true;
-  const connection = getRedis();
-  if (!connection) return false;
+  const baseConnection = getRedis();
+  if (!baseConnection) return false;
 
   try {
+    const connection = baseConnection.duplicate();
+    connection.on("error", () => {});
     const worker = new Worker(
       NUDGE_QUEUE,
       async (job: Job<NudgeJob>) => {

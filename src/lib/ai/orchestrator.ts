@@ -297,7 +297,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
     // (`take: MAX_HISTORY_MESSAGES`), so it is replayed as-is.
     ...input.history.map<ChatCompletionMessageParam>((m) => ({
       role: m.role,
-      content: m.content,
+      content: m.role === "user" ? fenceUntrusted(m.content) : m.content,
     })),
     {
       role: "user",
