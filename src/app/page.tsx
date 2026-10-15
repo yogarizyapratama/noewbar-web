@@ -133,7 +133,7 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-100 md:hidden"
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-ink-300 text-ink-700 hover:bg-ink-100 md:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
               aria-label="Buka menu navigasi"
             >
               {mobileNavOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -144,7 +144,7 @@ export default function LandingPage() {
                 N
               </span>
               <span className="font-mono text-sm font-bold tracking-tight text-ink">NOEWBAR</span>
-              <span className="hidden text-2xs font-semibold uppercase tracking-[0.14em] text-ink-500 sm:inline">
+              <span className="hidden text-2xs font-semibold uppercase tracking-[0.14em] text-ink-600 sm:inline">
                 CS Pro
               </span>
             </a>
@@ -155,7 +155,7 @@ export default function LandingPage() {
               <a
                 key={l.href}
                 href={l.href}
-                className="rounded-lg px-3 py-2 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
               >
                 {l.label}
               </a>
@@ -165,14 +165,14 @@ export default function LandingPage() {
           <div className="flex items-center gap-2.5">
             <a
               href="/dashboard"
-              className="btn-secondary btn-sm flex items-center gap-1.5 font-medium text-ink transition-colors"
+              className="btn-secondary min-h-[40px] px-3.5 flex items-center gap-1.5 text-xs font-semibold text-ink transition-colors"
             >
               <LayoutDashboard className="h-3.5 w-3.5" aria-hidden="true" />
               <span>Dashboard</span>
             </a>
             <a
               href="/dashboard?intent=register"
-              className="btn-primary btn-sm sm:min-h-[44px] sm:px-5 sm:text-sm"
+              className="btn-primary min-h-[40px] px-4 text-xs font-semibold"
             >
               Mulai trial 7 hari
             </a>
@@ -233,15 +233,24 @@ export default function LandingPage() {
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
-                <a href="/dashboard?intent=register" className="btn-primary px-6">
+                <a
+                  href="/dashboard?intent=register"
+                  className="btn-primary min-h-[48px] px-6 text-sm font-semibold shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                >
                   Coba gratis 7 hari sekarang
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </a>
-                <a href="/dashboard" className="btn-secondary px-5 flex items-center gap-2">
+                <a
+                  href="/dashboard"
+                  className="btn-secondary min-h-[48px] px-5 flex items-center gap-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                >
                   <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
                   Buka Dashboard
                 </a>
-                <a href="#simulasi" className="btn-ghost px-4">
+                <a
+                  href="#simulasi"
+                  className="btn-ghost min-h-[48px] px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                >
                   Lihat simulasi live
                 </a>
               </div>

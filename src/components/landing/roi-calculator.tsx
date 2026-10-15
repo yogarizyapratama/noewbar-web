@@ -105,21 +105,21 @@ export function RoiCalculator() {
         />
       </div>
 
-      <div className="border-t border-ink-200 bg-ink-900 p-5 text-white sm:p-6">
-        <div className="flex items-center gap-2 text-ink-400">
+      <div className="border-t border-ink-800 bg-ink-900 p-5 text-white sm:p-6">
+        <div className="flex items-center gap-2 text-ink-300">
           <TrendingDown className="h-3.5 w-3.5" aria-hidden="true" />
-          <p className="eyebrow text-ink-400">Estimasi omset hilang per bulan</p>
+          <p className="eyebrow text-ink-300">Estimasi omset hilang per bulan</p>
         </div>
-        <p className="mt-2 font-mono text-3xl font-bold tracking-tight tabular-nums sm:text-4xl">
+        <p className="mt-2 font-mono text-3xl font-bold tracking-tight tabular-nums sm:text-4xl text-white">
           Rp {rupiah(lostRevenue)}
         </p>
         <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2">
           <div>
-            <p className="text-2xs uppercase tracking-wide text-ink-400">Pesanan tak tertangani</p>
-            <p className="mt-1 font-mono text-sm font-semibold tabular-nums">{rupiah(lostOrders)}</p>
+            <p className="text-2xs uppercase tracking-wide text-ink-300">Pesanan tak tertangani</p>
+            <p className="mt-1 font-mono text-sm font-semibold tabular-nums text-white">{rupiah(lostOrders)}</p>
           </div>
           <div>
-            <p className="text-2xs uppercase tracking-wide text-ink-400">
+            <p className="text-2xs uppercase tracking-wide text-ink-300">
               ROI pada biaya Rp 199.000 / bulan
             </p>
             <p
@@ -132,7 +132,7 @@ export function RoiCalculator() {
             </p>
           </div>
         </div>
-        <p className="mt-3 text-2xs leading-relaxed text-ink-400">
+        <p className="mt-3 text-2xs leading-relaxed text-ink-300">
           Dihitung dari input Anda sendiri memakai asumsi 40% chat masuk terjadi pukul 20.00 sampai
           02.00. Bukan rata-rata industri.
         </p>

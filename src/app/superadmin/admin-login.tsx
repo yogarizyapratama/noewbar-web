@@ -82,7 +82,7 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
           </div>
 
           <div>
-            <p className="text-xs text-ink-500 leading-relaxed mb-5">
+            <p className="text-xs text-ink-600 leading-relaxed mb-5">
               Masuk untuk mengelola toko, langganan, dan koneksi WhatsApp platform.
             </p>
 
@@ -95,7 +95,7 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
                   Email Administrator
                 </label>
                 <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-ink-400">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-ink-500">
                     <Mail className="h-4 w-4" aria-hidden="true" />
                   </div>
                   <input
@@ -107,7 +107,7 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
                     autoComplete="username"
                     autoFocus
                     placeholder="superadmin@noewbar.id"
-                    className="w-full rounded-lg border border-ink-200 bg-white pl-9 pr-3.5 py-2.5 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none min-h-[42px] transition-colors"
+                    className="w-full min-h-[44px] rounded-lg border border-ink-300 bg-white pl-9 pr-3.5 py-2.5 text-xs sm:text-sm text-ink placeholder:text-ink-500 focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/20 transition-colors"
                   />
                 </div>
               </div>
@@ -120,7 +120,7 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
                   Kata Sandi
                 </label>
                 <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-ink-400">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-ink-500">
                     <Lock className="h-4 w-4" aria-hidden="true" />
                   </div>
                   <input
@@ -131,12 +131,12 @@ export function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
                     placeholder="Masukkan kata sandi administrator"
-                    className="w-full rounded-lg border border-ink-200 bg-white pl-9 pr-10 py-2.5 text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none min-h-[42px] transition-colors"
+                    className="w-full min-h-[44px] rounded-lg border border-ink-300 bg-white pl-9 pr-11 py-2.5 text-xs sm:text-sm text-ink placeholder:text-ink-500 focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/20 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-ink-400 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal rounded"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-md text-ink-500 hover:text-ink hover:bg-ink-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
                     aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                   >
                     {showPassword ? (
