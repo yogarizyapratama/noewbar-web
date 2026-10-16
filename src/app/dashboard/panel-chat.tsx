@@ -160,8 +160,8 @@ export function PanelChat({
             </div>
 
             <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#d9fdd3] text-[#00a884] text-[10px] font-bold px-2 py-0.5 border border-[#00a884]/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#00a884]" />
+              <span className="inline-flex items-center gap-1 rounded bg-signal-wash text-signal-strong text-[10px] font-bold px-2 py-0.5 border border-signal/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-signal" />
                 Bot Siap
               </span>
             </div>
@@ -475,16 +475,16 @@ export function PanelChat({
                         {/* Label Pengirim */}
                         <div className="flex items-center justify-between gap-3 mb-1">
                           {isBuyer ? (
-                            <span className="text-[11px] font-bold text-[#00a884]">
+                            <span className="text-[11px] font-bold text-signal-strong">
                               {active.buyer_name || "Pembeli"}
                             </span>
                           ) : isBot ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-1.5 py-0.2 rounded border border-emerald-300/60">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-signal-strong bg-signal-wash px-1.5 py-0.5 rounded border border-signal/20">
                               <Bot className="h-2.5 w-2.5" />
                               Bot CS (Otomatis)
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-900 bg-indigo-100/80 px-1.5 py-0.2 rounded border border-indigo-300/60">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-ink-800 bg-ink-100 px-1.5 py-0.5 rounded border border-ink-300">
                               <User className="h-2.5 w-2.5" />
                               Anda (Admin Toko)
                             </span>

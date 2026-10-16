@@ -40,19 +40,19 @@ function getCategoryIcon(type: string) {
     case "hero":
       return <Layout className="h-5 w-5 text-signal" />;
     case "video_showcase":
-      return <Video className="h-5 w-5 text-blue-600" />;
+      return <Video className="h-5 w-5 text-ink-700" />;
     case "gallery_media":
-      return <ImageIcon className="h-5 w-5 text-purple-600" />;
+      return <ImageIcon className="h-5 w-5 text-ink-700" />;
     case "countdown_promo":
-      return <Tag className="h-5 w-5 text-amber-600" />;
+      return <Tag className="h-5 w-5 text-warn" />;
     case "product_grid":
-      return <Package className="h-5 w-5 text-emerald-600" />;
+      return <Package className="h-5 w-5 text-signal" />;
     case "testimonials":
-      return <Star className="h-5 w-5 text-yellow-500" />;
+      return <Star className="h-5 w-5 text-warn" />;
     case "faq":
-      return <HelpCircle className="h-5 w-5 text-cyan-600" />;
+      return <HelpCircle className="h-5 w-5 text-ink-700" />;
     case "whatsapp_cta":
-      return <MessageCircle className="h-5 w-5 text-emerald-600" />;
+      return <MessageCircle className="h-5 w-5 text-signal" />;
     default:
       return <Layers className="h-5 w-5 text-ink-500" />;
   }
@@ -106,7 +106,7 @@ export function WebsiteSectionModal({
               type="button"
               onClick={() => setSelectedCat(cat)}
               className={cn(
-                "rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all",
+                "min-h-[36px] rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all",
                 selectedCat === cat
                   ? "bg-white text-ink shadow-xs border border-ink-200 font-bold"
                   : "text-ink-600 hover:text-ink hover:bg-ink-100"
@@ -150,7 +150,7 @@ export function WebsiteSectionModal({
                       onAddSection(bp.defaultSection());
                       onClose();
                     }}
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-ink-900 py-2 text-xs font-bold text-white shadow-xs hover:bg-signal transition-all"
+                    className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-lg bg-ink py-2 text-xs font-bold text-white shadow-raised hover:bg-signal transition-all"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Sisipkan Section Ini

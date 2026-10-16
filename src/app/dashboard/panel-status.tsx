@@ -261,7 +261,7 @@ export function PanelStatus({
               <span className="text-2xs font-bold uppercase tracking-wider text-ink-500">
                 Percakapan WhatsApp
               </span>
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink-100 text-ink-700 border border-ink-200">
                 <MessageSquare className="h-4 w-4" />
               </span>
             </div>
@@ -270,7 +270,7 @@ export function PanelStatus({
                 {conversations.length} <span className="text-sm font-normal text-ink-500">chat</span>
               </p>
               <div className="mt-1 flex items-center gap-1.5 text-2xs">
-                <span className="text-indigo-700 font-semibold">{conversations.length - humanTakeoverCount} Bot AI</span>
+                <span className="text-ink-700 font-semibold">{conversations.length - humanTakeoverCount} Bot AI</span>
                 {humanTakeoverCount > 0 && (
                   <>
                     <span className="text-ink-300">•</span>
@@ -348,7 +348,7 @@ export function PanelStatus({
               {/* Row 2: AI CS Persona & Gateway */}
               <div className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-ink-50/30 transition-colors">
                 <div className="flex items-start gap-3">
-                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border bg-violet-50 text-violet-700 border-violet-200">
+                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg border bg-ink-100 text-ink-700 border-ink-200">
                     <Bot className="h-4 w-4" />
                   </span>
                   <div>
@@ -597,10 +597,10 @@ export function PanelStatus({
                 <button
                   type="button"
                   onClick={onGoSimulator}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
+                  className="w-full min-h-[44px] flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-50 text-violet-700 border border-violet-200">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink-100 text-ink-700 border border-ink-200">
                       <Bot className="h-4 w-4" />
                     </span>
                     <div>
@@ -616,10 +616,10 @@ export function PanelStatus({
                 <button
                   type="button"
                   onClick={onGoProducts}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
+                  className="w-full min-h-[44px] flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-sky-50 text-sky-700 border border-sky-200">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink-100 text-ink-700 border border-ink-200">
                       <Package className="h-4 w-4" />
                     </span>
                     <div>
@@ -635,10 +635,10 @@ export function PanelStatus({
                 <button
                   type="button"
                   onClick={onGoPromos}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
+                  className="w-full min-h-[44px] flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink-100 text-ink-700 border border-ink-200">
                       <Tag className="h-4 w-4" />
                     </span>
                     <div>
@@ -654,10 +654,10 @@ export function PanelStatus({
                 <button
                   type="button"
                   onClick={onGoWebsite}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
+                  className="w-full min-h-[44px] flex items-center justify-between p-3 rounded-xl border border-ink-200 bg-white hover:bg-ink-50/80 hover:border-ink-300 transition-all text-left group"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-purple-50 text-purple-700 border border-purple-200">
+                    <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink-100 text-ink-700 border border-ink-200">
                       <Globe className="h-4 w-4" />
                     </span>
                     <div>
@@ -683,7 +683,7 @@ export function PanelStatus({
                 <button
                   type="button"
                   onClick={onGoChat}
-                  className="text-2xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                  className="text-2xs font-semibold text-signal-strong hover:underline transition-colors"
                 >
                   Buka Chat ({conversations.length})
                 </button>

@@ -1214,14 +1214,14 @@ export function PanelWebsiteBuilder() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-xs text-sky-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="rounded-xl border border-ink-200 bg-ink-50/70 p-3.5 text-xs text-ink-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-start sm:items-center gap-2.5">
-                  <Globe className="h-4 w-4 text-sky-600 mt-0.5 sm:mt-0 shrink-0" />
+                  <Globe className="h-4 w-4 text-ink-600 mt-0.5 sm:mt-0 shrink-0" />
                   <span>
                     <strong>Aturan Toko Resmi:</strong> Setiap toko memiliki 1 website resmi terintegrasi (1 toko = 1 website). Anda dapat mengedit visual, mengubah isi, atau menghapus website jika ingin merancang ulang dari awal.
                   </span>
                 </div>
-                <span className="shrink-0 rounded-full bg-sky-100 border border-sky-300 px-2.5 py-0.5 text-2xs font-bold text-sky-800 self-start sm:self-auto">
+                <span className="shrink-0 rounded bg-ink-100 border border-ink-300 px-2.5 py-0.5 text-2xs font-bold text-ink-800 self-start sm:self-auto">
                   {websites.length}/1 Website
                 </span>
               </div>
@@ -2087,7 +2087,7 @@ export function PanelWebsiteBuilder() {
                       https://noewbar.com/store/{currentSite.slug}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-signal-wash border border-signal/30 px-2.5 py-0.5 text-[10px] font-semibold text-signal-strong">
+                  <div className="flex items-center gap-1.5 rounded bg-signal-wash border border-signal/30 px-2.5 py-0.5 text-[10px] font-semibold text-signal-strong">
                     <Sparkles className="h-3 w-3 shrink-0" />
                     <span>Mode Direct Edit Aktif (Klik Teks / Foto)</span>
                   </div>
@@ -2752,7 +2752,7 @@ export function PanelWebsiteBuilder() {
                             className={cn("text-center border-b border-black/10 transition-colors", padClass)}
                           >
                             <div className="mb-2">
-                              <span className="inline-block rounded-full bg-amber-400 text-slate-950 px-3 py-0.5 text-2xs font-extrabold uppercase">
+                              <span className="inline-block rounded-md bg-amber-400 text-ink-950 px-3 py-0.5 text-2xs font-extrabold uppercase">
                                 <InlineCanvasText
                                   value={sec.content?.badge}
                                   fallback="Promo Terbatas"

@@ -345,17 +345,17 @@ export function NotificationBell({
       case "chat":
         return <MessageSquare className="h-4 w-4 text-sky-500" />;
       case "wa_status":
-        return <Smartphone className="h-4 w-4 text-indigo-500" />;
+        return <Smartphone className="h-4 w-4 text-signal" />;
       case "billing":
-        return <CreditCard className="h-4 w-4 text-purple-500" />;
+        return <CreditCard className="h-4 w-4 text-warn" />;
       case "killswitch":
-        return <Power className="h-4 w-4 text-rose-500" />;
+        return <Power className="h-4 w-4 text-danger" />;
       case "fleet":
-        return <Server className="h-4 w-4 text-emerald-500" />;
+        return <Server className="h-4 w-4 text-signal" />;
       case "alert":
-        return <Zap className="h-4 w-4 text-amber-500" />;
+        return <Zap className="h-4 w-4 text-warn" />;
       default:
-        return <Bell className="h-4 w-4 text-indigo-500" />;
+        return <Bell className="h-4 w-4 text-ink-600" />;
     }
   }
 
@@ -579,7 +579,7 @@ export function NotificationBell({
                       <span
                         className={cn(
                           "inline-block mt-1 text-[10px] font-medium underline",
-                          isDark ? "text-indigo-400" : "text-indigo-600"
+                          isDark ? "text-signal" : "text-signal-strong"
                         )}
                       >
                         Buka bagian ini &rarr;
@@ -588,7 +588,7 @@ export function NotificationBell({
                   </div>
                   {!item.read && (
                     <span
-                      className="h-2 w-2 rounded-full bg-indigo-500 shrink-0 mt-1.5"
+                      className="h-2 w-2 rounded-full bg-signal shrink-0 mt-1.5"
                       title="Belum dibaca"
                     />
                   )}
