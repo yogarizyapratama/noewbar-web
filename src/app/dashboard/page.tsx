@@ -11,6 +11,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertCircle,
+  AlertTriangle,
   Bot,
   CreditCard,
   Globe,
@@ -22,9 +24,10 @@ import {
   ShoppingBag,
   Smartphone,
   Tag,
+  X,
 } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/app-shell";
-import { Badge, Button, ErrorState, StatusDot } from "@/components/ui";
+import { Badge, Button, ErrorState, StatusDot, cn } from "@/components/ui";
 import { AuthPanel } from "./auth-panel";
 import { PanelStatus } from "./panel-status";
 import { PanelWhatsapp } from "./panel-whatsapp";
@@ -453,6 +456,7 @@ export default function DashboardPage() {
   const isExpired = sub?.is_expired ?? false;
   const isExpiringSoon = sub?.is_expiring_soon ?? false;
   const daysLeft = sub?.days_remaining ?? null;
+  const isTrial = sub?.status === "TRIAL" || sub?.status === "NONE";
 
   // Nav: lock non-billing items when subscription expired
   const navItems = NAV.map((item) => {
@@ -475,46 +479,66 @@ export default function DashboardPage() {
       {/* ── Expiry / Warning Modal ── */}
       {showExpiryModal && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="expiry-modal-title"
         >
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-overlay border border-ink-200">
-            <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl border ${isExpired ? "bg-danger-wash text-danger-strong border-danger/25" : "bg-warn-wash text-warn-strong border-warn/25"}`}>
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              </svg>
+            <div
+              className={cn(
+                "mb-4 flex h-12 w-12 items-center justify-center rounded-xl border",
+                isExpired
+                  ? "bg-danger-wash text-danger-strong border-danger/25"
+                  : "bg-warn-wash text-warn-strong border-warn/25"
+              )}
+            >
+              {isExpired ? (
+                <AlertCircle className="h-6 w-6 text-danger" aria-hidden="true" />
+              ) : (
+                <AlertTriangle className="h-6 w-6 text-warn" aria-hidden="true" />
+              )}
             </div>
-            <h2 id="expiry-modal-title" className="mb-2 text-lg font-bold text-ink">
-              {isExpired ? "Langganan Anda Telah Berakhir" : "Langganan Hampir Habis"}
+            <h2 id="expiry-modal-title" className="mb-2 text-lg font-bold text-ink-900">
+              {isExpired
+                ? isTrial
+                  ? "Masa Uji Coba Gratis Berakhir"
+                  : "Langganan Anda Telah Berakhir"
+                : isTrial
+                  ? "Masa Uji Coba Hampir Berakhir"
+                  : "Langganan Hampir Habis"}
             </h2>
             <p className="mb-5 text-sm text-ink-600 leading-relaxed">
               {isExpired
-                ? "Semua fitur kecuali halaman Langganan telah dinonaktifkan. Perbarui paket untuk mengaktifkan kembali layanan toko Anda."
-                : `Langganan Anda berakhir dalam ${daysLeft} hari. Perbarui sekarang agar layanan tidak terganggu.`}
+                ? isTrial
+                  ? "Masa uji coba gratis 7 hari toko Anda telah selesai. Aktifkan paket langganan untuk menghubungkan kembali WhatsApp dan bot AI toko Anda."
+                  : "Masa aktif langganan telah berakhir. Perbarui paket langganan untuk mengaktifkan kembali layanan bot toko Anda."
+                : isTrial
+                  ? `Masa uji coba toko Anda tersisa ${daysLeft} hari lagi. Pilih paket Pro sekarang agar interaksi pelanggan tidak terputus.`
+                  : `Langganan Anda berakhir dalam ${daysLeft} hari. Perbarui sekarang agar layanan bot tidak terganggu.`}
             </p>
             <div className="flex gap-3">
-              <button
-                className="flex-1 min-h-[44px] rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-ink-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+              <Button
+                variant="primary"
+                className="flex-1"
                 onClick={() => {
                   setShowExpiryModal(false);
                   setTab("billing");
                   loadBilling();
                 }}
               >
-                Lihat Paket
-              </button>
+                {isExpired ? "Aktifkan Sekarang" : "Upgrade Paket"}
+              </Button>
               {!isExpired && (
-                <button
-                  className="min-h-[44px] rounded-lg border border-ink-300 px-4 py-2.5 text-sm font-medium text-ink-700 transition hover:bg-ink-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                <Button
+                  variant="secondary"
                   onClick={() => {
                     setShowExpiryModal(false);
                     setExpiryDismissed(true);
                   }}
                 >
-                  Tutup
-                </button>
+                  Nanti
+                </Button>
               )}
             </div>
           </div>
@@ -598,34 +622,74 @@ export default function DashboardPage() {
 
       {/* Subscription expiry banner: persistent, cannot be dismissed when expired */}
       {(isExpired || (isExpiringSoon && !expiryDismissed)) && (
-        <div className={`mx-4 mt-4 flex items-start gap-3 rounded-xl border px-4 py-3 sm:mx-6 lg:mx-8 ${
-          isExpired
-            ? "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
-            : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-        }`} role="alert">
-          <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-          </svg>
-          <div className="min-w-0 flex-1 text-sm">
-            <span className="font-semibold">{isExpired ? "Langganan berakhir. " : `Langganan berakhir dalam ${daysLeft} hari. `}</span>
-            <button
-              className="underline underline-offset-2 hover:no-underline"
-              onClick={() => { setTab("billing"); loadBilling(); }}
-            >
-              Perbarui sekarang
-            </button>
-          </div>
-          {!isExpired && (
-            <button
-              className="shrink-0 opacity-60 hover:opacity-100"
-              aria-label="Tutup notifikasi"
-              onClick={() => setExpiryDismissed(true)}
-            >
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div
+          className={cn(
+            "mx-4 mt-4 flex items-center justify-between gap-3.5 rounded-xl border p-3.5 sm:px-5 sm:py-3.5 shadow-flat transition-colors sm:mx-6 lg:mx-8",
+            isExpired
+              ? "border-danger/30 bg-danger-wash text-danger-strong"
+              : "border-warn/30 bg-warn-wash text-warn-strong"
           )}
+          role="alert"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+                isExpired
+                  ? "border-danger/25 bg-white text-danger"
+                  : "border-warn/25 bg-white text-warn"
+              )}
+            >
+              {isExpired ? (
+                <AlertCircle className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              )}
+            </div>
+            <div className="min-w-0 text-sm">
+              <span className="font-semibold text-ink-900">
+                {isExpired
+                  ? isTrial
+                    ? "Masa uji coba gratis berakhir."
+                    : "Langganan berakhir."
+                  : isTrial
+                    ? `Masa uji coba gratis berakhir dalam ${daysLeft} hari.`
+                    : `Langganan berakhir dalam ${daysLeft} hari.`}
+              </span>
+              <span className="hidden sm:inline text-ink-600 ml-1.5 text-xs sm:text-sm">
+                {isExpired
+                  ? "Aktifkan paket untuk membuka kembali integrasi WhatsApp dan bot AI."
+                  : "Tingkatkan ke paket Pro agar operasional bot WhatsApp toko tetap berjalan lancar."}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              className={cn(
+                "inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+                isExpired
+                  ? "bg-danger text-white hover:bg-danger-strong focus-visible:outline-danger"
+                  : "bg-ink-900 text-white hover:bg-ink-800 focus-visible:outline-ink-900"
+              )}
+              onClick={() => {
+                setTab("billing");
+                loadBilling();
+              }}
+            >
+              {isExpired ? "Aktifkan Sekarang" : "Upgrade Sekarang"}
+            </button>
+            {!isExpired && (
+              <button
+                type="button"
+                className="rounded-lg p-1 text-ink-500 hover:bg-black/5 hover:text-ink-800 transition-colors"
+                aria-label="Tutup notifikasi"
+                onClick={() => setExpiryDismissed(true)}
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 

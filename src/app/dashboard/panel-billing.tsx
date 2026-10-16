@@ -55,8 +55,9 @@ export function PanelBilling({
   const ANNUAL = annualPlan?.price ?? FALLBACK_ANNUAL;
   const ANNUAL_SAVING = annualPlan?.savings ?? MONTHLY * 12 - ANNUAL;
   const days = sub?.daysRemaining ?? null;
-  const window = trial ? TRIAL_DAYS : 30;
-  const used = days !== null ? Math.max(0, window - days) : 0;
+  const isAnnual = sub?.planName === "PRO_ANNUAL";
+  const window = trial ? TRIAL_DAYS : isAnnual ? 365 : 30;
+  const used = days !== null ? Math.min(window, Math.max(0, window - days)) : 0;
 
   async function pay(plan: "PRO_MONTHLY" | "PRO_ANNUAL") {
     setBusy(plan);

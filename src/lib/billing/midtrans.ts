@@ -466,12 +466,17 @@ export async function subscriptionSnapshot(tenantId: string): Promise<{
   midtransOrderId: string | null;
   invoiceReference: string | null;
 }> {
-  const sub = await prisma.subscription.findFirst({
-    where: { tenant_id: tenantId },
-    orderBy: { created_at: "desc" },
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    include: {
+      subscriptions: {
+        orderBy: { created_at: "desc" },
+        take: 1,
+      },
+    },
   });
 
-  if (!sub) {
+  if (!tenant) {
     return {
       planName: null,
       status: "NONE",
@@ -484,16 +489,54 @@ export async function subscriptionSnapshot(tenantId: string): Promise<{
     };
   }
 
-  const msLeft = sub.expires_at.getTime() - Date.now();
+  const latestSub = tenant.subscriptions[0];
+  const now = new Date();
+
+  // 1. Paid active or grace-period subscription
+  if (latestSub && (latestSub.status === "ACTIVE" || latestSub.status === "GRACE_PERIOD")) {
+    const msLeft = latestSub.expires_at.getTime() - now.getTime();
+    const daysRemaining = Math.max(0, Math.ceil(msLeft / 86_400_000));
+    const isExpired = msLeft <= 0;
+
+    return {
+      planName: latestSub.plan_name,
+      status: isExpired ? "EXPIRED" : latestSub.status,
+      startsAt: latestSub.starts_at.toISOString(),
+      expiresAt: latestSub.expires_at.toISOString(),
+      daysRemaining: isExpired ? 0 : daysRemaining,
+      amount: Number(latestSub.amount),
+      midtransOrderId: latestSub.midtrans_order_id,
+      invoiceReference: latestSub.invoice_reference,
+    };
+  }
+
+  // 2. Previously paid subscription that has expired and tenant has no trial left
+  if (latestSub && latestSub.status === "EXPIRED" && tenant.status !== "TRIAL") {
+    return {
+      planName: latestSub.plan_name,
+      status: "EXPIRED",
+      startsAt: latestSub.starts_at.toISOString(),
+      expiresAt: latestSub.expires_at.toISOString(),
+      daysRemaining: 0,
+      amount: Number(latestSub.amount),
+      midtransOrderId: latestSub.midtrans_order_id,
+      invoiceReference: latestSub.invoice_reference,
+    };
+  }
+
+  // 3. Free trial evaluation (default state for new or trialing tenants, including unpaid checkout attempts)
+  const trialMsLeft = tenant.trial_expires_at.getTime() - now.getTime();
+  const trialDaysRemaining = Math.max(0, Math.ceil(trialMsLeft / 86_400_000));
+  const isTrialExpired = trialMsLeft <= 0 || tenant.status === "EXPIRED";
 
   return {
-    planName: sub.plan_name,
-    status: sub.status,
-    startsAt: sub.starts_at.toISOString(),
-    expiresAt: sub.expires_at.toISOString(),
-    daysRemaining: Math.ceil(msLeft / 86_400_000),
-    amount: Number(sub.amount),
-    midtransOrderId: sub.midtrans_order_id,
-    invoiceReference: sub.invoice_reference,
+    planName: "Uji Coba Gratis",
+    status: isTrialExpired ? "EXPIRED" : (tenant.status === "SUSPENDED" ? "SUSPENDED" : "TRIAL"),
+    startsAt: tenant.created_at.toISOString(),
+    expiresAt: tenant.trial_expires_at.toISOString(),
+    daysRemaining: isTrialExpired ? 0 : trialDaysRemaining,
+    amount: null,
+    midtransOrderId: latestSub?.midtrans_order_id ?? null,
+    invoiceReference: latestSub?.invoice_reference ?? null,
   };
 }
