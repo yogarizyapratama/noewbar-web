@@ -208,7 +208,7 @@ export default function DashboardPage() {
       }
       const json = await res.json();
       setAuthed(true);
-      setHealth(json);
+      setHealth(json.data ?? json);
       setHealthError(null);
     } catch {
       setHealthError("Tidak dapat membaca status sistem.");

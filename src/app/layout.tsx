@@ -10,7 +10,7 @@ import "./globals.css";
  */
 
 export const viewport: Viewport = {
-  themeColor: "#4f46e5",
+  themeColor: "#0B0B0C",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -26,6 +26,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "Noewbar CS Pro",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
   icons: {
     icon: [

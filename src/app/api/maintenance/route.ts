@@ -76,7 +76,7 @@ export async function GET() {
   // Soft-fail: the DB sits across a Tailscale relay that can blip. A blip must
   // degrade the board (HTTP 200 + degraded flag), never 500 the dashboard poll.
   try {
-    return ok(await buildHealth(session.sub));
+    return await buildHealth(session.sub);
   } catch (err) {
     const [daemon, gateway, telegram] = await Promise.all([
       waDaemon.health().catch(() => null),

@@ -111,13 +111,13 @@ export function PanelStatus({
   const unpaidOrdersCount = counts.UNPAID ?? 0;
   const humanTakeoverCount = conversations.filter((c) => c.is_human_takeover).length;
 
-  const waOk = health.whatsapp.connection_status === "CONNECTED";
-  const aiOk = Boolean(health.ai.gateway_ok);
-  const catalogOk = Boolean(health.catalog.configured);
+  const waOk = health?.whatsapp?.connection_status === "CONNECTED";
+  const aiOk = Boolean(health?.ai?.gateway_ok);
+  const catalogOk = Boolean(health?.catalog?.configured);
   const hasPendingProof = pendingProofsCount > 0;
-  const promoRulesCount = health.promos?.promo_rules?.length ?? 0;
-  const voucherCount = health.promos?.voucher_rules?.length ?? 0;
-  const cutOffHour = health.shipping?.cut_off_hour ?? 15;
+  const promoRulesCount = health?.promos?.promo_rules?.length ?? 0;
+  const voucherCount = health?.promos?.voucher_rules?.length ?? 0;
+  const cutOffHour = health?.shipping?.cut_off_hour ?? 15;
   const readinessChecks = [
     waOk,
     aiOk,
@@ -328,7 +328,7 @@ export function PanelStatus({
                     </div>
                     <p className="mt-0.5 text-2xs text-ink-500 leading-relaxed">
                       {waOk
-                        ? health.whatsapp.phone_number
+                        ? health?.whatsapp?.phone_number
                           ? `Nomor ${health.whatsapp.phone_number} aktif merespon chat pembeli.`
                           : "Nomor WhatsApp aktif dan siap menerima pesan."
                         : "Pindai QR code dari nomor WhatsApp bisnis toko Anda agar bot dapat membalas chat."}
@@ -353,14 +353,14 @@ export function PanelStatus({
                   </span>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-ink">AI Persona CS ({health.catalog.bot_name || "Admin CS"})</p>
+                      <p className="text-xs font-bold text-ink">AI Persona CS ({health?.catalog?.bot_name || "Admin CS"})</p>
                       <Badge tone={aiOk ? "signal" : "warn"} className="text-[10px]">
                         {aiOk ? "Aktif" : "Perhatian"}
                       </Badge>
                     </div>
                     <p className="mt-0.5 text-2xs text-ink-500 leading-relaxed">
-                      Gaya bahasa: <strong className="text-ink-700">{health.catalog.bot_tone || "Ramah"}</strong>.
-                      {health.ai.latency_ms ? ` Latensi respon AI: ${health.ai.latency_ms}ms.` : " Siap melayani tanya jawab produk dan ongkir."}
+                      Gaya bahasa: <strong className="text-ink-700">{health?.catalog?.bot_tone || "Ramah"}</strong>.
+                      {health?.ai?.latency_ms ? ` Latensi respon AI: ${health.ai.latency_ms}ms.` : " Siap melayani tanya jawab produk dan ongkir."}
                     </p>
                   </div>
                 </div>
