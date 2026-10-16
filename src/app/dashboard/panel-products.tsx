@@ -38,6 +38,7 @@ import {
   TextField,
   cn,
 } from "@/components/ui";
+import { CsvImportModal, downloadOfficialCsvTemplate } from "./csv-import-modal";
 
 export const PREDEFINED_CATEGORIES = [
   "Skincare & Kecantikan",
@@ -103,11 +104,6 @@ export function PanelProducts() {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [manualUrl, setManualUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // CSV import state
-  const [csvText, setCsvText] = useState("");
-  const [csvBusy, setCsvBusy] = useState(false);
-  const [csvMsg, setCsvMsg] = useState<string | null>(null);
 
   useEffect(() => {
     loadProducts();
@@ -307,30 +303,6 @@ export function PanelProducts() {
     await loadProducts();
   }
 
-  async function handleImportCsv() {
-    setCsvBusy(true);
-    setCsvMsg(null);
-    try {
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "import_csv", csv_content: csvText }),
-      });
-      const json = await res.json();
-      if (json.ok) {
-        setCsvMsg(`Berhasil mengimpor ${json.imported} produk ke katalog.`);
-        setCsvText("");
-        await loadProducts();
-      } else {
-        setCsvMsg(json.error || "Gagal mengimpor CSV.");
-      }
-    } catch {
-      setCsvMsg("Gagal mengimpor berkas CSV.");
-    } finally {
-      setCsvBusy(false);
-    }
-  }
-
   function handleExportCsv() {
     if (products.length === 0) return;
     const header = "SKU,Nama Produk,Kategori,Harga,Stok,Deskripsi\n";
@@ -357,13 +329,17 @@ export function PanelProducts() {
         description="Kelola produk toko Anda di database. Harga, stok, dan spesifikasi produk otomatis menjadi sumber data terpercaya untuk AI Customer Service WhatsApp Anda."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={downloadOfficialCsvTemplate}>
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Template CSV
+            </Button>
             <Button variant="secondary" size="sm" onClick={handleExportCsv} disabled={products.length === 0}>
               <Download className="mr-1.5 h-3.5 w-3.5" />
               Ekspor CSV
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setShowCsvModal(true)}>
               <Upload className="mr-1.5 h-3.5 w-3.5" />
-              Impor CSV
+              Impor CSV & Mapping
             </Button>
             <Button variant="primary" size="sm" onClick={openCreate}>
               <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -885,65 +861,12 @@ export function PanelProducts() {
           </div>
         </Modal>
 
-      {/* Modal Import CSV */}
-      <Modal open={showCsvModal} onClose={() => setShowCsvModal(false)}>
-        <div
-          className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-4 sm:p-6 shadow-overlay space-y-4 max-h-[92vh] flex flex-col overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
-            <div className="flex items-start justify-between border-b border-ink-100 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-ink">Impor Produk Massal via CSV</h3>
-                <p className="text-2xs text-ink-500 mt-0.5">
-                  Salin dan tempel data baris produk toko Anda.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCsvModal(false)}
-                className="rounded-lg p-2 text-ink-400 hover:bg-ink-100 hover:text-ink transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center -mr-1"
-                aria-label="Tutup modal"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto space-y-3 flex-1 pr-0.5 sm:pr-1">
-              <p className="text-xs text-ink-600 leading-relaxed">
-                Tempel data CSV produk toko Anda di bawah ini. Kolom wajib: <code>SKU</code>, <code>Nama Produk</code>, dan <code>Harga</code>.
-              </p>
-
-              <textarea
-                rows={6}
-                placeholder={`SKU,Nama Produk,Kategori,Harga,Stok\nGMS-01,Gamis Silk Emerald,Fashion,185000,15\nGMS-02,Gamis Velvet Black,Fashion,210000,8`}
-                value={csvText}
-                onChange={(e) => setCsvText(e.target.value)}
-                className="w-full rounded-lg border border-ink-200 bg-white p-3 font-mono text-xs text-ink placeholder:text-ink-400 focus:border-signal focus:outline-none"
-              />
-
-              {csvMsg && (
-                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-800 font-medium">
-                  {csvMsg}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center sm:justify-end gap-2 sm:gap-2.5 pt-2 border-t border-ink-100">
-              <Button variant="ghost" onClick={() => setShowCsvModal(false)} className="w-full sm:w-auto min-h-[42px]">
-                Tutup
-              </Button>
-              <Button
-                variant="primary"
-                onClick={handleImportCsv}
-                loading={csvBusy}
-                disabled={!csvText.trim()}
-                className="w-full sm:w-auto min-h-[42px]"
-              >
-                Mulai Impor
-              </Button>
-            </div>
-          </div>
-        </Modal>
+      {/* Modal Import CSV & Field Mapping */}
+      <CsvImportModal
+        open={showCsvModal}
+        onClose={() => setShowCsvModal(false)}
+        onSuccess={() => loadProducts()}
+      />
       <ConfirmModal
         open={!!deleteTarget}
         title="Hapus produk?"

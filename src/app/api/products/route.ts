@@ -199,6 +199,97 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, status: nextStatus });
   }
 
+  if (action === "import_batch") {
+    const { rows, upsert = true } = body;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return NextResponse.json({ ok: false, error: "Daftar baris produk kosong." }, { status: 400 });
+    }
+
+    let imported = 0;
+    let skipped = 0;
+
+    for (const r of rows) {
+      const name = String(r.name || "").trim();
+      const rawPrice = String(r.price ?? "").replace(/[^0-9]/g, "");
+      if (!name || !rawPrice) {
+        skipped++;
+        continue;
+      }
+
+      const price = Math.max(0, parseInt(rawPrice, 10));
+      const rawDisc = r.discount_price ? String(r.discount_price).replace(/[^0-9]/g, "") : null;
+      const discount_price = rawDisc ? Math.max(0, parseInt(rawDisc, 10)) : null;
+      const stock = Math.max(0, parseInt(String(r.stock ?? "10").replace(/[^0-9]/g, "") || "0", 10));
+      const category = String(r.category || "Umum").trim() || "Umum";
+      const description = String(r.description || "").trim();
+
+      let sku = String(r.sku || "").trim().toUpperCase();
+      if (!sku) {
+        sku = `PROD-${Math.floor(100000 + Math.random() * 900000)}`;
+      }
+
+      const images = Array.isArray(r.images)
+        ? r.images.filter((x: unknown): x is string => typeof x === "string" && Boolean(x.trim())).slice(0, 5)
+        : (typeof r.image_url === "string" && r.image_url.trim())
+          ? [r.image_url.trim()]
+          : [];
+
+      const variants = Array.isArray(r.variants)
+        ? r.variants
+        : r.variant
+          ? [String(r.variant).trim()]
+          : [];
+
+      if (upsert) {
+        await prisma.product.upsert({
+          where: { tenant_id_sku: { tenant_id: tenantId, sku } },
+          create: {
+            tenant_id: tenantId,
+            sku,
+            name,
+            category,
+            price,
+            discount_price,
+            stock,
+            description,
+            images,
+            variants,
+            status: "ACTIVE",
+          },
+          update: {
+            name,
+            category,
+            price,
+            ...(discount_price !== null && { discount_price }),
+            stock,
+            ...(description && { description }),
+            ...(images.length > 0 && { images }),
+            ...(variants.length > 0 && { variants }),
+          },
+        });
+      } else {
+        await prisma.product.create({
+          data: {
+            tenant_id: tenantId,
+            sku,
+            name,
+            category,
+            price,
+            discount_price,
+            stock,
+            description,
+            images,
+            variants,
+            status: "ACTIVE",
+          },
+        });
+      }
+      imported++;
+    }
+
+    return NextResponse.json({ ok: true, imported, skipped });
+  }
+
   if (action === "import_csv") {
     const { csv_content } = body;
     if (!csv_content || typeof csv_content !== "string") {

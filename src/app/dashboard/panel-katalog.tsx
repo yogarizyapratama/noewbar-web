@@ -1,8 +1,13 @@
 "use client";
 
 /**
- * Catalog and media tab. The store owner wires a published Google Sheets URL;
- * the bot reads stock, price and media links from it on the next chat.
+ * Catalog and Media Tab.
+ *
+ * Provides:
+ * - Unified catalog data sources (Database Products, CSV Import with Field Mapping, and published Google Sheets URL).
+ * - Official CSV Template download (UTF-8 BOM).
+ * - AI Knowledge Base documents (FAQ, SOP, policies, size charts in PDF/DOCX/TXT/MD/CSV).
+ * - Store Payment media (QRIS image and bank account details).
  */
 
 import { useEffect, useState } from "react";
@@ -12,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Database,
+  Download,
   ExternalLink,
   FileSpreadsheet,
   FileText,
@@ -19,6 +25,8 @@ import {
   Paperclip,
   Plus,
   QrCode,
+  ShoppingBag,
+  Sparkles,
   Table2,
   Trash2,
   Upload,
@@ -35,6 +43,7 @@ import {
   TextField,
   cn,
 } from "@/components/ui";
+import { CsvImportModal, downloadOfficialCsvTemplate } from "./csv-import-modal";
 
 type CatalogPreview = { rows: unknown[]; total: number; warning: string | null } | null;
 
@@ -76,12 +85,14 @@ export function PanelKatalog({
   configured,
   lastSyncedAt,
   payment: initialPayment,
+  onGoProducts,
 }: {
   sheetUrl: string;
   origin: string;
   configured: boolean;
   lastSyncedAt: string | null;
   payment: PaymentInfo;
+  onGoProducts?: () => void;
 }) {
   const [sheetUrl, setSheetUrl] = useState(initialSheetUrl);
   const [origin, setOrigin] = useState(initialOrigin);
@@ -90,7 +101,7 @@ export function PanelKatalog({
   const [error, setError] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<CatalogPreview>(null);
 
-  // Payment destination (chapter 8.C): only the owner may set these.
+  // Payment destination: only the owner may set these.
   const [bankName, setBankName] = useState(initialPayment.bank_name);
   const [bankNumber, setBankNumber] = useState(initialPayment.bank_account_number);
   const [bankHolder, setBankHolder] = useState(initialPayment.bank_account_holder);
@@ -114,9 +125,26 @@ export function PanelKatalog({
   const [docError, setDocError] = useState<string | null>(null);
   const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
 
+  // Products count & CSV import modal
+  const [productCount, setProductCount] = useState<number | null>(null);
+  const [showCsvModal, setShowCsvModal] = useState(false);
+
   useEffect(() => {
     loadDocs();
+    loadProductCount();
   }, []);
+
+  async function loadProductCount() {
+    try {
+      const res = await fetch("/api/products?status=ALL");
+      const json = await res.json();
+      if (json.ok) {
+        setProductCount(json.total ?? (json.products ? json.products.length : 0));
+      }
+    } catch {
+      // silent
+    }
+  }
 
   async function loadDocs() {
     setDocsLoading(true);
@@ -269,7 +297,6 @@ export function PanelKatalog({
       });
       const json = await res.json();
       if (json.ok && json.key) {
-        // Persist the new key so the bot picks it up.
         const save = await fetch("/api/dashboard", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -326,567 +353,758 @@ export function PanelKatalog({
   }
 
   return (
-    <div className="page">
+    <div className="page space-y-6">
       <PageHeader
-        eyebrow="Sumber data"
-        title="Katalog dan media"
-        description="Bot membaca stok, harga, dan tautan foto dari spreadsheet Anda. Tidak ada langkah impor, cukup edit spreadsheet seperti biasa."
+        eyebrow="Pusat Data Toko"
+        title="Katalog & Media"
+        description="Kelola sumber katalog produk, tautan spreadsheet, basis pengetahuan dokumen AI (FAQ & SOP), serta rekening & QRIS pembayaran."
         icon={<Database className="h-4 w-4" aria-hidden="true" />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={downloadOfficialCsvTemplate}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Unduh Template CSV
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowCsvModal(true)}
+            >
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
+              Impor CSV & Mapping
+            </Button>
+            {onGoProducts && (
+              <Button variant="primary" size="sm" onClick={onGoProducts}>
+                <ShoppingBag className="mr-1.5 h-3.5 w-3.5" />
+                Kelola Produk Database
+              </Button>
+            )}
+          </div>
+        }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <Card>
-          <CardHeader
-            icon={<FileSpreadsheet className="h-4 w-4" aria-hidden="true" />}
-            title="Sambungkan spreadsheet"
-            description="Publish lewat File, Bagikan, Publikasikan ke web sebelum menempel tautannya."
-            actions={
-              <Badge tone={configured ? "signal" : "warn"}>
-                {configured ? "terhubung" : "belum diatur"}
-              </Badge>
-            }
-          />
-          <CardBody className="space-y-4">
-            <TextField
-              id="sheets_url"
-              label="Link Google Sheets"
-              placeholder="https://docs.google.com/spreadsheets/d/..."
-              value={sheetUrl}
-              onChange={(e) => setSheetUrl(e.target.value)}
-              inputMode="url"
-              autoComplete="off"
-            />
-            <TextField
-              id="origin_subdistrict"
-              label="Kecamatan asal pengiriman"
-              placeholder="Kebayoran Baru, Jakarta Selatan"
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
-              optional
-              hint="Dipakai sebagai titik asal perhitungan ongkir kalau pembeli tidak mengirim lokasi."
-            />
+      {/* Overview Hub Metrics Bar */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-ink-200 bg-white p-3.5 shadow-flat space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-2xs font-semibold text-ink-500 uppercase tracking-wide">
+              Katalog Produk
+            </span>
+            <ShoppingBag className="h-4 w-4 text-ink-400" />
+          </div>
+          <p className="font-mono text-xl font-bold tabular-nums text-ink-900">
+            {productCount != null ? productCount : "..."}
+          </p>
+          <p className="text-2xs text-ink-500">Produk tersimpan di database</p>
+        </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="primary" onClick={save} loading={busy} disabled={!sheetUrl.trim()}>
-                {busy ? "Memeriksa..." : "Verifikasi dan simpan"}
-              </Button>
-              {lastSyncedAt && (
-                <span className="meta">
-                  sinkron terakhir {new Date(lastSyncedAt).toLocaleString("id-ID")}
-                </span>
+        <div className="rounded-xl border border-ink-200 bg-white p-3.5 shadow-flat space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-2xs font-semibold text-ink-500 uppercase tracking-wide">
+              Google Sheets
+            </span>
+            <FileSpreadsheet className="h-4 w-4 text-ink-400" />
+          </div>
+          <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                configured ? "bg-signal" : "bg-warn"
               )}
-            </div>
+            />
+            {configured ? "Terhubung" : "Belum Diatur"}
+          </p>
+          <p className="text-2xs text-ink-500 truncate">
+            {lastSyncedAt
+              ? `Sinkron: ${new Date(lastSyncedAt).toLocaleDateString("id-ID")}`
+              : "Menunggu koneksi"}
+          </p>
+        </div>
 
-            {busy && <InlineLoading label="Membaca struktur spreadsheet..." />}
+        <div className="rounded-xl border border-ink-200 bg-white p-3.5 shadow-flat space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-2xs font-semibold text-ink-500 uppercase tracking-wide">
+              Basis Pengetahuan
+            </span>
+            <BookOpen className="h-4 w-4 text-ink-400" />
+          </div>
+          <p className="font-mono text-xl font-bold tabular-nums text-ink-900">
+            {docs.length}
+          </p>
+          <p className="text-2xs text-ink-500">Dokumen FAQ, SOP & Kebijakan</p>
+        </div>
 
-            {error && <ErrorState title="Gagal menyimpan" description={error} compact />}
+        <div className="rounded-xl border border-ink-200 bg-white p-3.5 shadow-flat space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-2xs font-semibold text-ink-500 uppercase tracking-wide">
+              Media QRIS
+            </span>
+            <QrCode className="h-4 w-4 text-ink-400" />
+          </div>
+          <p className="text-sm font-bold text-ink-900 flex items-center gap-1.5">
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                qrisUrl ? "bg-signal" : "bg-ink-300"
+              )}
+            />
+            {qrisUrl ? "Gambar Aktif" : "Belum Diunggah"}
+          </p>
+          <p className="text-2xs text-ink-500">Otomatis dilampirkan ke pembeli</p>
+        </div>
+      </div>
 
-            {msg && !error && (
-              <div className="rounded border border-signal/25 bg-signal-wash px-3 py-2.5 text-sm text-signal-strong">
-                {msg}
-              </div>
-            )}
-
-            {catalog && (
-              <div className="rounded border border-ink-200 bg-ink-50 p-4">
-                <div className="flex items-center gap-2">
-                  <Table2 className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
-                  <p className="text-sm font-semibold text-ink">
-                    {catalog.rows.length} baris produk terbaca
-                  </p>
+      {/* Main Content Layout */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+        {/* Left Column: Spreadsheet, CSV Import, Knowledge Base */}
+        <div className="space-y-6 min-w-0">
+          {/* Card: Spreadsheet Sync & CSV Import */}
+          <Card>
+            <CardHeader
+              icon={<FileSpreadsheet className="h-4 w-4" aria-hidden="true" />}
+              title="Katalog Produk & Sinkronisasi Spreadsheet"
+              description="Bot membaca stok, harga, dan tautan foto secara langsung. Anda dapat menggunakan Google Sheets atau mengimpor berkas CSV."
+              actions={
+                <Badge tone={configured ? "signal" : "warn"}>
+                  {configured ? "Sheets Terhubung" : "Belum Terhubung"}
+                </Badge>
+              }
+            />
+            <CardBody className="space-y-4">
+              {/* Smart CSV Import Feature Callout */}
+              <div className="rounded-xl border border-signal/30 bg-signal-wash p-4 space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white border border-signal/25 text-signal shadow-flat">
+                    <Sparkles className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-bold text-signal-strong">
+                      Impor Cepat via CSV dengan Pemetaan Kolom Otomatis
+                    </h4>
+                    <p className="text-2xs text-ink-600 mt-0.5 leading-relaxed">
+                      Punya ekspor data dari Shopee, Tokopedia, WooCommerce, atau Excel dengan nama kolom yang berbeda?
+                      Gunakan wizard impor kami untuk memetakan kolom secara otomatis tanpa perlu mengubah berkas di Excel.
+                    </p>
+                  </div>
                 </div>
-                {catalog.warning ? (
-                  <p className="mt-1.5 text-xs leading-relaxed text-warn">{catalog.warning}</p>
-                ) : (
-                  <p className="mt-1.5 text-xs leading-relaxed text-ink-600">
-                    Struktur kolom sesuai. Bot akan memakai data ini pada chat berikutnya.
-                  </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-signal/20">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowCsvModal(true)}
+                  >
+                    <Upload className="mr-1.5 h-3.5 w-3.5" />
+                    Buka Wizard Impor & Pemetaan
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={downloadOfficialCsvTemplate}
+                  >
+                    <Download className="mr-1.5 h-3.5 w-3.5" />
+                    Unduh Template CSV Resmi
+                  </Button>
+                </div>
+              </div>
+
+              {/* Google Sheets Configuration */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wide text-ink-700">
+                    Opsi 2: Hubungkan Google Sheets Online
+                  </h4>
+                  <a
+                    href="https://support.google.com/docs/answer/183965"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-2xs font-semibold text-signal-strong hover:underline"
+                  >
+                    Panduan Publish Spreadsheet
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+
+                <TextField
+                  id="sheets_url"
+                  label="Tautan Publikasi Google Sheets"
+                  placeholder="https://docs.google.com/spreadsheets/d/e/.../pubhtml"
+                  value={sheetUrl}
+                  onChange={(e) => setSheetUrl(e.target.value)}
+                  inputMode="url"
+                  autoComplete="off"
+                  hint="Pastikan memilih menu File > Bagikan > Publikasikan ke web (format Web / CSV)."
+                />
+
+                <TextField
+                  id="origin_subdistrict"
+                  label="Kecamatan asal pengiriman toko"
+                  placeholder="Kebayoran Baru, Jakarta Selatan"
+                  value={origin}
+                  onChange={(e) => setOrigin(e.target.value)}
+                  optional
+                  hint="Titik asal perhitungan ongkir kurir otomatis (JNE, J&T, SiCepat)."
+                />
+
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <Button
+                    variant="primary"
+                    onClick={save}
+                    loading={busy}
+                    disabled={!sheetUrl.trim()}
+                  >
+                    {busy ? "Memeriksa..." : "Verifikasi dan Simpan Spreadsheet"}
+                  </Button>
+                  {lastSyncedAt && (
+                    <span className="text-2xs text-ink-500 font-mono">
+                      Sinkron terakhir: {new Date(lastSyncedAt).toLocaleString("id-ID")}
+                    </span>
+                  )}
+                </div>
+
+                {busy && <InlineLoading label="Membaca dan memvalidasi struktur spreadsheet..." />}
+                {error && <ErrorState title="Gagal menyimpan" description={error} compact />}
+                {msg && !error && (
+                  <div className="rounded-xl border border-signal/25 bg-signal-wash px-3.5 py-2.5 text-xs text-signal-strong font-medium">
+                    {msg}
+                  </div>
+                )}
+
+                {catalog && (
+                  <div className="rounded-xl border border-ink-200 bg-ink-50 p-3.5">
+                    <div className="flex items-center gap-2">
+                      <Table2 className="h-4 w-4 text-ink-600" aria-hidden="true" />
+                      <p className="text-xs font-bold text-ink-900">
+                        {catalog.rows.length} baris produk berhasil terbaca
+                      </p>
+                    </div>
+                    {catalog.warning ? (
+                      <p className="mt-1 text-2xs leading-relaxed text-warn font-medium">
+                        {catalog.warning}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-2xs leading-relaxed text-ink-600">
+                        Struktur kolom valid. Bot AI langsung menggunakan data ini pada percakapan WhatsApp berikutnya.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </CardBody>
-        </Card>
 
-        <Card>
-          <CardHeader
-            icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
-            title="Tujuan pembayaran"
-            description="Nomor rekening dan QRIS yang disampaikan bot ke pembeli. Bot tidak akan pernah menyebut rekening selain yang diisi di sini."
-            actions={
-              bankNumber.trim() || qrisUrl ? (
-                <Badge tone="signal">aktif</Badge>
-              ) : (
-                <Badge tone="warn">belum diatur</Badge>
-              )
-            }
-          />
-          <CardBody className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                id="bank_name"
-                label="Nama bank"
-                placeholder="BCA"
-                value={bankName}
-                onChange={(e) => setBankName(e.target.value)}
-                autoComplete="off"
-              />
-              <TextField
-                id="bank_account_number"
-                label="Nomor rekening"
-                placeholder="1234567890"
-                value={bankNumber}
-                onChange={(e) => setBankNumber(e.target.value)}
-                inputMode="numeric"
-                autoComplete="off"
-              />
-            </div>
-            <TextField
-              id="bank_account_holder"
-              label="Atas nama (opsional)"
-              placeholder="Nama pemilik rekening"
-              value={bankHolder}
-              onChange={(e) => setBankHolder(e.target.value)}
-              autoComplete="off"
-            />
-
-            <div className="rounded border border-ink-200 bg-ink-50 p-4">
-              <div className="flex items-center gap-2">
-                <QrCode className="h-4 w-4 text-ink-500" aria-hidden="true" />
-                <p className="text-sm font-semibold text-ink">Gambar QRIS toko</p>
+              {/* Supported Columns Guide */}
+              <div className="rounded-xl border border-ink-200 bg-surface-sunken p-3.5 space-y-2.5">
+                <p className="text-xs font-bold text-ink-800">
+                  Struktur Kolom yang Didukung Sistem
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xs font-bold uppercase tracking-wide text-ink-500 w-16">
+                      Wajib:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {REQUIRED_COLUMNS.map((c) => (
+                        <span
+                          key={c}
+                          className="rounded-md border border-ink-200 bg-white px-2 py-0.5 font-mono text-2xs font-semibold text-ink-800"
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xs font-bold uppercase tracking-wide text-ink-500 w-16">
+                      Opsional:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {OPTIONAL_COLUMNS.map((c) => (
+                        <span
+                          key={c}
+                          className="rounded-md border border-dashed border-ink-300 bg-white px-2 py-0.5 font-mono text-2xs font-medium text-ink-600"
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-ink-500">
-                Bot melampirkan gambar ini beserta instruksi pembayaran. Unggah dalam format PNG atau JPG.
-              </p>
+            </CardBody>
+          </Card>
 
-              {qrisUrl ? (
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={qrisUrl}
-                    alt="QRIS toko"
-                    className="h-24 w-24 rounded border border-ink-200 bg-white object-contain"
-                  />
-                  <div className="flex flex-col gap-2">
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-ink-300 bg-white px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
-                      <ImagePlus className="h-4 w-4" aria-hidden="true" />
-                      Ganti gambar
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg"
-                        className="sr-only"
-                        onChange={handleQrisUpload}
-                        disabled={uploadingQris}
-                      />
-                    </label>
+          {/* Card: Knowledge Base Dokumen AI */}
+          <Card>
+            <CardHeader
+              icon={<BookOpen className="h-4 w-4" aria-hidden="true" />}
+              title="Basis Pengetahuan Toko (Dokumen & Kebijakan AI)"
+              description="Unggah atau ketik FAQ, Size Chart, panduan garansi/retur, dan SOP toko. Bot menggunakan rujukan ini agar tidak berhalusinasi saat menjawab pembeli."
+              actions={
+                <div className="flex items-center gap-2">
+                  <Badge tone={docs.length > 0 ? "signal" : "neutral"}>
+                    {docs.length} Dokumen
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setShowAddDoc((v) => !v)}
+                  >
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                    {showAddDoc ? "Batal" : "Tambah Dokumen"}
+                  </Button>
+                </div>
+              }
+            />
+            <CardBody className="space-y-4">
+              {showAddDoc && (
+                <div className="space-y-4 rounded-xl border border-ink-300 bg-ink-50/60 p-4 shadow-flat">
+                  <div className="flex items-center gap-2 border-b border-ink-200 pb-3">
+                    <button
+                      type="button"
+                      onClick={() => setAddMode("file")}
+                      className={cn(
+                        "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                        addMode === "file"
+                          ? "bg-ink-900 text-white"
+                          : "bg-ink-100 text-ink-700 hover:bg-ink-200"
+                      )}
+                    >
+                      Unggah Berkas (PDF, DOCX, TXT, MD, CSV)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddMode("text")}
+                      className={cn(
+                        "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                        addMode === "text"
+                          ? "bg-ink-900 text-white"
+                          : "bg-ink-100 text-ink-700 hover:bg-ink-200"
+                      )}
+                    >
+                      Tulis / Tempel Teks Manual
+                    </button>
+                  </div>
+
+                  {addMode === "file" ? (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold text-ink-700">
+                          Pilih Berkas Dokumen
+                        </label>
+                        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-ink-300 bg-white p-5 text-center hover:border-signal transition-colors">
+                          <Upload className="mb-2 h-6 w-6 text-ink-400" aria-hidden="true" />
+                          {uploadFile ? (
+                            <div className="space-y-1">
+                              <p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-ink-900">
+                                <Paperclip className="h-4 w-4 text-ink-500" />
+                                {uploadFile.name}
+                              </p>
+                              <p className="font-mono text-xs text-ink-500">
+                                {(uploadFile.size / 1024).toFixed(1)} KB
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => setUploadFile(null)}
+                                className="mt-2 text-xs font-medium text-danger hover:underline"
+                              >
+                                Ganti berkas
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer">
+                              <span className="inline-flex items-center gap-1.5 rounded-lg border border-ink-300 bg-ink-50 px-3 py-1.5 text-xs font-semibold text-ink-700 hover:bg-ink-100">
+                                Pilih Berkas
+                              </span>
+                              <input
+                                type="file"
+                                accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json"
+                                className="sr-only"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) {
+                                    setUploadFile(f);
+                                    if (!docTitle.trim()) {
+                                      setDocTitle(f.name.replace(/\.[^/.]+$/, ""));
+                                    }
+                                  }
+                                }}
+                              />
+                              <p className="mt-2 text-2xs text-ink-500">
+                                Mendukung PDF, Word (.docx), Plain Text (.txt), Markdown (.md), atau CSV (Maks. 10MB)
+                              </p>
+                            </label>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="sm:col-span-2">
+                          <TextField
+                            id="doc_title_file"
+                            label="Judul dokumen (opsional)"
+                            placeholder="Mis. SOP Retur & Garansi 2026"
+                            value={docTitle}
+                            onChange={(e) => setDocTitle(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="doc_type_file"
+                            className="block text-xs font-semibold uppercase tracking-wide text-ink-600 mb-1"
+                          >
+                            Kategori Dokumen
+                          </label>
+                          <select
+                            id="doc_type_file"
+                            value={docType}
+                            onChange={(e) =>
+                              setDocType(
+                                e.target.value as "FAQ" | "SOP" | "SIZE_CHART" | "POLICY" | "OTHER"
+                              )
+                            }
+                            className="w-full rounded-lg border border-ink-300 bg-white px-3 py-2 text-xs font-medium text-ink-900 focus:border-signal focus:outline-none"
+                          >
+                            <option value="FAQ">FAQ (Tanya Jawab)</option>
+                            <option value="POLICY">Kebijakan / Garansi</option>
+                            <option value="SIZE_CHART">Panduan Ukuran (Size Chart)</option>
+                            <option value="SOP">SOP / Ketentuan Toko</option>
+                            <option value="OTHER">Lainnya</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="sm:col-span-2">
+                          <TextField
+                            id="doc_title"
+                            label="Judul dokumen"
+                            placeholder="Mis. Jam Operasional & Jadwal Pengiriman"
+                            value={docTitle}
+                            onChange={(e) => setDocTitle(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="doc_type"
+                            className="block text-xs font-semibold uppercase tracking-wide text-ink-600 mb-1"
+                          >
+                            Kategori Dokumen
+                          </label>
+                          <select
+                            id="doc_type"
+                            value={docType}
+                            onChange={(e) =>
+                              setDocType(
+                                e.target.value as "FAQ" | "SOP" | "SIZE_CHART" | "POLICY" | "OTHER"
+                              )
+                            }
+                            className="w-full rounded-lg border border-ink-300 bg-white px-3 py-2 text-xs font-medium text-ink-900 focus:border-signal focus:outline-none"
+                          >
+                            <option value="FAQ">FAQ (Tanya Jawab)</option>
+                            <option value="POLICY">Kebijakan / Garansi</option>
+                            <option value="SIZE_CHART">Panduan Ukuran (Size Chart)</option>
+                            <option value="SOP">SOP / Ketentuan Toko</option>
+                            <option value="OTHER">Lainnya</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="doc_content"
+                          className="block text-xs font-semibold text-ink-700 mb-1"
+                        >
+                          Isi Dokumen / Teks Panduan
+                        </label>
+                        <textarea
+                          id="doc_content"
+                          rows={6}
+                          placeholder="Ketik atau tempel pertanyaan yang sering diajukan pembeli, kebijakan komplain, atau jam operasional..."
+                          value={docContent}
+                          onChange={(e) => setDocContent(e.target.value)}
+                          className="w-full rounded-xl border border-ink-300 bg-white p-3 font-mono text-xs text-ink-900 placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-ink-200">
+                    <Button variant="primary" size="sm" onClick={saveDoc} loading={docBusy}>
+                      Simpan Dokumen ke AI
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={async () => {
-                        await fetch("/api/dashboard", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ action: "save_payment", qris_object_key: "" }),
-                        });
-                        setQrisUrl(null);
-                        setPayMsg("QRIS dihapus. Bot tidak akan melampirkan QRIS lagi.");
+                      onClick={() => {
+                        setShowAddDoc(false);
+                        setDocTitle("");
+                        setDocContent("");
+                        setUploadFile(null);
+                        setDocError(null);
                       }}
-                      disabled={uploadingQris}
                     >
-                      Hapus QRIS
+                      Batal
                     </Button>
                   </div>
+
+                  {docError && <ErrorState title="Gagal menyimpan" description={docError} compact />}
+                </div>
+              )}
+
+              {docMsg && !docError && (
+                <div className="rounded-xl border border-signal/25 bg-signal-wash px-3.5 py-2.5 text-xs text-signal-strong font-medium">
+                  {docMsg}
+                </div>
+              )}
+
+              {docsLoading ? (
+                <InlineLoading label="Memuat basis pengetahuan toko..." />
+              ) : docs.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-ink-300 p-8 text-center text-xs text-ink-500 space-y-1">
+                  <BookOpen className="mx-auto h-8 w-8 text-ink-300 mb-2" />
+                  <p className="font-semibold text-ink-800">Belum ada dokumen basis pengetahuan</p>
+                  <p>
+                    Tambahkan FAQ, SOP, atau kebijakan toko agar bot dapat menjawab pertanyaan pembeli di luar katalog.
+                  </p>
                 </div>
               ) : (
-                <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-ink-300 bg-white px-3 py-2 text-sm font-medium text-ink-700 hover:bg-ink-50">
-                  <Upload className="h-4 w-4" aria-hidden="true" />
-                  {uploadingQris ? "Mengunggah..." : "Unggah gambar QRIS"}
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    className="sr-only"
-                    onChange={handleQrisUpload}
-                    disabled={uploadingQris}
-                  />
-                </label>
-              )}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="primary" onClick={savePayment} loading={payBusy}>
-                {payBusy ? "Menyimpan..." : "Simpan tujuan pembayaran"}
-              </Button>
-              {payMsg && !payError && (
-                <span className="text-sm text-signal-strong">{payMsg}</span>
-              )}
-            </div>
-            {payError && <ErrorState title="Gagal menyimpan" description={payError} compact />}
-          </CardBody>
-        </Card>
-
-        {/* Basis Pengetahuan AI Card */}
-        <Card className="lg:col-span-2">
-          <CardHeader
-            icon={<BookOpen className="h-4 w-4" aria-hidden="true" />}
-            title="Basis Pengetahuan Toko (Dokumen & Kebijakan)"
-            description="Unggah atau ketik FAQ, Size Chart, panduan retur, spesifikasi bahan, dan SOP toko. Bot menggunakan dokumen ini untuk menjawab pertanyaan pembeli secara akurat."
-            actions={
-              <div className="flex items-center gap-2">
-                <Badge tone={docs.length > 0 ? "signal" : "neutral"}>
-                  {docs.length} dokumen
-                </Badge>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setShowAddDoc((v) => !v)}
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                  {showAddDoc ? "Batal" : "Tambah Dokumen"}
-                </Button>
-              </div>
-            }
-          />
-          <CardBody className="space-y-4">
-            {showAddDoc && (
-              <div className="space-y-4 rounded border border-ink-300 bg-ink-50/50 p-4">
-                <div className="flex items-center gap-2 border-b border-ink-200 pb-3">
-                  <button
-                    type="button"
-                    onClick={() => setAddMode("file")}
-                    className={cn(
-                      "rounded px-3 py-1.5 text-xs font-semibold transition-colors",
-                      addMode === "file"
-                        ? "bg-ink text-white"
-                        : "bg-ink-100 text-ink-700 hover:bg-ink-200"
-                    )}
-                  >
-                    Unggah Berkas (PDF, DOCX, TXT, MD, CSV)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAddMode("text")}
-                    className={cn(
-                      "rounded px-3 py-1.5 text-xs font-semibold transition-colors",
-                      addMode === "text"
-                        ? "bg-ink text-white"
-                        : "bg-ink-100 text-ink-700 hover:bg-ink-200"
-                    )}
-                  >
-                    Tulis / Tempel Manual
-                  </button>
-                </div>
-
-                {addMode === "file" ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-600">
-                        Pilih Berkas Dokumen
-                      </label>
-                      <div className="flex flex-col items-center justify-center rounded border-2 border-dashed border-ink-300 bg-white p-5 text-center hover:border-ink-400">
-                        <Upload className="mb-2 h-6 w-6 text-ink-400" aria-hidden="true" />
-                        {uploadFile ? (
-                          <div className="space-y-1">
-                            <p className="flex items-center justify-center gap-1.5 text-sm font-semibold text-ink">
-                              <Paperclip className="h-4 w-4 text-ink-500" />
-                              {uploadFile.name}
-                            </p>
-                            <p className="font-mono text-xs text-ink-500">
-                              {(uploadFile.size / 1024).toFixed(1)} KB
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => setUploadFile(null)}
-                              className="mt-2 text-xs font-medium text-danger hover:underline"
-                            >
-                              Ganti berkas
-                            </button>
-                          </div>
-                        ) : (
-                          <label className="cursor-pointer">
-                            <span className="inline-flex items-center gap-1.5 rounded border border-ink-300 bg-ink-50 px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-100">
-                              Pilih Berkas
-                            </span>
-                            <input
-                              type="file"
-                              accept=".pdf,.docx,.txt,.md,.markdown,.csv,.json"
-                              className="sr-only"
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) {
-                                  setUploadFile(f);
-                                  if (!docTitle.trim()) {
-                                    setDocTitle(f.name.replace(/\.[^/.]+$/, ""));
-                                  }
-                                }
-                              }}
-                            />
-                            <p className="mt-2 text-2xs text-ink-500">
-                              Mendukung PDF, Word (.docx), Plain Text (.txt), Markdown (.md), atau CSV (Maks. 10MB)
-                            </p>
-                          </label>
-                        )}
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="sm:col-span-2">
-                        <TextField
-                          id="doc_title_file"
-                          label="Judul dokumen (opsional, bawaan nama berkas)"
-                          placeholder="Mis. SOP Retur & Tukar Size 2026"
-                          value={docTitle}
-                          onChange={(e) => setDocTitle(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="doc_type_file"
-                          className="block text-xs font-semibold uppercase tracking-wide text-ink-600"
-                        >
-                          Kategori
-                        </label>
-                        <select
-                          id="doc_type_file"
-                          value={docType}
-                          onChange={(e) =>
-                            setDocType(
-                              e.target.value as "FAQ" | "SOP" | "SIZE_CHART" | "POLICY" | "OTHER"
-                            )
-                          }
-                          className="mt-1 block w-full rounded border border-ink-300 bg-white px-3 py-2 text-sm text-ink focus:border-ink-500 focus:outline-none"
-                        >
-                          <option value="FAQ">FAQ (Tanya Jawab)</option>
-                          <option value="POLICY">Kebijakan / Garansi</option>
-                          <option value="SIZE_CHART">Panduan Ukuran (Size Chart)</option>
-                          <option value="SOP">SOP / Ketentuan Toko</option>
-                          <option value="OTHER">Lainnya</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="sm:col-span-2">
-                        <TextField
-                          id="doc_title"
-                          label="Judul dokumen"
-                          placeholder="Mis. Kebijakan Retur & Garansi, Jam Buka Toko"
-                          value={docTitle}
-                          onChange={(e) => setDocTitle(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="doc_type"
-                          className="block text-xs font-semibold uppercase tracking-wide text-ink-600"
-                        >
-                          Kategori
-                        </label>
-                        <select
-                          id="doc_type"
-                          value={docType}
-                          onChange={(e) =>
-                            setDocType(
-                              e.target.value as "FAQ" | "SOP" | "SIZE_CHART" | "POLICY" | "OTHER"
-                            )
-                          }
-                          className="mt-1 block w-full rounded border border-ink-300 bg-white px-3 py-2 text-sm text-ink focus:border-ink-500 focus:outline-none"
-                        >
-                          <option value="FAQ">FAQ (Tanya Jawab)</option>
-                          <option value="POLICY">Kebijakan / Garansi</option>
-                          <option value="SIZE_CHART">Panduan Ukuran (Size Chart)</option>
-                          <option value="SOP">SOP / Ketentuan Toko</option>
-                          <option value="OTHER">Lainnya</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="doc_content"
-                        className="block text-xs font-semibold uppercase tracking-wide text-ink-600"
-                      >
-                        Isi Panduan / Teks
-                      </label>
-                      <textarea
-                        id="doc_content"
-                        rows={5}
-                        placeholder="Ketik atau tempel teks panduan, FAQ, atau kebijakan toko di sini..."
-                        value={docContent}
-                        onChange={(e) => setDocContent(e.target.value)}
-                        className="mt-1 block w-full rounded border border-ink-300 bg-white p-3 font-mono text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button variant="primary" onClick={saveDoc} loading={docBusy}>
-                    Simpan dokumen
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setShowAddDoc(false);
-                      setDocTitle("");
-                      setDocContent("");
-                      setUploadFile(null);
-                      setDocError(null);
-                    }}
-                  >
-                    Batal
-                  </Button>
-                </div>
-
-                {docError && <ErrorState title="Gagal menyimpan" description={docError} compact />}
-              </div>
-            )}
-
-            {docMsg && !docError && (
-              <div className="rounded border border-signal/25 bg-signal-wash px-3 py-2 text-xs text-signal-strong">
-                {docMsg}
-              </div>
-            )}
-
-            {docsLoading ? (
-              <InlineLoading label="Memuat basis pengetahuan..." />
-            ) : docs.length === 0 ? (
-              <div className="rounded border border-dashed border-ink-300 p-6 text-center text-xs text-ink-500">
-                Belum ada dokumen basis pengetahuan. Tambahkan FAQ atau berkas kebijakan toko agar bot dapat menjawab pertanyaan pembeli di luar katalog.
-              </div>
-            ) : (
-              <div className="divide-y divide-ink-200 rounded border border-ink-200 bg-white">
-                {docs.map((d) => (
-                  <div key={d.id} className="space-y-2 p-3.5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
+                <div className="divide-y divide-ink-200 rounded-xl border border-ink-200 bg-white overflow-hidden shadow-flat">
+                  {docs.map((d) => (
+                    <div key={d.id} className="p-3.5 space-y-2 hover:bg-ink-50/40 transition-colors">
+                      <div className="flex flex-wrap items-center justify-between gap-2.5">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
                           <FileText className="h-4 w-4 shrink-0 text-ink-500" aria-hidden="true" />
-                          <span className="text-sm font-semibold text-ink">{d.title}</span>
+                          <span className="text-xs font-bold text-ink-900">{d.title}</span>
                           <Badge tone="neutral">{d.doc_type}</Badge>
                           <Badge tone={d.is_active ? "signal" : "warn"}>
-                            {d.is_active ? "aktif" : "nonaktif"}
+                            {d.is_active ? "Aktif" : "Nonaktif"}
                           </Badge>
                           {d.file_name && (
-                            <span className="inline-flex items-center gap-1 rounded bg-ink-100 px-2 py-0.5 text-2xs text-ink-600">
+                            <span className="inline-flex items-center gap-1 rounded bg-ink-100 px-2 py-0.5 font-mono text-2xs text-ink-600">
                               <Paperclip className="h-3 w-3 text-ink-400" />
                               {d.file_name}
                             </span>
                           )}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {d.file_url && (
-                          <a
-                            href={d.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded border border-ink-200 px-2.5 py-1 text-xs font-medium text-ink-700 hover:bg-ink-50"
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {d.file_url && (
+                            <a
+                              href={d.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-lg border border-ink-200 px-2.5 py-1 text-2xs font-semibold text-ink-700 hover:bg-ink-50"
+                            >
+                              Unduh Berkas
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toggleDoc(d.id, !d.is_active)}
                           >
-                            Unduh Berkas
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
+                            {d.is_active ? "Nonaktifkan" : "Aktifkan"}
+                          </Button>
+                          <button
+                            type="button"
+                            onClick={() => deleteDoc(d.id)}
+                            className="rounded-lg p-1.5 text-danger hover:bg-danger-wash transition-colors"
+                            aria-label={`Hapus dokumen ${d.title}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-ink-600">
+                        {expandedDoc === d.id ? (
+                          <div className="mt-2 space-y-2">
+                            <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap rounded-xl border border-ink-200 bg-ink-50 p-3 font-mono text-xs text-ink-900">
+                              {d.content_text}
+                            </pre>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedDoc(null)}
+                              className="inline-flex items-center gap-1 text-2xs font-semibold text-ink-600 hover:text-ink-900 hover:underline"
+                            >
+                              <ChevronUp className="h-3.5 w-3.5" /> Sembunyikan rujukan AI
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="line-clamp-2 font-mono text-2xs text-ink-500">
+                              {d.preview}...
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedDoc(d.id)}
+                              className="inline-flex shrink-0 items-center gap-1 text-2xs font-semibold text-signal-strong hover:underline"
+                            >
+                              <ChevronDown className="h-3.5 w-3.5" /> Lihat Teks AI
+                            </button>
+                          </div>
                         )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => toggleDoc(d.id, !d.is_active)}
-                        >
-                          {d.is_active ? "Nonaktifkan" : "Aktifkan"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteDoc(d.id)}
-                          className="text-danger hover:text-danger-strong"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </div>
 
-                    <div className="text-xs text-ink-600">
-                      {expandedDoc === d.id ? (
-                        <div className="mt-2 space-y-2">
-                          <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap rounded border border-ink-200 bg-ink-50 p-3 font-mono text-xs text-ink">
-                            {d.content_text}
-                          </pre>
-                          <button
-                            type="button"
-                            onClick={() => setExpandedDoc(null)}
-                            className="inline-flex items-center gap-1 text-xs font-medium text-ink-600 hover:text-ink hover:underline"
-                          >
-                            <ChevronUp className="h-3.5 w-3.5" /> Sembunyikan teks
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="line-clamp-2 font-mono text-2xs text-ink-500">
-                            {d.preview}...
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setExpandedDoc(d.id)}
-                            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-ink-700 hover:text-ink hover:underline"
-                          >
-                            <ChevronDown className="h-3.5 w-3.5" /> Teks AI
-                          </button>
-                        </div>
-                      )}
+        {/* Right Column: Payment Destinations & QRIS Media */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader
+              icon={<Banknote className="h-4 w-4" aria-hidden="true" />}
+              title="Media QRIS & Rekening Toko"
+              description="Rekening dan gambar QRIS yang otomatis disampaikan bot ke pembeli saat proses checkout."
+              actions={
+                bankNumber.trim() || qrisUrl ? (
+                  <Badge tone="signal">Aktif</Badge>
+                ) : (
+                  <Badge tone="warn">Belum Lengkap</Badge>
+                )
+              }
+            />
+            <CardBody className="space-y-4">
+              {/* QRIS Upload & Preview Frame */}
+              <div className="rounded-xl border border-ink-200 bg-ink-50/70 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <QrCode className="h-4 w-4 text-ink-700" aria-hidden="true" />
+                    <p className="text-xs font-bold text-ink-900">Gambar QRIS Toko</p>
+                  </div>
+                  {qrisUrl && <Badge tone="signal">Tersimpan</Badge>}
+                </div>
+
+                <p className="text-2xs text-ink-500 leading-relaxed">
+                  Bot mengirimkan gambar ini secara langsung saat pembeli memilih bayar dengan QRIS.
+                </p>
+
+                {qrisUrl ? (
+                  <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-ink-200 shadow-flat">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={qrisUrl}
+                      alt="QRIS Toko"
+                      className="h-24 w-24 rounded-lg border border-ink-200 bg-white object-contain p-1"
+                    />
+                    <div className="flex flex-col gap-2 min-w-0">
+                      <label className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-ink-300 bg-white px-3 py-1.5 text-xs font-semibold text-ink-800 hover:bg-ink-50 shadow-sm transition-colors">
+                        <ImagePlus className="h-3.5 w-3.5" aria-hidden="true" />
+                        Ganti Gambar
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg"
+                          className="sr-only"
+                          onChange={handleQrisUpload}
+                          disabled={uploadingQris}
+                        />
+                      </label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          await fetch("/api/dashboard", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "save_payment", qris_object_key: "" }),
+                          });
+                          setQrisUrl(null);
+                          setPayMsg("Gambar QRIS dihapus.");
+                        }}
+                        disabled={uploadingQris}
+                        className="text-danger hover:text-danger-strong"
+                      >
+                        Hapus QRIS
+                      </Button>
                     </div>
                   </div>
-                ))}
+                ) : (
+                  <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-ink-300 bg-white p-6 text-center hover:border-signal cursor-pointer transition-colors">
+                    <Upload className="mb-2 h-6 w-6 text-ink-400" aria-hidden="true" />
+                    <span className="text-xs font-bold text-ink-900">
+                      {uploadingQris ? "Mengunggah..." : "Unggah Gambar QRIS Toko"}
+                    </span>
+                    <span className="text-2xs text-ink-500 mt-0.5">Format PNG atau JPG</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      className="sr-only"
+                      onChange={handleQrisUpload}
+                      disabled={uploadingQris}
+                    />
+                  </label>
+                )}
               </div>
-            )}
-          </CardBody>
-        </Card>
 
-        <Card variant="sunken">
-          <CardHeader title="Struktur kolom yang dibaca" />
-          <CardBody className="space-y-4">
-            <div>
-              <p className="eyebrow mb-2">Wajib</p>
-              <ul className="flex flex-wrap gap-1.5">
-                {REQUIRED_COLUMNS.map((c) => (
-                  <li
-                    key={c}
-                    className="rounded-sm border border-ink-200 bg-white px-2 py-0.5 font-mono text-2xs font-semibold text-ink-600"
-                  >
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="eyebrow mb-2">Opsional</p>
-              <ul className="flex flex-wrap gap-1.5">
-                {OPTIONAL_COLUMNS.map((c) => (
-                  <li
-                    key={c}
-                    className={cn(
-                      "rounded-sm border border-dashed border-ink-300 bg-white px-2 py-0.5",
-                      "font-mono text-2xs font-medium text-ink-500"
-                    )}
-                  >
-                    {c}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <p className="text-xs leading-relaxed text-ink-500">
-              Link Foto dan Link Video harus berupa tautan langsung ke berkas gambar atau video,
-              bukan halaman Google Drive.
-            </p>
-            <a
-              href="https://support.google.com/docs/answer/183965"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-signal-strong hover:underline"
-            >
-              Cara publish spreadsheet
-              <ExternalLink className="h-3 w-3" aria-hidden="true" />
-            </a>
-          </CardBody>
-        </Card>
+              {/* Bank Transfer Details */}
+              <div className="space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-ink-700">
+                  Rekening Transfer Bank
+                </p>
+                <TextField
+                  id="bank_name"
+                  label="Nama Bank"
+                  placeholder="Mis. BCA, Mandiri, BRI, BNI"
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  autoComplete="off"
+                />
+                <TextField
+                  id="bank_account_number"
+                  label="Nomor Rekening"
+                  placeholder="1234567890"
+                  value={bankNumber}
+                  onChange={(e) => setBankNumber(e.target.value)}
+                  inputMode="numeric"
+                  autoComplete="off"
+                />
+                <TextField
+                  id="bank_account_holder"
+                  label="Atas Nama Pemilik Rekening"
+                  placeholder="Nama pemilik rekening"
+                  value={bankHolder}
+                  onChange={(e) => setBankHolder(e.target.value)}
+                  autoComplete="off"
+                />
+
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={savePayment}
+                  loading={payBusy}
+                >
+                  {payBusy ? "Menyimpan..." : "Simpan Rekening Pembayaran"}
+                </Button>
+
+                {payMsg && !payError && (
+                  <div className="rounded-lg border border-signal/25 bg-signal-wash p-2.5 text-xs text-signal-strong font-medium">
+                    {payMsg}
+                  </div>
+                )}
+                {payError && <ErrorState title="Gagal menyimpan" description={payError} compact />}
+              </div>
+            </CardBody>
+          </Card>
+        </div>
       </div>
+
+      {/* CSV Import with Field Mapping Modal */}
+      <CsvImportModal
+        open={showCsvModal}
+        onClose={() => setShowCsvModal(false)}
+        onSuccess={() => {
+          loadDocs();
+          loadProductCount();
+        }}
+      />
     </div>
   );
 }

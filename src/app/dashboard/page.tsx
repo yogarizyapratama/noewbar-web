@@ -752,6 +752,7 @@ export default function DashboardPage() {
             bank_account_holder: health?.catalog?.bank_account_holder ?? "",
             qris_url: health?.catalog?.qris_key?.url ?? null,
           }}
+          onGoProducts={() => setTab("products")}
         />
       )}
 
