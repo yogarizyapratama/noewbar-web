@@ -374,7 +374,7 @@ export function PanelSimulator({
 
         {/* KOLOM KANAN: SIMULATOR WHATSAPP INTERAKTIF */}
         <div className="space-y-4 lg:col-span-7">
-          <Card className="flex flex-col h-[740px] overflow-hidden border-ink-300 bg-[#EFEAE2]">
+          <Card className="flex flex-col h-[calc(100dvh-200px)] min-h-[480px] lg:h-[740px] overflow-hidden border-ink-300 bg-[#EFEAE2]">
             {/* Header WhatsApp Bar */}
             <div className="flex items-center justify-between bg-[#075E54] px-4 py-3 text-white">
               <div className="flex items-center gap-3">
@@ -482,7 +482,7 @@ export function PanelSimulator({
                     type="button"
                     disabled={simBusy}
                     onClick={() => sendSimMessage(s)}
-                    className="rounded border border-ink-300 bg-white px-2.5 py-1 text-2xs text-ink-700 transition-colors hover:border-ink-500 hover:bg-ink-100 disabled:opacity-50"
+                    className="min-h-[36px] flex items-center rounded border border-ink-300 bg-white px-3 py-1.5 text-2xs text-ink-700 transition-colors hover:border-ink-500 hover:bg-ink-100 disabled:opacity-50"
                   >
                     {s}
                   </button>

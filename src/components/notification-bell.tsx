@@ -371,7 +371,7 @@ export function NotificationBell({
           if (hasNewAlert) setHasNewAlert(false);
         }}
         className={cn(
-          "relative p-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal flex items-center justify-center",
+          "relative h-11 w-11 min-h-[44px] min-w-[44px] lg:h-8 lg:w-8 lg:min-h-0 lg:min-w-0 p-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal flex items-center justify-center",
           isDark
             ? "text-slate-400 hover:text-white hover:bg-slate-800"
             : "text-ink-600 hover:text-ink hover:bg-ink-100 border border-ink-200"
@@ -394,7 +394,7 @@ export function NotificationBell({
       {open && (
         <div
           className={cn(
-            "absolute right-0 mt-2 z-50 w-80 sm:w-96 rounded-2xl border shadow-overlay overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150",
+            "absolute right-0 mt-2 z-50 w-[calc(100vw-24px)] max-w-sm sm:w-96 rounded-2xl border shadow-overlay overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150",
             isDark
               ? "bg-slate-900 border-slate-750 text-slate-100"
               : "bg-white border-ink-200 text-ink"

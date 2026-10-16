@@ -285,8 +285,8 @@ export function PanelPesanan({
                   </div>
                 </div>
 
-                <div className="px-5 py-4">
-                  <table className="w-full text-left text-xs">
+                <div className="px-5 py-4 overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[320px]">
                     <thead>
                       <tr className="text-2xs uppercase tracking-wide text-ink-500">
                         <th className="pb-2 font-semibold">SKU</th>

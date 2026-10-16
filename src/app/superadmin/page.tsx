@@ -708,7 +708,7 @@ export default function SuperadminPage() {
                   setSidebarOpen(!sidebarOpen);
                 }
               }}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:text-ink hover:bg-ink-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+              className="flex h-11 w-11 min-h-[44px] min-w-[44px] lg:h-8 lg:w-8 lg:min-h-0 lg:min-w-0 items-center justify-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:text-ink hover:bg-ink-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
               title="Buka atau tutup navigasi"
               aria-label="Toggle Sidebar"
             >
@@ -807,7 +807,7 @@ export default function SuperadminPage() {
               type="button"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:text-ink hover:bg-ink-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal disabled:opacity-50 shadow-flat"
+              className="flex h-11 w-11 min-h-[44px] min-w-[44px] lg:h-8 lg:w-8 lg:min-h-0 lg:min-w-0 items-center justify-center rounded-lg border border-ink-200 bg-white text-ink-600 hover:text-ink hover:bg-ink-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal disabled:opacity-50 shadow-flat"
               title="Perbarui data konsol"
               aria-label="Segarkan data konsol"
             >
@@ -835,7 +835,7 @@ export default function SuperadminPage() {
             <button
               type="button"
               onClick={handleLogout}
-              className="p-2 rounded-lg text-ink-400 hover:text-danger-strong hover:bg-danger-wash transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger h-8 w-8 flex items-center justify-center"
+              className="p-2 rounded-lg text-ink-400 hover:text-danger-strong hover:bg-danger-wash transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger h-11 w-11 min-h-[44px] min-w-[44px] lg:h-8 lg:w-8 lg:min-h-0 lg:min-w-0 flex items-center justify-center"
               title="Keluar dari Konsol Superadmin"
               aria-label="Logout"
             >

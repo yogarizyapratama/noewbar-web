@@ -137,7 +137,7 @@ export function PanelChat({
       </div>
 
       {/* WHATSAPP WEB SHELL CONTAINER */}
-      <div className="h-[calc(100vh-170px)] min-h-[620px] max-h-[840px] w-full rounded-2xl border border-[#d1d7db] bg-white overflow-hidden shadow-sm flex flex-col lg:flex-row">
+      <div className="h-[calc(100dvh-180px)] min-h-[520px] sm:min-h-[620px] max-h-[840px] w-full rounded-2xl border border-[#d1d7db] bg-white overflow-hidden shadow-sm flex flex-col lg:flex-row">
         {/* ==================================================== 1. LEFT PANEL (CHATS LIST) */}
         <aside
           className={cn(
@@ -344,11 +344,11 @@ export function PanelChat({
             <>
               {/* WhatsApp Chat Header */}
               <div className="bg-[#f0f2f5] px-4 py-2.5 border-b border-[#d1d7db] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <button
                     type="button"
                     onClick={() => setMobileThread(false)}
-                    className="p-1 rounded text-[#54656f] hover:text-[#111b21] lg:hidden"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-[#54656f] hover:bg-black/5 hover:text-[#111b21] active:scale-95 transition-all lg:hidden"
                     aria-label="Kembali ke daftar percakapan"
                   >
                     <ArrowLeft className="h-5 w-5" />
