@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { ok, fail } from "@/lib/http";
+import { ok, fail, rateLimit } from "@/lib/http";
 import { requireAdmin, loginSuperadmin, registerTenant, ADMIN_COOKIE, COOKIE_OPTIONS, superadminHashConfigured } from "@/lib/auth";
 import { env } from "@/lib/env";
 import { gatewayHealth } from "@/lib/ai/orchestrator";
@@ -67,6 +67,12 @@ export async function POST(req: NextRequest) {
   const body = parsed.data;
 
   if (body.action === "login") {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+    const limiter = rateLimit(`admin:login:${ip}`, 5, 60_000);
+    if (!limiter.allowed) {
+      return fail("Terlalu banyak percobaan login admin. Tunggu 1 menit.", 429);
+    }
+
     const res = await loginSuperadmin(body.email, body.password);
     if (!res.ok) return fail(res.error, 401);
 

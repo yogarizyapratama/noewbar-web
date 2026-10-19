@@ -12,6 +12,7 @@ import {
   releaseReservation,
   expireStaleReservations,
   shipOrder,
+  transitionOrder,
 } from "@/lib/orders/orders";
 import { escalateToOwner } from "@/lib/alerts/dispatcher";
 import { ORDER_LABEL, PAYMENT_LABEL, type OrderState, type PaymentState } from "@/lib/orders/state";
@@ -56,6 +57,15 @@ const bodySchema = z.discriminatedUnion("action", [
     courier: z.string().max(50).optional(),
   }),
   z.object({
+    action: z.literal("cancel"),
+    order_id: z.string().uuid(),
+    reason: z.string().max(255).optional(),
+  }),
+  z.object({
+    action: z.literal("complete"),
+    order_id: z.string().uuid(),
+  }),
+  z.object({
     action: z.literal("sweep_expired"),
   }),
 ]);
@@ -90,6 +100,36 @@ export async function POST(req: NextRequest) {
 
     const released = await releaseReservation(body.order_id);
     return ok({ action: "release", order_id: body.order_id, released });
+  }
+
+  if (body.action === "cancel") {
+    const owned = await prisma.order.findFirst({
+      where: { id: body.order_id, tenant_id: session.sub },
+      select: { id: true },
+    });
+    if (!owned) return fail("Order not found", 404);
+
+    try {
+      await transitionOrder(body.order_id, "CANCELLED");
+      return ok({ action: "cancel", order_id: body.order_id, order_status: "CANCELLED" });
+    } catch (err) {
+      return fail(err instanceof Error ? err.message : "Gagal membatalkan pesanan", 409);
+    }
+  }
+
+  if (body.action === "complete") {
+    const owned = await prisma.order.findFirst({
+      where: { id: body.order_id, tenant_id: session.sub },
+      select: { id: true },
+    });
+    if (!owned) return fail("Order not found", 404);
+
+    try {
+      await transitionOrder(body.order_id, "COMPLETED");
+      return ok({ action: "complete", order_id: body.order_id, order_status: "COMPLETED" });
+    } catch (err) {
+      return fail(err instanceof Error ? err.message : "Gagal menyelesaikan pesanan", 409);
+    }
   }
 
   if (body.action === "submit_proof") {

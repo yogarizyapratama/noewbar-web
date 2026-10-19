@@ -23,6 +23,14 @@ export interface ShippingLabelData {
   notes?: string;
 }
 
+function cleanPdfText(str?: string | null): string {
+  if (!str) return "";
+  return str
+    .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/gu, "")
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, " ")
+    .trim();
+}
+
 /**
  * Generate a standard 100x150 mm (4x6 inch) thermal shipping label PDF.
  * Dimensions in points: 283.46 x 425.20 pt.
@@ -56,7 +64,9 @@ export async function generateThermalShippingLabel(data: ShippingLabelData): Pro
     doc.rect(left, y, width, headerHeight).fillColor("#0F172A").fill();
 
     doc.fillColor("#FFFFFF").fontSize(16).font("Helvetica-Bold");
-    const courierLabel = `${data.courier.toUpperCase()} ${data.courierService ? `- ${data.courierService.toUpperCase()}` : ""}`;
+    const safeCourier = cleanPdfText(data.courier).toUpperCase();
+    const safeCourierService = cleanPdfText(data.courierService).toUpperCase();
+    const courierLabel = `${safeCourier} ${safeCourierService ? `- ${safeCourierService}` : ""}`;
     doc.text(courierLabel, left + 8, y + 10, { width: 170, ellipsis: true });
 
     // Payment Badge: NON-COD or COD
@@ -84,10 +94,11 @@ export async function generateThermalShippingLabel(data: ShippingLabelData): Pro
     doc.rect(left, y, width, recipientHeight).strokeColor("#CBD5E1").lineWidth(0.5).stroke();
 
     doc.fillColor("#64748B").fontSize(7).font("Helvetica-Bold").text("PENERIMA (TUJUAN):", left + 8, y + 6);
-    doc.fillColor("#0F172A").fontSize(11).font("Helvetica-Bold").text(data.buyerName || "Pelanggan", left + 8, y + 16, { width: width - 16 });
-    doc.fillColor("#1E293B").fontSize(9).font("Helvetica").text(`Telp: ${data.buyerPhone}`, left + 8, y + 30);
+    const safeBuyerName = cleanPdfText(data.buyerName) || "Pelanggan";
+    doc.fillColor("#0F172A").fontSize(11).font("Helvetica-Bold").text(safeBuyerName, left + 8, y + 16, { width: width - 16 });
+    doc.fillColor("#1E293B").fontSize(9).font("Helvetica").text(`Telp: ${cleanPdfText(data.buyerPhone)}`, left + 8, y + 30);
 
-    const fullAddr = [data.destinationAddress, data.destinationSubdistrict].filter(Boolean).join(", ");
+    const fullAddr = cleanPdfText([data.destinationAddress, data.destinationSubdistrict].filter(Boolean).join(", "));
     doc.fillColor("#334155").fontSize(8).font("Helvetica").text(fullAddr || "Alamat tujuan sesuai pesanan", left + 8, y + 43, {
       width: width - 16,
       height: 38,
@@ -101,8 +112,9 @@ export async function generateThermalShippingLabel(data: ShippingLabelData): Pro
     doc.rect(left, y, width, senderHeight).strokeColor("#CBD5E1").lineWidth(0.5).stroke();
 
     doc.fillColor("#64748B").fontSize(7).font("Helvetica-Bold").text("PENGIRIM:", left + 8, y + 6);
-    doc.fillColor("#0F172A").fontSize(9).font("Helvetica-Bold").text(data.storeName || "Toko Online", left + 8, y + 16, { width: width - 16 });
-    const storeInfo = [data.storePhone ? `Telp: ${data.storePhone}` : null, data.storeOrigin ? `Kota: ${data.storeOrigin}` : null].filter(Boolean).join(" | ");
+    const safeStoreName = cleanPdfText(data.storeName) || "Toko Online";
+    doc.fillColor("#0F172A").fontSize(9).font("Helvetica-Bold").text(safeStoreName, left + 8, y + 16, { width: width - 16 });
+    const storeInfo = cleanPdfText([data.storePhone ? `Telp: ${data.storePhone}` : null, data.storeOrigin ? `Kota: ${data.storeOrigin}` : null].filter(Boolean).join(" | "));
     doc.fillColor("#475569").fontSize(8).font("Helvetica").text(storeInfo || "Pengiriman Indonesia", left + 8, y + 28);
 
     y += senderHeight;
@@ -117,7 +129,7 @@ export async function generateThermalShippingLabel(data: ShippingLabelData): Pro
     let itemY = y + 18;
     const displayedItems = (data.items || []).slice(0, 5);
     displayedItems.forEach((it, idx) => {
-      const line = `${idx + 1}. ${it.name}${it.variant ? ` (${it.variant})` : ""} x ${it.qty}`;
+      const line = cleanPdfText(`${idx + 1}. ${it.name}${it.variant ? ` (${it.variant})` : ""} x ${it.qty}`);
       doc.fillColor("#1E293B").fontSize(8).font("Helvetica").text(line, left + 8, itemY, { width: width - 16, ellipsis: true });
       itemY += 14;
     });
@@ -127,7 +139,7 @@ export async function generateThermalShippingLabel(data: ShippingLabelData): Pro
     }
 
     if (data.notes) {
-      doc.fillColor("#B45309").fontSize(7).font("Helvetica-Bold").text(`Catatan: ${data.notes}`, left + 8, y + itemsHeight - 22, { width: width - 16, ellipsis: true });
+      doc.fillColor("#B45309").fontSize(7).font("Helvetica-Bold").text(`Catatan: ${cleanPdfText(data.notes)}`, left + 8, y + itemsHeight - 22, { width: width - 16, ellipsis: true });
     }
 
     y += itemsHeight;

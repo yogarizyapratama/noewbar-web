@@ -76,7 +76,7 @@ async function reservedQtyForSku(tenantId: string, sku: string): Promise<number>
         AND o."stock_released" = false
         AND (
           (o."order_status" IN ('DRAFT', 'PENDING_CONFIRMATION', 'PENDING_PAYMENT') AND o."reservation_expires_at" > NOW())
-          OR o."order_status" IN ('PROCESSING', 'READY_TO_SHIP', 'SHIPPED', 'COMPLETED')
+          OR o."order_status" IN ('PROCESSING', 'READY_TO_SHIP', 'SHIPPED')
         )
         AND item->>'sku' = ${sku}
     `;
@@ -257,7 +257,7 @@ export async function expireStaleReservations(tenantId?: string): Promise<{ expi
   const stale = await prisma.order.findMany({
     where: {
       ...(tenantId ? { tenant_id: tenantId } : {}),
-      order_status: "PENDING_PAYMENT",
+      order_status: { in: ["PENDING_PAYMENT", "PENDING_CONFIRMATION", "DRAFT"] },
       stock_reserved: true,
       stock_released: false,
       reservation_expires_at: { lte: new Date() },
@@ -285,6 +285,10 @@ export async function transitionOrder(orderId: string, to: OrderState): Promise<
   const from = order.order_status as OrderState;
   assertOrderTransition(from, to);
   assertFulfilmentAllowed(to, order.payment_status as PaymentState);
+
+  if (to === "CANCELLED" || to === "EXPIRED" || to === "COMPLETED") {
+    await releaseReservation(orderId);
+  }
 
   await prisma.order.update({ where: { id: orderId }, data: { order_status: to } });
 }

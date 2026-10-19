@@ -82,7 +82,8 @@ export async function generatePaymentReceiptPdf(
         y += 19;
       }
 
-      doc.moveDown(1.2);
+      doc.x = 36;
+      doc.y = y + 12;
       doc.fontSize(8).fillColor("#888").font("Helvetica");
       doc.text("Bukti ini diterbitkan otomatis oleh sistem pembayaran Noewbar CS Pro setelah pembayaran dikonfirmasi.", {
         width: 220,

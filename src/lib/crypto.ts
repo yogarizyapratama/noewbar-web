@@ -95,8 +95,12 @@ export function verifyToken<T extends { exp: number }>(token: string, secret: st
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
 
   try {
-    const payload = JSON.parse(fromB64url(body).toString("utf8")) as T;
-    if (typeof payload.exp !== "number" || payload.exp * 1000 < Date.now()) return null;
+    const parsed = JSON.parse(fromB64url(body).toString("utf8"));
+    if (!parsed || typeof parsed !== "object") return null;
+    const payload = parsed as T;
+    if (!Number.isFinite(payload.exp) || payload.exp <= 0 || payload.exp * 1000 < Date.now()) {
+      return null;
+    }
     return payload;
   } catch {
     return null;

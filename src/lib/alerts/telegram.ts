@@ -33,7 +33,7 @@ export async function sendTelegramAlert(
   const timer = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    let res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       signal: controller.signal,
       headers: { "Content-Type": "application/json" },
@@ -46,7 +46,23 @@ export async function sendTelegramAlert(
       cache: "no-store",
     });
 
-    const json = (await res.json().catch(() => null)) as { ok?: boolean; description?: string } | null;
+    let json = (await res.json().catch(() => null)) as { ok?: boolean; description?: string } | null;
+
+    // Fallback: If Markdown parsing fails due to unescaped characters, retry as plain text
+    if (!res.ok && json?.description?.toLowerCase().includes("parse entities")) {
+      res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+          disable_web_page_preview: true,
+        }),
+        cache: "no-store",
+      });
+      json = (await res.json().catch(() => null)) as { ok?: boolean; description?: string } | null;
+    }
 
     if (!res.ok || !json?.ok) {
       return {

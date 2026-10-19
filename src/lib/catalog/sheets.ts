@@ -151,8 +151,9 @@ export function parseRupiah(raw: string): number {
   }
   if (hasDot) {
     const parts = cleaned.split(".");
-    // a single dot followed by exactly 3 digits is a thousands separator
-    if (parts.length === 2 && parts[1].length === 3) {
+    // All segments after the first having exactly 3 digits indicate thousands separators (e.g. 185.000 or 1.500.000)
+    const isThousands = parts.length > 1 && parts.slice(1).every((p) => p.length === 3);
+    if (isThousands) {
       return parseFloat(parts.join("")) || 0;
     }
     return parseFloat(cleaned) || 0;
@@ -290,6 +291,14 @@ export async function fetchCatalog(
     }
 
     const { rows, headers } = rowsFromCsv(text);
+    const structure = verifyStructure(headers);
+    if (!structure.valid) {
+      return {
+        ok: false,
+        error: `Format kolom spreadsheet tidak sesuai. Kolom wajib belum ditemukan: ${structure.missing.join(", ")}`,
+        headers,
+      };
+    }
     return { ok: true, rows, headers, fetchedAt: new Date().toISOString() };
   } catch (err) {
     const message =
@@ -336,8 +345,16 @@ export function clearCatalogCache(tenantId?: string): void {
  */
 export async function readCatalog(
   tenantId: string,
-  sheetsUrl: string
+  sheetsUrl: string,
+  forceRefresh = false
 ): Promise<{ rows: ProductRow[]; headers: string[]; source: "sheet" | "cache"; warning?: string }> {
+  if (!forceRefresh) {
+    const cached = getCachedCatalog(tenantId);
+    if (cached) {
+      return { rows: cached.rows, headers: cached.headers, source: "cache" };
+    }
+  }
+
   let dbRows: ProductRow[] = [];
   try {
     const dbProducts = await prisma.product.findMany({

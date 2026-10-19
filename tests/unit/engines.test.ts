@@ -594,16 +594,19 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
 
   test("state: canTransitionPayment validates legitimate payment states", () => {
     assert.strictEqual(canTransitionPayment("UNPAID", "PROOF_SUBMITTED"), true);
+    assert.strictEqual(canTransitionPayment("UNPAID", "VERIFIED"), true);
+    assert.strictEqual(canTransitionPayment("PROOF_SUBMITTED", "PROOF_SUBMITTED"), true);
     assert.strictEqual(canTransitionPayment("PROOF_SUBMITTED", "UNDER_REVIEW"), true);
     assert.strictEqual(canTransitionPayment("UNDER_REVIEW", "VERIFIED"), true);
     assert.strictEqual(canTransitionPayment("UNDER_REVIEW", "REJECTED"), true);
     assert.strictEqual(canTransitionPayment("REJECTED", "PROOF_SUBMITTED"), true);
+    assert.strictEqual(canTransitionPayment("REJECTED", "VERIFIED"), true);
 
-    // Cannot jump UNPAID directly to VERIFIED
-    assert.strictEqual(canTransitionPayment("UNPAID", "VERIFIED"), false);
+    // VERIFIED is terminal, cannot transition back to UNPAID or PROOF_SUBMITTED
+    assert.strictEqual(canTransitionPayment("VERIFIED", "UNPAID"), false);
     assert.throws(
-      () => assertPaymentTransition("UNPAID", "VERIFIED"),
-      /Illegal payment transition: UNPAID -> VERIFIED/
+      () => assertPaymentTransition("VERIFIED", "UNPAID"),
+      /Illegal payment transition: VERIFIED -> UNPAID/
     );
   });
 
@@ -662,6 +665,9 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
   test("sheets: parseRupiah parses standard Indonesian currency formats", () => {
     assert.strictEqual(parseRupiah("Rp 185.000"), 185000);
     assert.strictEqual(parseRupiah("185.000,50"), 185000.5);
+    assert.strictEqual(parseRupiah("1.500.000"), 1500000);
+    assert.strictEqual(parseRupiah("2.750.000,50"), 2750000.5);
+    assert.strictEqual(parseRupiah("Rp 1.500.000,-"), 1500000);
     assert.strictEqual(parseRupiah("95000"), 95000);
     assert.strictEqual(parseRupiah("Rp 95.000,-"), 95000);
     assert.strictEqual(parseRupiah(""), 0);

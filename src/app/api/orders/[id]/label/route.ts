@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { requireTenant } from "@/lib/auth";
 import { fail } from "@/lib/http";
 import { generateThermalShippingLabel } from "@/lib/orders/shipping-label";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,11 @@ export async function GET(
 ) {
   const session = await requireTenant();
   if (!session) return fail("Unauthorized", 401);
+
+  const subInfo = await getTenantSubscriptionInfo(session.sub);
+  if (subInfo.isExpired) {
+    return fail("Langganan Anda telah berakhir. Perbarui paket untuk mencetak label pengiriman.", 403);
+  }
 
   const orderId = params.id;
   if (!orderId) return fail("Order ID required", 400);
@@ -33,6 +39,10 @@ export async function GET(
 
   if (!order) {
     return fail("Order tidak ditemukan", 404);
+  }
+
+  if (order.order_status === "CANCELLED" || order.order_status === "EXPIRED") {
+    return fail(`Tidak dapat mencetak label untuk pesanan dengan status ${order.order_status}.`, 400);
   }
 
   // Parse items

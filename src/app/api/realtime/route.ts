@@ -42,9 +42,12 @@ export async function GET(req: NextRequest) {
       let heartbeat: NodeJS.Timeout | null = null;
       let unsubscribe: (() => void) | null = null;
 
+      const onAbort = () => doCleanup();
+
       const doCleanup = () => {
         if (cleanedUp) return;
         cleanedUp = true;
+        req.signal.removeEventListener("abort", onAbort);
         if (heartbeat) clearInterval(heartbeat);
         unsubscribe?.();
         try {
@@ -54,6 +57,11 @@ export async function GET(req: NextRequest) {
         }
       };
       cleanup = doCleanup;
+
+      if (req.signal.aborted) {
+        doCleanup();
+        return;
+      }
 
       unsubscribe = eventBus.subscribe(channel, (event) => {
         try {
@@ -76,9 +84,7 @@ export async function GET(req: NextRequest) {
       }, 25_000);
 
       // Cleanup when the client disconnects.
-      req.signal.addEventListener("abort", () => {
-        doCleanup();
-      });
+      req.signal.addEventListener("abort", onAbort, { once: true });
     },
     cancel() {
       cleanup?.();

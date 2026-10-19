@@ -86,6 +86,7 @@ async function resolveFromBiteship(
   origin: string,
   destination: string,
   courier: CourierCode,
+  weightGrams = 1000,
   timeoutMs = 5000
 ): Promise<ProviderRate | null> {
   const apiKey = env.BITESHIP_API_KEY.trim();
@@ -112,7 +113,7 @@ async function resolveFromBiteship(
         origin_area_id: origin,
         destination_area_id: destination,
         couriers: courierSlug,
-        items: [{ name: "Produk", value: 100000, quantity: 1, weight: 1000 }],
+        items: [{ name: "Produk", value: 100000, quantity: 1, weight: Math.max(1000, weightGrams) }],
       }),
       cache: "no-store",
     });
@@ -148,6 +149,7 @@ async function resolveFromRajaOngkir(
   origin: string,
   destination: string,
   courier: CourierCode,
+  weightGrams = 1000,
   timeoutMs = 5000
 ): Promise<ProviderRate | null> {
   const apiKey = env.RAJAONGKIR_API_KEY.trim();
@@ -173,7 +175,7 @@ async function resolveFromRajaOngkir(
       body: new URLSearchParams({
         origin,
         destination,
-        weight: "1000",
+        weight: String(Math.max(1000, weightGrams)),
         courier: courierSlug,
       }),
       cache: "no-store",
@@ -261,14 +263,15 @@ async function resolveFromProvider(
   origin: string,
   destination: string,
   courier: CourierCode,
+  weightGrams = 1000,
   timeoutMs = 6000
 ): Promise<ProviderRate | null> {
   // 1. Try Biteship
-  const biteship = await resolveFromBiteship(origin, destination, courier, timeoutMs);
+  const biteship = await resolveFromBiteship(origin, destination, courier, weightGrams, timeoutMs);
   if (biteship) return biteship;
 
   // 2. Try RajaOngkir
-  const rajaongkir = await resolveFromRajaOngkir(origin, destination, courier, timeoutMs);
+  const rajaongkir = await resolveFromRajaOngkir(origin, destination, courier, weightGrams, timeoutMs);
   if (rajaongkir) return rajaongkir;
 
   // 3. Try Public API
@@ -281,6 +284,14 @@ function isEstimateRow(serviceType: string): boolean {
 
 function stripMarker(serviceType: string): string {
   return serviceType.replace(ESTIMATE_MARKER, "");
+}
+
+/** Indonesian courier weight tolerance: ceiling round if decimal exceeds 0.25 kg. */
+export function calculateCourierBillableWeight(weightKg: number): number {
+  if (weightKg <= 1) return 1;
+  const intPart = Math.floor(weightKg);
+  const decPart = weightKg - intPart;
+  return decPart > 0.25 ? intPart + 1 : intPart;
 }
 
 export async function calculateShippingRates(params: {
@@ -297,7 +308,8 @@ export async function calculateShippingRates(params: {
     throw new Error("origin_subdistrict and destination_subdistrict are required");
   }
 
-  const weight = Math.max(1, Math.round(params.weightKg || 1));
+  const weight = calculateCourierBillableWeight(params.weightKg || 1);
+  const weightGrams = Math.max(1000, Math.round(weight * 1000));
   const totalAmount = params.orderTotalAmount || 0;
   const isFree = totalAmount >= FREE_SHIPPING_THRESHOLD;
   const providerConfigured =
@@ -356,7 +368,7 @@ export async function calculateShippingRates(params: {
     }
 
     // 2. Cache miss -> public provider.
-    const fromProvider = await resolveFromProvider(origin, destination, c.courier);
+    const fromProvider = await resolveFromProvider(origin, destination, c.courier, weightGrams);
 
     if (fromProvider) {
       let serviceType = fromProvider.service_type;

@@ -253,6 +253,36 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Jika bukti transfer terpasang dan tanda terima sudah terkirim, catat caption ke riwayat chat dan akhiri (cegah double-reply AI)
+    if (proof) {
+      if (payload.body.trim()) {
+        const conv = await prisma.conversation.findUnique({
+          where: { tenant_id_buyer_jid: { tenant_id: tenant.id, buyer_jid: payload.sender_jid } },
+          select: { id: true },
+        });
+        if (conv) {
+          await prisma.chatMessage.create({
+            data: {
+              conversation_id: conv.id,
+              sender_type: "USER",
+              content: payload.body,
+              media_url: ingest.mediaUrl ?? null,
+            },
+          });
+          notifyTenant(tenant.id, { type: "chat" });
+        }
+      }
+      return ok({
+        accepted: true,
+        replied: true,
+        media_ingested: ingest.ok,
+        media_url: ingest.mediaUrl ?? null,
+        ocr: ocr ? { amount: ocr.amount, bank: ocr.bank, confidence: ocr.confidence, ok: ocr.ok } : null,
+        proof_attached: proof,
+        note: "Bukti transfer berhasil diproses dan konfirmasi terkirim ke pembeli.",
+      });
+    }
+
     // B-2 FIX: jika ada caption/teks pada pesan bergambar/suara, lanjut ke pipeline AI.
     // Hanya return di sini jika body benar-benar kosong (media-only tanpa keterangan atau produk terdeteksi).
     if (!payload.body.trim()) {
@@ -268,7 +298,7 @@ export async function POST(req: NextRequest) {
         note: "Media-only inbound: stored, tidak ada caption atau produk terdeteksi.",
       });
     }
-    // Ada teks/caption bersama gambar: teruskan ke pipeline AI di bawah.
+    // Ada teks/caption bersama gambar produk/audio: teruskan ke pipeline AI di bawah.
   }
 
   // --- Share-Location (USP 2): GPS -> kecamatan -> ongkir. ---

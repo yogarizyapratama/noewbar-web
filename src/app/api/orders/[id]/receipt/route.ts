@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireTenant } from "@/lib/auth";
 import { fail } from "@/lib/http";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,11 @@ export async function GET(
 ) {
   const session = await requireTenant();
   if (!session) return fail("Unauthorized", 401);
+
+  const subInfo = await getTenantSubscriptionInfo(session.sub);
+  if (subInfo.isExpired) {
+    return fail("Langganan Anda telah berakhir. Perbarui paket untuk mengakses struk pesanan.", 403);
+  }
 
   const orderId = params.id;
   if (!orderId) return fail("Order ID required", 400);

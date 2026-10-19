@@ -72,7 +72,12 @@ export default async function PublicStorePage({
 
   const sections = (website.published_sections || website.sections) as any[];
   const tenant = website.tenant;
-  const products = tenant.products;
+  const products = tenant.products.map((p) => ({
+    ...p,
+    price: Number(p.price),
+    discount_price: p.discount_price ? Number(p.discount_price) : null,
+    images: Array.isArray(p.images) ? (p.images as string[]) : [],
+  }));
   const formatWa = (phone?: string | null) => {
     if (!phone) return "";
     const digits = phone.replace(/[^0-9]/g, "");
@@ -86,6 +91,7 @@ export default async function PublicStorePage({
 
   const makeWaLink = (msg: string, overrideNumber?: string | null) => {
     const targetNumber = overrideNumber && overrideNumber.trim() ? formatWa(overrideNumber) : defaultWaNumber;
+    if (!targetNumber) return "#kontak-toko";
     return `https://wa.me/${targetNumber}?text=${encodeURIComponent(msg)}`;
   };
 

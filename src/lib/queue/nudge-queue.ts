@@ -33,7 +33,7 @@ function redisOptions() {
     maxRetriesPerRequest: null as null,
     enableReadyCheck: false,
     lazyConnect: true,
-    retryStrategy: (times: number) => (times > 3 ? null : Math.min(times * 500, 2000)),
+    retryStrategy: (times: number) => Math.min(times * 500, 5000),
   };
 }
 
@@ -193,15 +193,28 @@ export async function cancelPendingNudges(conversationId: string): Promise<numbe
   return res.count;
 }
 
-/** Delivers one nudge. Idempotent: a non-PENDING row is skipped. */
+/** Delivers one nudge. Idempotent: atomic claim prevents duplicate sends. */
 export async function deliverNudge(nudgeId: string): Promise<{ delivered: boolean; reason?: string }> {
+  // 1. Optimistic lock / atomic claim
+  const claimed = await prisma.scheduledNudge.updateMany({
+    where: { id: nudgeId, status: "PENDING" },
+    data: { status: "PROCESSING" },
+  });
+
+  if (claimed.count === 0) {
+    const existing = await prisma.scheduledNudge.findUnique({
+      where: { id: nudgeId },
+      select: { status: true },
+    });
+    return { delivered: false, reason: existing ? `already_${existing.status}` : "nudge_not_found" };
+  }
+
   const nudge = await prisma.scheduledNudge.findUnique({
     where: { id: nudgeId },
     include: { conversation: true },
   });
 
   if (!nudge) return { delivered: false, reason: "nudge_not_found" };
-  if (nudge.status !== "PENDING") return { delivered: false, reason: `already_${nudge.status}` };
 
   const conversation = nudge.conversation;
   if (conversation.is_human_takeover) {
@@ -220,7 +233,11 @@ export async function deliverNudge(nudgeId: string): Promise<{ delivered: boolea
     select: { instance_key: true },
   });
 
-  if (!instance) return { delivered: false, reason: "no_connected_instance" };
+  if (!instance) {
+    // Revert so it can be retried later when instance reconnects
+    await prisma.scheduledNudge.update({ where: { id: nudgeId }, data: { status: "PENDING" } });
+    return { delivered: false, reason: "no_connected_instance" };
+  }
 
   let text: string;
   try {
@@ -237,7 +254,10 @@ export async function deliverNudge(nudgeId: string): Promise<{ delivered: boolea
     simulateTyping: true,
   });
 
-  if (!send.ok) return { delivered: false, reason: send.error };
+  if (!send.ok) {
+    await prisma.scheduledNudge.update({ where: { id: nudgeId }, data: { status: "PENDING" } });
+    return { delivered: false, reason: send.error };
+  }
 
   await prisma.$transaction([
     prisma.scheduledNudge.update({ where: { id: nudgeId }, data: { status: "SENT" } }),

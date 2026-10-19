@@ -23,7 +23,7 @@ export async function getTenantSubscriptionInfo(tenantId: string): Promise<Tenan
     include: {
       subscriptions: {
         orderBy: { created_at: "desc" },
-        take: 1,
+        take: 5,
       },
     },
   });
@@ -56,7 +56,10 @@ export async function getTenantSubscriptionInfo(tenantId: string): Promise<Tenan
     };
   }
 
-  const latestSub = tenant.subscriptions[0];
+  const activeSub = tenant.subscriptions.find(
+    (s) => s.status === "ACTIVE" || s.status === "GRACE_PERIOD"
+  );
+  const latestSub = activeSub ?? tenant.subscriptions[0];
 
   // 2. Paid subscription evaluation
   if (latestSub && (latestSub.status === "ACTIVE" || latestSub.status === "GRACE_PERIOD")) {

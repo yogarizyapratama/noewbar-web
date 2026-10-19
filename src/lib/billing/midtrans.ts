@@ -174,7 +174,7 @@ export async function processMidtransNotification(
 
   const settled =
     payload.transaction_status === "settlement" ||
-    (payload.transaction_status === "capture" && payload.fraud_status !== "deny");
+    (payload.transaction_status === "capture" && payload.fraud_status === "accept");
 
   if (!settled) {
     if (payload.transaction_status === "expire" || payload.transaction_status === "cancel") {
@@ -419,7 +419,11 @@ export async function reconcileSubscriptions(): Promise<{
       continue;
     }
 
-    if (status.transactionStatus === "settlement") {
+    const isSettled =
+      status.transactionStatus === "settlement" ||
+      (status.transactionStatus === "capture" && status.fraudStatus === "accept");
+
+    if (isSettled) {
       // Amount lock (same rule as the webhook path): never activate on a
       // mismatched gross_amount.
       const paidAmount = Number(status.grossAmount);
@@ -471,7 +475,7 @@ export async function subscriptionSnapshot(tenantId: string): Promise<{
     include: {
       subscriptions: {
         orderBy: { created_at: "desc" },
-        take: 1,
+        take: 5,
       },
     },
   });
@@ -489,7 +493,10 @@ export async function subscriptionSnapshot(tenantId: string): Promise<{
     };
   }
 
-  const latestSub = tenant.subscriptions[0];
+  const activeSub = tenant.subscriptions.find(
+    (s) => s.status === "ACTIVE" || s.status === "GRACE_PERIOD"
+  );
+  const latestSub = activeSub ?? tenant.subscriptions[0];
   const now = new Date();
 
   // 1. Paid active or grace-period subscription

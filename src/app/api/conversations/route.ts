@@ -112,8 +112,14 @@ export async function POST(req: NextRequest) {
 
   await prisma.conversation.update({
     where: { id: conversation.id },
-    data: { last_interaction: new Date() },
+    data: {
+      last_interaction: new Date(),
+      is_human_takeover: true,
+      pipeline_stage: "ESCALATED",
+    },
   });
+
+  notifyTenant(session.sub, { type: "chat" });
 
   return ok({
     action: "send",

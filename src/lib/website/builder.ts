@@ -15,6 +15,14 @@ export * from "./types";
  * - Multi-tenant safe.
  */
 
+function extractJsonFromLlm(raw: string): any {
+  const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const targetStr = codeBlockMatch ? codeBlockMatch[1].trim() : raw.trim();
+  const braceMatch = targetStr.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (!braceMatch) throw new Error("Format JSON tidak ditemukan pada output AI");
+  return JSON.parse(braceMatch[0]);
+}
+
 /**
  * AI Block Editing Engine:
  * Takes the current target section and user prompt, and requests a validated JSON
@@ -59,13 +67,7 @@ Berikan JSON hasil pembaruan untuk content dan style:`;
       max_tokens: 1200,
     });
 
-    let cleaned = rawReply.trim();
-    if (cleaned.startsWith("```json")) cleaned = cleaned.replace(/^```json\s*/i, "");
-    if (cleaned.startsWith("```")) cleaned = cleaned.replace(/^```\s*/i, "");
-    if (cleaned.endsWith("```")) cleaned = cleaned.replace(/```\s*$/i, "");
-    cleaned = cleaned.trim();
-
-    const parsed = JSON.parse(cleaned);
+    const parsed = extractJsonFromLlm(rawReply);
     if (!parsed || typeof parsed !== "object") {
       return { ok: false, error: "AI mengembalikan format yang tidak valid." };
     }
@@ -143,13 +145,7 @@ Keluarkan HANYA JSON murni dengan format:
       max_tokens: 1500,
     });
 
-    let cleaned = raw.trim();
-    if (cleaned.startsWith("```json")) cleaned = cleaned.replace(/^```json\s*/i, "");
-    if (cleaned.startsWith("```")) cleaned = cleaned.replace(/^```\s*/i, "");
-    if (cleaned.endsWith("```")) cleaned = cleaned.replace(/```\s*$/i, "");
-    cleaned = cleaned.trim();
-
-    const data = JSON.parse(cleaned);
+    const data = extractJsonFromLlm(raw);
 
     // Apply the tailored content over the base template sections
     const newSections = baseTemplate.default_sections.map((sec) => {

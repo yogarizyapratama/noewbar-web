@@ -3,7 +3,11 @@ import prisma from "@/lib/prisma";
 import { requireTenant } from "@/lib/auth";
 import { ok, fail } from "@/lib/http";
 import { waDaemon } from "@/lib/wa/daemon-client";
-import { rupiah } from "@/components/ui";
+import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
+
+function formatRupiah(n: number): string {
+  return "Rp " + n.toLocaleString("id-ID");
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +18,11 @@ export async function POST(
 ) {
   const session = await requireTenant();
   if (!session) return fail("Unauthorized", 401);
+
+  const subInfo = await getTenantSubscriptionInfo(session.sub);
+  if (subInfo.isExpired) {
+    return fail("Langganan Anda telah berakhir. Perbarui paket untuk menggunakan fitur ini.", 403);
+  }
 
   const orderId = params.id;
   if (!orderId) return fail("Order ID required", 400);
@@ -40,6 +49,21 @@ export async function POST(
     return fail("Pesanan ini sudah memiliki bukti transfer atau sudah diverifikasi.", 400);
   }
 
+  // Cooldown: prevent sending payment reminder more than once per hour for the same order
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const recentReminder = await prisma.chatMessage.findFirst({
+    where: {
+      conversation_id: order.conversation_id,
+      sender_type: "BOT",
+      content: { contains: order.order_number },
+      created_at: { gte: oneHourAgo },
+    },
+  });
+
+  if (recentReminder) {
+    return fail("Pengingat pembayaran sudah dikirimkan dalam 1 jam terakhir. Mohon tunggu sebelum mengirim kembali.", 429);
+  }
+
   const instance = await prisma.waInstance.findFirst({
     where: {
       tenant_id: session.sub,
@@ -58,10 +82,10 @@ export async function POST(
   const bankAccount = settings?.bank_account_number || "-";
   const bankHolder = settings?.bank_account_holder || storeName;
 
-  const totalAmountStr = rupiah(Number(order.total_amount));
+  const totalAmountStr = formatRupiah(Number(order.total_amount));
   const uniqueCodeStr = order.unique_code > 0 ? ` (termasuk kode unik ${order.unique_code})` : "";
 
-  const reminderText = `Halo Kak ${buyerName}! 😊\n\nIni pengingat ramah untuk pesanan *#${order.order_number}* di *${storeName}*.\nTotal pembayaran: *Rp ${totalAmountStr}*${uniqueCodeStr}.\n\nPembayaran dapat ditransfer ke rekening resmi toko kami:\n🏦 Bank: *${bankName}*\n💳 No. Rekening: *${bankAccount}*\n👤 Atas Nama: *${bankHolder}*\n\nSetelah transfer, mohon kirimkan foto struk atau bukti transfer ke chat ini agar pesanan dapat segera kami proses pengirimannya ya kak. Terima kasih! 🙏`;
+  const reminderText = `Halo Kak ${buyerName}! 😊\n\nIni pengingat ramah untuk pesanan *#${order.order_number}* di *${storeName}*.\nTotal pembayaran: *${totalAmountStr}*${uniqueCodeStr}.\n\nPembayaran dapat ditransfer ke rekening resmi toko kami:\n🏦 Bank: *${bankName}*\n💳 No. Rekening: *${bankAccount}*\n👤 Atas Nama: *${bankHolder}*\n\nSetelah transfer, mohon kirimkan foto struk atau bukti transfer ke chat ini agar pesanan dapat segera kami proses pengirimannya ya kak. Terima kasih! 🙏`;
 
   const sendRes = await waDaemon.sendText({
     instanceKey: instance.instance_key,

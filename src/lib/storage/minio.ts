@@ -6,7 +6,7 @@ import {
   ListObjectsV2Command,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
-import { env, MINIO_BASE } from "@/lib/env";
+import { env, MINIO_BASE, MINIO_PUBLIC_BASE } from "@/lib/env";
 
 /**
  * MinIO S3 client (specification chapter 8).
@@ -30,7 +30,8 @@ export const s3Client = new S3Client({
 export const BUCKET = env.MINIO_BUCKET;
 
 export function publicUrlFor(key: string): string {
-  return `${env.MINIO_PUBLIC_URL.replace(/\/$/, "")}/${key.replace(/^\//, "")}`;
+  const base = (MINIO_PUBLIC_BASE || `${MINIO_BASE}/${BUCKET}`).replace(/\/$/, "");
+  return `${base}/${key.replace(/^\//, "")}`;
 }
 
 export function tenantProductKey(tenantId: string, sku: string, ext = "jpg"): string {
@@ -104,8 +105,11 @@ export async function getObjectBuffer(key: string): Promise<Buffer | null> {
   try {
     const res = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
     if (!res.Body) return null;
+    if (typeof (res.Body as any).transformToByteArray === "function") {
+      const bytes = await (res.Body as any).transformToByteArray();
+      return Buffer.from(bytes);
+    }
     const chunks: Uint8Array[] = [];
-    // The SDK v3 stream is async-iterable in Node 18+.
     for await (const chunk of res.Body as AsyncIterable<Uint8Array>) {
       chunks.push(chunk);
     }

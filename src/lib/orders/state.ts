@@ -41,11 +41,11 @@ const ORDER_TRANSITIONS: Record<OrderState, OrderState[]> = {
 };
 
 const PAYMENT_TRANSITIONS: Record<PaymentState, PaymentState[]> = {
-  UNPAID: ["PROOF_SUBMITTED", "REJECTED"],
-  PROOF_SUBMITTED: ["UNDER_REVIEW", "VERIFIED", "REJECTED"],
-  UNDER_REVIEW: ["VERIFIED", "REJECTED"],
-  // A rejected payment can be re-submitted after the buyer sends a correct proof.
-  REJECTED: ["PROOF_SUBMITTED"],
+  UNPAID: ["PROOF_SUBMITTED", "VERIFIED", "REJECTED"],
+  PROOF_SUBMITTED: ["PROOF_SUBMITTED", "UNDER_REVIEW", "VERIFIED", "REJECTED"],
+  UNDER_REVIEW: ["PROOF_SUBMITTED", "VERIFIED", "REJECTED"],
+  // A rejected payment can be re-submitted or directly verified by merchant bank mutation check
+  REJECTED: ["PROOF_SUBMITTED", "VERIFIED"],
   VERIFIED: [],
 };
 

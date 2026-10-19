@@ -269,8 +269,11 @@ export async function POST(req: NextRequest) {
     if (body.bank_account_number !== undefined) data.bank_account_number = body.bank_account_number;
     if (body.bank_account_holder !== undefined) data.bank_account_holder = body.bank_account_holder;
     if (body.qris_object_key !== undefined) {
-      // A real key must exist in MinIO before we persist it.
+      // A real key must belong to this tenant and exist in MinIO before we persist it.
       if (body.qris_object_key) {
+        if (!body.qris_object_key.startsWith(`tenants/${session.sub}/`)) {
+          return fail("Akses kunci berkas pembayaran ditolak (bukan milik tenant ini)", 403);
+        }
         const exists = await objectExists(body.qris_object_key);
         if (!exists) return fail("Berkas QRIS belum ada di penyimpanan", 422);
       }
