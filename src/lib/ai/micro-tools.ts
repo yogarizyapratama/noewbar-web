@@ -895,7 +895,8 @@ export async function toolRekomendasiAlternatif(
       return !cat.includes(currCat);
     });
   } else if (strategy === "alternative") {
-    const currCat = (args.category || "").toLowerCase();
+    const currentItem = ctx.catalog.find((p) => p.sku === args.current_sku);
+    const currCat = (args.category || currentItem?.category || "").toLowerCase();
     picks = inStockCatalog.filter((p) => {
       if (p.sku === args.current_sku) return false;
       return currCat ? (p.category || "").toLowerCase().includes(currCat) : true;
