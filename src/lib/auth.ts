@@ -26,7 +26,8 @@ import {
 export const TENANT_COOKIE = "noewbar_session";
 export const ADMIN_COOKIE = "noewbar_admin";
 
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days for tenants
+export const ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 24; // 24 hours for superadmin (hardened root access)
 const TRIAL_DAYS = 7;
 
 export const COOKIE_OPTIONS = {
@@ -193,12 +194,28 @@ export async function loginSuperadmin(
       sub: "superadmin",
       email: env.SUPERADMIN_EMAIL,
       role: "SUPERADMIN",
-      exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
+      exp: Math.floor(Date.now() / 1000) + ADMIN_SESSION_TTL_SECONDS,
     },
     env.NEXTAUTH_SECRET
   );
 
   return { ok: true, token };
+}
+
+/** Issues a short-lived (30 minutes) impersonation session token for superadmin support. */
+export async function createImpersonationToken(tenantId: string): Promise<string | null> {
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, email: true } });
+  if (!tenant) return null;
+
+  return createToken<SessionPayload>(
+    {
+      sub: tenant.id,
+      email: tenant.email,
+      role: "TENANT",
+      exp: Math.floor(Date.now() / 1000) + 60 * 30, // 30 mins
+    },
+    env.NEXTAUTH_SECRET
+  );
 }
 
 export async function getAdminSession(): Promise<AdminPayload | null> {

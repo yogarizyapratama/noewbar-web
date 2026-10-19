@@ -3,7 +3,17 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { ok, fail, rateLimit } from "@/lib/http";
-import { requireAdmin, loginSuperadmin, registerTenant, ADMIN_COOKIE, COOKIE_OPTIONS, superadminHashConfigured } from "@/lib/auth";
+import {
+  requireAdmin,
+  loginSuperadmin,
+  registerTenant,
+  createImpersonationToken,
+  ADMIN_COOKIE,
+  TENANT_COOKIE,
+  COOKIE_OPTIONS,
+  ADMIN_SESSION_TTL_SECONDS,
+  superadminHashConfigured,
+} from "@/lib/auth";
 import { env } from "@/lib/env";
 import { gatewayHealth } from "@/lib/ai/orchestrator";
 import { waDaemon } from "@/lib/wa/daemon-client";
@@ -26,9 +36,30 @@ import { runMaintenanceSweep } from "@/lib/system/scheduler";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+async function logAdminAudit(
+  adminEmail: string,
+  eventType: string,
+  tenantId?: string | null,
+  payload?: Record<string, unknown>
+) {
+  try {
+    await prisma.webhookEvent.create({
+      data: {
+        provider: "SUPERADMIN_AUDIT",
+        event_key: `audit:${eventType}:${Date.now()}:${Math.random().toString(36).slice(2, 6)}`,
+        event_type: eventType,
+        payload: { by: adminEmail, tenant_id: tenantId ?? null, ...payload } as Prisma.InputJsonValue,
+      },
+    });
+  } catch {
+    // Best-effort audit logging
+  }
+}
+
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("login"), email: z.string().email(), password: z.string().min(1) }),
   z.object({ action: z.literal("logout") }),
+  z.object({ action: z.literal("impersonate_tenant"), tenant_id: z.string().uuid() }),
   z.object({ action: z.literal("kill_switch"), disabled: z.boolean() }),
   z.object({ action: z.literal("tenant_status"), tenant_id: z.string().uuid(), status: z.enum(["TRIAL", "ACTIVE", "GRACE_PERIOD", "SUSPENDED"]) }),
   z.object({ action: z.literal("extend_trial"), tenant_id: z.string().uuid(), days: z.number().int().min(1).max(90).default(7) }),
@@ -60,6 +91,12 @@ const bodySchema = z.discriminatedUnion("action", [
 ]);
 
 export async function POST(req: NextRequest) {
+  const origin = req.headers.get("origin");
+  const host = req.headers.get("host");
+  if (origin && host && !origin.includes(host)) {
+    return fail("Akses lintas domain ditolak (CSRF protection)", 403);
+  }
+
   const raw = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(raw);
   if (!parsed.success) return fail("Aksi tidak valid", 422, parsed.error.issues);
@@ -76,8 +113,10 @@ export async function POST(req: NextRequest) {
     const res = await loginSuperadmin(body.email, body.password);
     if (!res.ok) return fail(res.error, 401);
 
+    await logAdminAudit(body.email, "admin_login_success");
+
     const response = ok({ action: "login", authenticated: true });
-    response.cookies.set(ADMIN_COOKIE, res.token, { ...COOKIE_OPTIONS, maxAge: 60 * 60 * 24 * 7 });
+    response.cookies.set(ADMIN_COOKIE, res.token, { ...COOKIE_OPTIONS, maxAge: ADMIN_SESSION_TTL_SECONDS });
     return response;
   }
 
@@ -86,8 +125,20 @@ export async function POST(req: NextRequest) {
   if (!admin) return fail("Unauthorized", 401);
 
   if (body.action === "logout") {
+    await logAdminAudit(admin.email, "admin_logout");
     const response = ok({ action: "logout", authenticated: false });
     response.cookies.set(ADMIN_COOKIE, "", { ...COOKIE_OPTIONS, maxAge: 0 });
+    return response;
+  }
+
+  if (body.action === "impersonate_tenant") {
+    const token = await createImpersonationToken(body.tenant_id);
+    if (!token) return fail("Tenant tidak ditemukan", 404);
+
+    await logAdminAudit(admin.email, "impersonate_tenant", body.tenant_id, { tenant_id: body.tenant_id });
+
+    const response = ok({ action: "impersonate_tenant", redirect: "/dashboard", tenant_id: body.tenant_id });
+    response.cookies.set(TENANT_COOKIE, token, { ...COOKIE_OPTIONS, maxAge: 60 * 30 }); // 30 minutes
     return response;
   }
 
@@ -101,6 +152,7 @@ export async function POST(req: NextRequest) {
         payload: { by: admin.email, state } as Prisma.InputJsonValue,
       },
     });
+    await logAdminAudit(admin.email, body.disabled ? "killswitch_disabled" : "killswitch_enabled", null, { state });
     notifyAdmin({ type: "killswitch" });
     return ok({ action: "kill_switch", state });
   }
@@ -115,6 +167,7 @@ export async function POST(req: NextRequest) {
       where: { tenant_id: body.tenant_id, status: { not: "EXPIRED" } },
       data: { status: body.status === "SUSPENDED" ? "EXPIRED" : body.status },
     });
+    await logAdminAudit(admin.email, "tenant_status_changed", body.tenant_id, { status: body.status });
     notifyTenant(body.tenant_id, { type: "wa_status" });
     notifyAdmin({ type: "fleet" });
     return ok({ action: "tenant_status", tenant });
@@ -136,6 +189,7 @@ export async function POST(req: NextRequest) {
       select: { id: true, business_name: true, status: true, trial_expires_at: true },
     });
 
+    await logAdminAudit(admin.email, "extend_trial", body.tenant_id, { days: body.days });
     notifyTenant(body.tenant_id, { type: "billing" });
     notifyAdmin({ type: "fleet" });
 
@@ -148,14 +202,7 @@ export async function POST(req: NextRequest) {
   if (body.action === "wipe_tenant") {
     // Cascading deletes remove conversations, messages, orders and subscriptions.
     await prisma.tenant.delete({ where: { id: body.tenant_id } });
-    await prisma.webhookEvent.create({
-      data: {
-        provider: "TELEGRAM",
-        event_key: `wipe:${body.tenant_id}:${Date.now()}`,
-        event_type: "tenant_wiped",
-        payload: { by: admin.email, tenant_id: body.tenant_id } as Prisma.InputJsonValue,
-      },
-    });
+    await logAdminAudit(admin.email, "tenant_wiped", body.tenant_id, {});
     notifyAdmin({ type: "fleet" });
     return ok({ action: "wipe_tenant", tenant_id: body.tenant_id, wiped: true });
   }
@@ -230,6 +277,11 @@ export async function POST(req: NextRequest) {
         status: body.status,
         trial_expires_at: trialExpiresAt,
       },
+    });
+
+    await logAdminAudit(admin.email, "tenant_created", reg.tenantId, {
+      business_name: body.business_name,
+      email: body.email,
     });
 
     notifyAdmin({ type: "fleet" });
@@ -348,6 +400,11 @@ export async function POST(req: NextRequest) {
     }
 
     const sent = results.filter((r) => r.ok).length;
+    await logAdminAudit(admin.email, "broadcast_sent", null, {
+      total: results.length,
+      sent,
+      failed: results.length - sent,
+    });
     return ok({ action: "broadcast_tenants", total: results.length, sent, failed: results.length - sent, results });
   }
 
@@ -355,9 +412,29 @@ export async function POST(req: NextRequest) {
 }
 
 /** Full console snapshot: telemetry for every panel of chapter 11. */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return fail("Unauthorized", 401);
+
+  const url = new URL(req.url);
+  const search = (url.searchParams.get("search") || "").trim();
+  const statusFilter = url.searchParams.get("status") || "all";
+  const limit = Math.min(200, Math.max(10, parseInt(url.searchParams.get("limit") || "100", 10)));
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+  const skip = (page - 1) * limit;
+
+  const tenantWhere: Prisma.TenantWhereInput = {};
+  if (statusFilter !== "all" && ["ACTIVE", "TRIAL", "SUSPENDED", "GRACE_PERIOD"].includes(statusFilter)) {
+    tenantWhere.status = statusFilter as any;
+  }
+  if (search) {
+    tenantWhere.OR = [
+      { business_name: { contains: search, mode: "insensitive" } },
+      { owner_name: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+      { owner_whatsapp: { contains: search } },
+    ];
+  }
 
   const [
     gateway,
@@ -370,10 +447,14 @@ export async function GET() {
     subscriptionCounts,
     recentOrders,
     totalTenantsCount,
+    filteredTenantsCount,
     totalOrdersCount,
     totalConversationsCount,
     totalProductsCount,
     saWaStatus,
+    activeSubs,
+    gmvAggregate,
+    recentAudits,
   ] = await Promise.all([
     gatewayHealth(),
     waDaemon.health(),
@@ -381,8 +462,10 @@ export async function GET() {
     telegramHealth(),
     redisHealthy(),
     prisma.tenant.findMany({
+      where: tenantWhere,
       orderBy: { created_at: "desc" },
-      take: 50,
+      take: limit,
+      skip: skip,
       include: {
         catalog_settings: { select: { sheets_url: true, origin_subdistrict: true, last_synced_at: true } },
         subscriptions: { orderBy: { created_at: "desc" }, take: 1 },
@@ -401,20 +484,44 @@ export async function GET() {
       include: { tenant: { select: { business_name: true } } },
     }),
     prisma.tenant.count(),
+    prisma.tenant.count({ where: tenantWhere }),
     prisma.order.count(),
     prisma.conversation.count(),
     prisma.product.count(),
     waDaemon.getStatus("noewbar-superadmin").catch(() => ({ ok: false as const, error: "offline" })),
+    prisma.subscription.findMany({
+      where: { status: "ACTIVE" },
+      select: { amount: true, plan_name: true },
+    }),
+    prisma.order.aggregate({
+      _sum: { total_amount: true },
+      where: { payment_status: "PAID" },
+    }),
+    prisma.webhookEvent.findMany({
+      where: { provider: "SUPERADMIN_AUDIT" },
+      orderBy: { created_at: "desc" },
+      take: 25,
+      select: { id: true, event_type: true, payload: true, created_at: true },
+    }),
   ]);
 
   // 9router latency sample: one real round-trip measured now.
   let gatewayLatencyMs: number | null = null;
   if (gateway.ok) gatewayLatencyMs = gateway.latencyMs;
 
-  // Fleet self-healing: the daemon is the ground truth for socket state. A
-  // logout from the phone itself would otherwise leave the DB row (and the
-  // fleet badge) stale CONNECTED. Best-effort per instance; a daemon hiccup
-  // or DB blip keeps the stored row instead of failing the whole console.
+  // Calculate SaaS Financial Metrics
+  const mrr = activeSubs.reduce((acc, s) => {
+    const amt = Number(s.amount);
+    return acc + (s.plan_name?.toUpperCase().includes("ANNUAL") ? Math.round(amt / 12) : amt);
+  }, 0);
+  const arr = mrr * 12;
+  const gmv = Number(gmvAggregate._sum.total_amount || 0);
+
+  const totalSubsAll = subscriptionCounts.reduce((acc, c) => acc + c._count._all, 0);
+  const expiredSubs = subscriptionCounts.find((c) => c.status === "EXPIRED")?._count._all ?? 0;
+  const churnRatePct = totalSubsAll > 0 ? Math.round((expiredSubs / totalSubsAll) * 100 * 10) / 10 : 0;
+
+  // Fleet self-healing: the daemon is the ground truth for socket state.
   await Promise.all(
     instances.map(async (inst) => {
       try {
@@ -445,6 +552,25 @@ export async function GET() {
   return ok({
     kill_switch: getKillSwitch(),
     superadmin_hash_configured: superadminHashConfigured(),
+    financial_metrics: {
+      mrr,
+      arr,
+      gmv,
+      churn_rate_pct: churnRatePct,
+      active_subscribers: activeSubs.length,
+    },
+    audit_logs: recentAudits.map((a) => ({
+      id: a.id,
+      event_type: a.event_type,
+      payload: (a.payload || {}) as Record<string, unknown>,
+      created_at: a.created_at.toISOString(),
+    })),
+    pagination: {
+      page,
+      limit,
+      total_filtered: filteredTenantsCount,
+      total_pages: Math.ceil(filteredTenantsCount / limit),
+    },
     gateway: {
       ok: gateway.ok,
       url: env.AI_GATEWAY_URL,

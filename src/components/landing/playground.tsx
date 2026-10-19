@@ -19,13 +19,15 @@ type ChatTurn = {
   role: "user" | "assistant";
   text: string;
   media?: { url: string; caption?: string; kind: "image" | "video" }[];
+  latency_ms?: number;
 };
 
 const QUICK_PROMPTS = [
   "Kak, masih ada stok?",
   "Boleh minta foto aslinya?",
   "Ongkir ke Surabaya berapa?",
-  "Bisa kurang ga kak?",
+  "Bisa kirim hari ini ga kak?",
+  "Kalau beli 3 pcs ada diskon?",
 ];
 
 function cleanAiText(raw: string): string {
@@ -191,6 +193,7 @@ export function PlaygroundPanel() {
             role: "assistant",
             text: cleanAiText(json.reply) || "(Tidak ada balasan teks)",
             media: json.media ?? [],
+            latency_ms: typeof json.latency_ms === "number" ? json.latency_ms : undefined,
           },
         ]);
       } catch {
@@ -291,6 +294,12 @@ export function PlaygroundPanel() {
                       {m.caption && <p className="truncate p-1 text-2xs text-ink-600">{m.caption}</p>}
                     </div>
                   ))}
+                </div>
+              )}
+              {t.role === "assistant" && typeof t.latency_ms === "number" && (
+                <div className="mt-1.5 flex items-center gap-1 font-mono text-3xs text-ink-500">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-signal" aria-hidden="true" />
+                  <span>Dibalas dalam {(t.latency_ms / 1000).toFixed(1)} detik</span>
                 </div>
               )}
             </div>

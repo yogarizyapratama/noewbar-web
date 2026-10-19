@@ -122,6 +122,25 @@ export type ConsoleData = {
     subscription: { plan: string; status: string; expires_at: string; amount: number } | null;
   }[];
   subscription_counts: Record<string, number>;
+  financial_metrics?: {
+    mrr: number;
+    arr: number;
+    gmv: number;
+    churn_rate_pct: number;
+    active_subscribers: number;
+  };
+  audit_logs?: {
+    id: string;
+    event_type: string;
+    payload: Record<string, unknown>;
+    created_at: string;
+  }[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total_filtered: number;
+    total_pages: number;
+  };
   recent_orders: {
     id: string;
     order_number: string;
@@ -294,6 +313,28 @@ export default function SuperadminPage() {
       }
     } catch {
       setMsg({ text: "Gagal memuat telemetri server.", tone: "error" });
+    }
+  }, []);
+
+  const impersonateTenant = useCallback(async (tenantId: string) => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/superadmin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "impersonate_tenant", tenant_id: tenantId }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setMsg({ text: "Sesi impersonasi toko aktif. Membuka dashboard toko...", tone: "success" });
+        window.open("/dashboard", "_blank");
+      } else {
+        setMsg({ text: json.error || "Gagal masuk sebagai tenant", tone: "error" });
+      }
+    } catch {
+      setMsg({ text: "Koneksi ke server konsol gagal.", tone: "error" });
+    } finally {
+      setBusy(false);
     }
   }, []);
 
@@ -1329,6 +1370,52 @@ export default function SuperadminPage() {
                   )}
                 </div>
               </div>
+
+              {/* Audit Trail Keamanan Superadmin */}
+              <div className="rounded-2xl border border-ink-200 bg-white overflow-hidden shadow-flat">
+                <div className="border-b border-ink-100 px-5 py-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
+                      Audit Trail Keamanan &amp; Aksi Administratif
+                    </h3>
+                    <p className="text-2xs text-ink-500 mt-0.5">
+                      Catatan jejak aksi sensitif superadmin (impersonasi toko, perpanjangan trial, suspend, dan kontrol bot).
+                    </p>
+                  </div>
+                  <Badge tone="neutral" className="text-2xs">
+                    {data.audit_logs?.length ?? 0} Aksi Tercatat
+                  </Badge>
+                </div>
+                <div className="divide-y divide-ink-100">
+                  {(!data.audit_logs || data.audit_logs.length === 0) ? (
+                    <p className="p-6 text-center text-xs text-ink-500">
+                      Belum ada catatan aktivitas administratif yang tercatat.
+                    </p>
+                  ) : (
+                    data.audit_logs.slice(0, 8).map((log) => (
+                      <div
+                        key={log.id}
+                        className="px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs hover:bg-ink-50/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-mono text-2xs font-semibold px-2 py-0.5 rounded bg-ink-100 text-ink-700">
+                            {log.event_type}
+                          </span>
+                          <span className="text-ink-600 text-xs">
+                            {log.payload?.admin ? String(log.payload.admin) : "Superadmin"}
+                            {log.payload?.tenant_id ? (
+                              <span className="text-ink-400 font-mono text-2xs ml-1.5">
+                                [ID: {String(log.payload.tenant_id).slice(0, 8)}...]
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
+                        <span className="text-ink-400 text-2xs font-mono">{timeAgo(log.created_at)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1670,6 +1757,16 @@ export default function SuperadminPage() {
                                 <Button
                                   size="sm"
                                   variant="secondary"
+                                  className="h-7 text-xs px-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 shadow-flat flex items-center gap-1"
+                                  onClick={() => impersonateTenant(t.id)}
+                                  title="Masuk ke Dashboard Toko ini sebagai Admin"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Buka Toko
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
                                   className="h-7 text-xs px-2.5 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700 shadow-flat"
                                   onClick={() => setSelectedTenant(t)}
                                 >
@@ -1730,22 +1827,46 @@ export default function SuperadminPage() {
           {/* ==================================================== SECTION: FINANCIALS & BILLING */}
           {activeSection === "financials" && (
             <div className="space-y-6">
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
-                  <span className="text-xs font-medium text-ink-500">Total MRR Aktif</span>
+                  <span className="text-xs font-medium text-ink-500">Monthly Recurring Revenue (MRR)</span>
                   <p className="mt-2 text-2xl font-bold font-mono text-signal-strong">
-                    Rp {rupiah(totalMRR)}
+                    Rp {rupiah(data.financial_metrics?.mrr ?? totalMRR)}
                   </p>
                   <p className="text-2xs text-ink-500 mt-1">
-                    Dari {activeTenantsCount} tenant aktif
+                    Dari {data.financial_metrics?.active_subscribers ?? activeTenantsCount} tenant aktif
                   </p>
                 </div>
                 <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
+                  <span className="text-xs font-medium text-ink-500">Annual Run-Rate (ARR)</span>
+                  <p className="mt-2 text-2xl font-bold font-mono text-ink">
+                    Rp {rupiah(data.financial_metrics?.arr ?? totalMRR * 12)}
+                  </p>
+                  <p className="text-2xs text-ink-500 mt-1">Proyeksi 12 bulan basis MRR</p>
+                </div>
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
+                  <span className="text-xs font-medium text-ink-500">Platform GMV Transaksi</span>
+                  <p className="mt-2 text-2xl font-bold font-mono text-signal-strong">
+                    Rp {rupiah(data.financial_metrics?.gmv ?? 0)}
+                  </p>
+                  <p className="text-2xs text-ink-500 mt-1">Total pesanan sukses terbayar</p>
+                </div>
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
+                  <span className="text-xs font-medium text-ink-500">Customer Churn Rate</span>
+                  <p className="mt-2 text-2xl font-bold font-mono text-ink">
+                    {data.financial_metrics?.churn_rate_pct ?? 0}%
+                  </p>
+                  <p className="text-2xs text-ink-500 mt-1">Rasio langganan kedaluwarsa</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
                   <span className="text-xs font-medium text-ink-500">Rata-rata Nilai per Toko (ARPU)</span>
                   <p className="mt-2 text-2xl font-bold font-mono text-ink">
-                    Rp {rupiah(activeTenantsCount > 0 ? Math.round(totalMRR / activeTenantsCount) : 0)}
+                    Rp {rupiah(activeTenantsCount > 0 ? Math.round((data.financial_metrics?.mrr ?? totalMRR) / activeTenantsCount) : 0)}
                   </p>
-                  <p className="text-2xs text-ink-500 mt-1">Berdasarkan paket berlangganan</p>
+                  <p className="text-2xs text-ink-500 mt-1">Berdasarkan paket berlangganan tenant aktif</p>
                 </div>
                 <div className="rounded-2xl border border-ink-200 bg-white p-5 shadow-flat">
                   <span className="text-xs font-medium text-ink-500">Status Langganan Berjalan</span>
@@ -2629,6 +2750,16 @@ export default function SuperadminPage() {
             {/* Quick Actions Footer inside Modal */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-ink-100">
               <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="text-xs h-7 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 flex items-center gap-1 shadow-flat"
+                  onClick={() => impersonateTenant(selectedTenant.id)}
+                  title="Masuk ke Dashboard Toko ini sebagai Superadmin"
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Buka Toko
+                </Button>
                 <Button
                   size="sm"
                   variant="secondary"

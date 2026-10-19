@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Bot,
   Check,
+  CreditCard,
   Database,
   Globe,
   Layers,
@@ -34,6 +35,45 @@ import {
 import { Badge, StatusDot, cn } from "@/components/ui";
 import { PlaygroundPanel } from "@/components/landing/playground";
 import { RoiCalculator } from "@/components/landing/roi-calculator";
+
+const ECOSYSTEM = {
+  couriers: ["J&T Express", "SiCepat", "JNE Express", "Anteraja"],
+  payments: ["QRIS Instant", "Bank BCA", "Mandiri", "BNI", "BRI", "Midtrans"],
+  sync: ["Google Sheets", "PostgreSQL", "WhatsApp Web API"],
+};
+
+const COMPARISON = [
+  {
+    feature: "Jam Operasional",
+    manual: "8 - 10 jam (chat malam terabaikan)",
+    legacyBot: "24 jam (pilihan tombol kaku)",
+    noewbar: "24 Jam Nonstop (< 2 detik respons natural)",
+  },
+  {
+    feature: "Kirim Foto & Video Produk",
+    manual: "Buka galeri & cari manual",
+    legacyBot: "Tidak didukung",
+    noewbar: "Otomatis dari Database & Cloud Storage",
+  },
+  {
+    feature: "Cek Ongkir Kecamatan",
+    manual: "Buka aplikasi ekspedisi terpisah",
+    legacyBot: "Tidak didukung",
+    noewbar: "Kalkulasi lokal J&T, SiCepat, JNE per kg",
+  },
+  {
+    feature: "Bundling & Promo Dinamis",
+    manual: "Hitung kalkulator manual",
+    legacyBot: "Kaku & rawan salah",
+    noewbar: "Otomatis dihitung langsung ke invoice",
+  },
+  {
+    feature: "Biaya Bulanan",
+    manual: "Rp 3.000.000 - Rp 5.000.000 / CS",
+    legacyBot: "Rp 500.000 - Rp 1.500.000",
+    noewbar: "Rp 199.000 / bulan (Tanpa komisi)",
+  },
+];
 
 const FAQ = [
   {
@@ -288,6 +328,44 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ---------------------------------------------------- ecosystem strip */}
+      <section className="border-b border-ink-200 bg-white py-8">
+        <div className="mx-auto max-w-6xl px-5 sm:px-8">
+          <p className="text-center font-mono text-2xs font-semibold uppercase tracking-[0.16em] text-ink-500">
+            Terintegrasi Langsung dengan Ekosistem Logistik & Pembayaran Indonesia
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            {ECOSYSTEM.couriers.map((c) => (
+              <span
+                key={c}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-ink-50 px-3 py-1.5 font-mono text-xs font-medium text-ink-700 shadow-flat"
+              >
+                <Truck className="h-3.5 w-3.5 text-signal" aria-hidden="true" />
+                {c}
+              </span>
+            ))}
+            {ECOSYSTEM.payments.map((p) => (
+              <span
+                key={p}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-ink-50 px-3 py-1.5 font-mono text-xs font-medium text-ink-700 shadow-flat"
+              >
+                <CreditCard className="h-3.5 w-3.5 text-signal" aria-hidden="true" />
+                {p}
+              </span>
+            ))}
+            {ECOSYSTEM.sync.map((s) => (
+              <span
+                key={s}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-ink-50 px-3 py-1.5 font-mono text-xs font-medium text-ink-700 shadow-flat"
+              >
+                <Database className="h-3.5 w-3.5 text-ink-400" aria-hidden="true" />
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* -------------------------------------------------------- cara kerja */}
       <section id="cara-kerja" className="section border-b border-ink-100 bg-ink-50/50">
         <div className="text-center">
@@ -403,6 +481,47 @@ export default function LandingPage() {
             </ul>
           </div>
           <RoiCalculator />
+        </div>
+      </section>
+
+      {/* -------------------------------------------------------- comparison */}
+      <section className="border-b border-ink-200 bg-white">
+        <div className="section">
+          <div className="text-center">
+            <p className="eyebrow">Perbandingan Solusi</p>
+            <h2 className="mt-2 text-section font-bold">Mengapa Noewbar CS Pro Berbeda</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-ink-600">
+              Bukan sekadar bot pembalas teks statis. Dibangun khusus untuk kebutuhan operasional toko online Indonesia.
+            </p>
+          </div>
+
+          <div className="mt-10 overflow-x-auto rounded-xl border border-ink-200 shadow-flat">
+            <table className="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr className="border-b border-ink-200 bg-ink-50">
+                  <th className="p-4 font-semibold text-ink-700 w-1/4">Kapabilitas Utama</th>
+                  <th className="p-4 font-semibold text-ink-600 w-1/4">CS Manual (Karyawan)</th>
+                  <th className="p-4 font-semibold text-ink-600 w-1/4">Chatbot Tombol Biasa</th>
+                  <th className="p-4 font-bold text-signal-strong bg-signal-wash/70 w-1/4">Noewbar CS Pro</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-ink-100 bg-white">
+                {COMPARISON.map((row, idx) => (
+                  <tr key={idx} className="hover:bg-ink-50/50 transition-colors">
+                    <td className="p-4 font-semibold text-ink">{row.feature}</td>
+                    <td className="p-4 text-ink-600 leading-relaxed">{row.manual}</td>
+                    <td className="p-4 text-ink-600 leading-relaxed">{row.legacyBot}</td>
+                    <td className="p-4 font-medium text-ink bg-signal-wash/40 leading-relaxed">
+                      <span className="flex items-center gap-1.5 text-signal-strong font-semibold">
+                        <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        {row.noewbar}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
