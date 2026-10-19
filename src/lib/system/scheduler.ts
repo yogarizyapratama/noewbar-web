@@ -20,12 +20,14 @@ import { ensureNudgeWorker, sweepDueNudges, nudgeQueueStats } from "@/lib/queue/
 import { expireStaleReservations } from "@/lib/orders/orders";
 import { reconcileSubscriptions } from "@/lib/billing/midtrans";
 import { monitorDaemonHeartbeat } from "@/lib/alerts/daemon-health";
+import { createDatabaseBackup } from "@/lib/system/backup";
 
 export type SweepResult = {
   nudges: { delivered: number; error?: string };
   reservations: { expired: number; released: number; error?: string };
   subscriptions: { checked: number; activated: number; grace: number; suspended: number; error?: string };
   worker: boolean;
+  backup?: { ran: boolean; error?: string };
 };
 
 export type MaintenanceSweepOptions = {
@@ -45,6 +47,26 @@ export type MaintenanceSweepOptions = {
  * Runs one full maintenance pass. Never throws: each job is isolated so a failure
  * in one (e.g. Redis down) cannot stop the others or kill the caller.
  */
+let lastBackupRunAt = 0;
+const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+async function maybeRunScheduledBackup(): Promise<{ ran: boolean; error?: string }> {
+  const now = Date.now();
+  if (now - lastBackupRunAt < BACKUP_INTERVAL_MS) {
+    return { ran: false };
+  }
+  try {
+    const res = await createDatabaseBackup();
+    if (res.ok) {
+      lastBackupRunAt = now;
+      return { ran: true };
+    }
+    return { ran: false, error: res.error };
+  } catch (err) {
+    return { ran: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function runMaintenanceSweep(options: MaintenanceSweepOptions = {}): Promise<SweepResult> {
   const { nudgeLimit = 25, startWorker = true } = options;
   const { reconcile = true } = options;
@@ -60,7 +82,10 @@ export async function runMaintenanceSweep(options: MaintenanceSweepOptions = {})
   // Feature 6: Monitor WhatsApp Daemon Heartbeat & Alert Telegram if offline
   await isolate(() => monitorDaemonHeartbeat());
 
-  return { nudges, reservations, subscriptions, worker };
+  // Enterprise automated 24h database backup snapshot
+  const backup = await isolate(() => maybeRunScheduledBackup());
+
+  return { nudges, reservations, subscriptions, worker, backup };
 }
 
 function safeStartWorker(): boolean {

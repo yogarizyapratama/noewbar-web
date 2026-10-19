@@ -82,13 +82,136 @@ export function estimateBaseTariff(destination: string, courierMultiplier: numbe
 
 type ProviderRate = { tariff_per_kg: number; service_type: string; estimated_days?: string };
 
-/**
- * Resolves a tariff from a configured public provider endpoint.
- * Contract: GET {COURIER_PUBLIC_API_URL}?origin=&destination=&courier=&weight=
- * responding { tariff_per_kg, service_type?, estimated_days? }.
- * Returns null when no provider is configured or the call fails.
- */
-async function resolveFromProvider(
+async function resolveFromBiteship(
+  origin: string,
+  destination: string,
+  courier: CourierCode,
+  timeoutMs = 5000
+): Promise<ProviderRate | null> {
+  const apiKey = env.BITESHIP_API_KEY.trim();
+  if (!apiKey) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const courierCodeMap: Record<CourierCode, string> = {
+      JNT: "jnt",
+      SICEPAT: "sicepat",
+      JNE: "jne",
+    };
+    const courierSlug = courierCodeMap[courier] || courier.toLowerCase();
+
+    const res = await fetch("https://api.biteship.com/v1/rates/couriers", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        origin_area_id: origin,
+        destination_area_id: destination,
+        couriers: courierSlug,
+        items: [{ name: "Produk", value: 100000, quantity: 1, weight: 1000 }],
+      }),
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      pricing?: Array<{
+        courier_service_name?: string;
+        courier_service_code?: string;
+        price?: number;
+        duration?: string;
+        type?: string;
+      }>;
+    };
+    if (!json?.pricing || !Array.isArray(json.pricing) || json.pricing.length === 0) return null;
+
+    const best = json.pricing.find((p) => p.type === "standard") || json.pricing[0];
+    if (!best || !best.price || best.price <= 0) return null;
+
+    return {
+      tariff_per_kg: Math.round(best.price),
+      service_type: best.courier_service_name || `${courier} Regular`,
+      estimated_days: best.duration || undefined,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function resolveFromRajaOngkir(
+  origin: string,
+  destination: string,
+  courier: CourierCode,
+  timeoutMs = 5000
+): Promise<ProviderRate | null> {
+  const apiKey = env.RAJAONGKIR_API_KEY.trim();
+  if (!apiKey) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const courierCodeMap: Record<CourierCode, string> = {
+      JNT: "j&t",
+      SICEPAT: "sicepat",
+      JNE: "jne",
+    };
+    const courierSlug = courierCodeMap[courier] || courier.toLowerCase();
+
+    const res = await fetch("https://api.rajaongkir.com/starter/cost", {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        key: apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        origin,
+        destination,
+        weight: "1000",
+        courier: courierSlug,
+      }),
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      rajaongkir?: {
+        results?: Array<{
+          costs?: Array<{
+            service?: string;
+            description?: string;
+            cost?: Array<{ value: number; etd?: string }>;
+          }>;
+        }>;
+      };
+    };
+
+    const results = json.rajaongkir?.results?.[0]?.costs;
+    if (!results || results.length === 0) return null;
+
+    const standard = results.find((r) => r.service === "REG" || r.service === "EZ") || results[0];
+    const costEntry = standard?.cost?.[0];
+    if (!costEntry || costEntry.value <= 0) return null;
+
+    return {
+      tariff_per_kg: Math.round(costEntry.value),
+      service_type: standard.description ? `${standard.service} (${standard.description})` : standard.service || "REG",
+      estimated_days: costEntry.etd ? `${costEntry.etd} HARI` : undefined,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function resolveFromPublicApi(
   origin: string,
   destination: string,
   courier: CourierCode,
@@ -130,6 +253,28 @@ async function resolveFromProvider(
   }
 }
 
+/**
+ * Resolves a tariff from available providers in order: Biteship -> RajaOngkir -> Public endpoint.
+ * Returns null when no provider is configured or all fail.
+ */
+async function resolveFromProvider(
+  origin: string,
+  destination: string,
+  courier: CourierCode,
+  timeoutMs = 6000
+): Promise<ProviderRate | null> {
+  // 1. Try Biteship
+  const biteship = await resolveFromBiteship(origin, destination, courier, timeoutMs);
+  if (biteship) return biteship;
+
+  // 2. Try RajaOngkir
+  const rajaongkir = await resolveFromRajaOngkir(origin, destination, courier, timeoutMs);
+  if (rajaongkir) return rajaongkir;
+
+  // 3. Try Public API
+  return resolveFromPublicApi(origin, destination, courier, timeoutMs);
+}
+
 function isEstimateRow(serviceType: string): boolean {
   return serviceType.endsWith(ESTIMATE_MARKER);
 }
@@ -155,18 +300,35 @@ export async function calculateShippingRates(params: {
   const weight = Math.max(1, Math.round(params.weightKg || 1));
   const totalAmount = params.orderTotalAmount || 0;
   const isFree = totalAmount >= FREE_SHIPPING_THRESHOLD;
-  const providerConfigured = env.COURIER_PUBLIC_API_URL.trim().length > 0;
+  const providerConfigured =
+    env.BITESHIP_API_KEY.trim().length > 0 ||
+    env.RAJAONGKIR_API_KEY.trim().length > 0 ||
+    env.COURIER_PUBLIC_API_URL.trim().length > 0;
 
   const validUntil = new Date(Date.now() - CACHE_TTL_DAYS * 24 * 60 * 60 * 1000);
 
-  const cachedRows = await prisma.shippingRatesCache.findMany({
-    where: {
-      origin_subdistrict: { equals: origin, mode: "insensitive" },
-      destination_subdistrict: { equals: destination, mode: "insensitive" },
-      last_checked_at: { gte: validUntil },
-      ...(params.courierFilter ? { courier: params.courierFilter } : {}),
-    },
-  });
+  let cachedRows: Array<{
+    id: string;
+    origin_subdistrict: string;
+    destination_subdistrict: string;
+    courier: string;
+    service_type: string;
+    tariff_per_kg: unknown;
+    last_checked_at: Date;
+  }> = [];
+
+  try {
+    cachedRows = await prisma.shippingRatesCache.findMany({
+      where: {
+        origin_subdistrict: { equals: origin, mode: "insensitive" },
+        destination_subdistrict: { equals: destination, mode: "insensitive" },
+        last_checked_at: { gte: validUntil },
+        ...(params.courierFilter ? { courier: params.courierFilter } : {}),
+      },
+    });
+  } catch {
+    cachedRows = [];
+  }
 
   const rates: CourierRateOption[] = [];
 
@@ -197,20 +359,26 @@ export async function calculateShippingRates(params: {
     const fromProvider = await resolveFromProvider(origin, destination, c.courier);
 
     if (fromProvider) {
-      const record = await prisma.shippingRatesCache.create({
-        data: {
-          origin_subdistrict: origin,
-          destination_subdistrict: destination,
-          courier: c.courier,
-          service_type: fromProvider.service_type,
-          tariff_per_kg: fromProvider.tariff_per_kg,
-          last_checked_at: new Date(),
-        },
-      });
+      let serviceType = fromProvider.service_type;
+      try {
+        const record = await prisma.shippingRatesCache.create({
+          data: {
+            origin_subdistrict: origin,
+            destination_subdistrict: destination,
+            courier: c.courier,
+            service_type: fromProvider.service_type,
+            tariff_per_kg: fromProvider.tariff_per_kg,
+            last_checked_at: new Date(),
+          },
+        });
+        serviceType = record.service_type;
+      } catch {
+        // DB cache write is optional
+      }
 
       rates.push({
         courier: c.courier,
-        service_type: stripMarker(record.service_type),
+        service_type: stripMarker(serviceType),
         tariff_per_kg: fromProvider.tariff_per_kg,
         total_tariff: isFree ? 0 : fromProvider.tariff_per_kg * weight,
         estimated_days: fromProvider.estimated_days ?? c.est,
@@ -224,22 +392,26 @@ export async function calculateShippingRates(params: {
     // 3. Documented fallback: deterministic zone matrix, explicitly labelled.
     const base = estimateBaseTariff(destination, c.multiplier);
 
-    if (!cached) {
-      await prisma.shippingRatesCache.create({
-        data: {
-          origin_subdistrict: origin,
-          destination_subdistrict: destination,
-          courier: c.courier,
-          service_type: `${c.service}${ESTIMATE_MARKER}`,
-          tariff_per_kg: base,
-          last_checked_at: new Date(),
-        },
-      });
-    } else {
-      await prisma.shippingRatesCache.update({
-        where: { id: cached.id },
-        data: { tariff_per_kg: base, last_checked_at: new Date() },
-      });
+    try {
+      if (!cached) {
+        await prisma.shippingRatesCache.create({
+          data: {
+            origin_subdistrict: origin,
+            destination_subdistrict: destination,
+            courier: c.courier,
+            service_type: `${c.service}${ESTIMATE_MARKER}`,
+            tariff_per_kg: base,
+            last_checked_at: new Date(),
+          },
+        });
+      } else {
+        await prisma.shippingRatesCache.update({
+          where: { id: cached.id },
+          data: { tariff_per_kg: base, last_checked_at: new Date() },
+        });
+      }
+    } catch {
+      // DB cache write is optional
     }
 
     rates.push({

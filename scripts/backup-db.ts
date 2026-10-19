@@ -1,91 +1,68 @@
 /**
- * Automated Database Backup & Snapshot Script.
+ * Automated Enterprise Database Backup Script (CLI entrypoint).
  *
- * Exports JSON snapshot of active tables into `data/backups/`.
- * Cleans up backups older than 14 days for storage hygiene.
+ * Runs full PostgreSQL schema snapshot, gzip compresses, uploads to MinIO/S3 if available,
+ * and maintains 14-day retention cycle.
+ *
+ * Usage:
+ *   npm run db:backup
  */
 
-import fs from "fs";
-import path from "path";
-import prisma from "../src/lib/prisma";
+import fs from "node:fs";
+import path from "node:path";
 
-const BACKUP_DIR = path.resolve(process.cwd(), "data/backups");
-const RETENTION_DAYS = 14;
-
-async function runBackup() {
-  if (!fs.existsSync(BACKUP_DIR)) {
-    fs.mkdirSync(BACKUP_DIR, { recursive: true });
-  }
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const backupFile = path.join(BACKUP_DIR, `backup-${timestamp}.json`);
-
-  console.log(`[Backup] Starting database snapshot to: ${backupFile}`);
-
-  try {
-    // 1. Snapshot critical production tables
-    const [tenants, conversations, orders, instances, subscriptions] = await Promise.all([
-      prisma.tenant.findMany({
-        select: { id: true, business_name: true, email: true, created_at: true },
-      }),
-      prisma.conversation.findMany({
-        take: 1000,
-        orderBy: { updated_at: "desc" },
-      }),
-      prisma.order.findMany({
-        take: 1000,
-        orderBy: { created_at: "desc" },
-      }),
-      prisma.waInstance.findMany(),
-      prisma.subscription.findMany(),
-    ]);
-
-    const snapshot = {
-      meta: {
-        timestamp: new Date().toISOString(),
-        version: "1.0",
-        tenant_count: tenants.length,
-        order_count: orders.length,
-      },
-      data: {
-        tenants,
-        conversations,
-        orders,
-        instances,
-        subscriptions,
-      },
-    };
-
-    fs.writeFileSync(backupFile, JSON.stringify(snapshot, null, 2), "utf-8");
-    const stat = fs.statSync(backupFile);
-    console.log(`[Backup] Snapshot complete: ${(stat.size / 1024).toFixed(2)} KB written.`);
-
-    // 2. Retention cleanup (older than 14 days)
-    const files = fs.readdirSync(BACKUP_DIR);
-    const now = Date.now();
-    const maxAge = RETENTION_DAYS * 24 * 60 * 60 * 1000;
-
-    let removed = 0;
-    for (const f of files) {
-      if (!f.startsWith("backup-")) continue;
-      const fp = path.join(BACKUP_DIR, f);
-      const fstat = fs.statSync(fp);
-      if (now - fstat.mtimeMs > maxAge) {
-        fs.unlinkSync(fp);
-        removed++;
-      }
+function loadEnv(): void {
+  const envPath = path.resolve(process.cwd(), ".env");
+  if (!fs.existsSync(envPath)) return;
+  const text = fs.readFileSync(envPath, "utf8");
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
+    if (!m) continue;
+    let value = m[2].trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
     }
-
-    if (removed > 0) {
-      console.log(`[Backup] Cleaned up ${removed} old backup files older than ${RETENTION_DAYS} days.`);
-    }
-
-    console.log("[Backup] All backup operations completed successfully.");
-    process.exit(0);
-  } catch (err) {
-    console.error("[Backup] Error during backup snapshot:", err);
-    process.exit(1);
+    if (process.env[m[1]] === undefined) process.env[m[1]] = value;
   }
 }
 
-runBackup();
+loadEnv();
+
+async function main() {
+  console.log("==================================================");
+  console.log("   NOEWBAR CS PRO - ENTERPRISE DATABASE BACKUP    ");
+  console.log("==================================================");
+
+  const { createDatabaseBackup } = await import("../src/lib/system/backup");
+  const result = await createDatabaseBackup();
+
+  if (!result.ok) {
+    console.error("[Backup FAILED]:", result.error);
+    process.exit(1);
+  }
+
+  const uncompressedKb = (result.size_bytes / 1024).toFixed(1);
+  const compressedKb = (result.compressed_size_bytes / 1024).toFixed(1);
+  const ratio = (100 - (result.compressed_size_bytes / result.size_bytes) * 100).toFixed(1);
+
+  console.log(`[Backup File]   : ${result.filename}`);
+  console.log(`[Disk Path]     : ${result.filepath}`);
+  console.log(`[Raw Size]      : ${uncompressedKb} KB`);
+  console.log(`[Compressed]    : ${compressedKb} KB (saved ${ratio}% with gzip)`);
+  console.log(`[MinIO/S3 Sync] : ${result.uploaded_to_s3 ? `Uploaded (${result.s3_key})` : "Local only (S3 not configured)"}`);
+  console.log("\n[Snapshot Tables Breakdown]:");
+  for (const [table, count] of Object.entries(result.tables)) {
+    console.log(`  - ${table.padEnd(16)} : ${count} baris`);
+  }
+  console.log("==================================================");
+  console.log("[Status] Backup completed successfully!");
+  process.exit(0);
+}
+
+main().catch((err) => {
+  console.error("Backup fatal error:", err);
+  process.exit(1);
+});

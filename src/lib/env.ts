@@ -92,6 +92,10 @@ const envSchema = z.object({
   // Optional public logistics provider endpoints (no-key). When empty the engine
   // relies on the documented local estimation fallback.
   COURIER_PUBLIC_API_URL: z.string().default(""),
+
+  // Optional multi-provider logistics API keys (Biteship, RajaOngkir)
+  BITESHIP_API_KEY: z.string().default(""),
+  RAJAONGKIR_API_KEY: z.string().default(""),
 });
 
 const isBrowser = typeof window !== "undefined";
