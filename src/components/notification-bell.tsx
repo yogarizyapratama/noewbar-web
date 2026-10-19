@@ -24,6 +24,8 @@ import {
   Server,
   Smartphone,
   Trash2,
+  Volume2,
+  VolumeX,
   Wallet,
   X,
   Zap,
@@ -40,6 +42,45 @@ export type AppNotification = {
   targetTab?: string;
 };
 
+function playNotificationChime() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    // Harmonic two-tone chime (E5 -> A5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(659.25, now);
+    gain1.gain.setValueAtTime(0, now);
+    gain1.gain.linearRampToValueAtTime(0.12, now + 0.02);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.25);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(880, now + 0.12);
+    gain2.gain.setValueAtTime(0, now + 0.12);
+    gain2.gain.linearRampToValueAtTime(0.15, now + 0.14);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.45);
+  } catch {
+    // Autoplay policy or unsupported audio context
+  }
+}
+
 export function NotificationBell({
   scope,
   theme = "light",
@@ -55,9 +96,47 @@ export function NotificationBell({
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [hasNewAlert, setHasNewAlert] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [hasDesktopPermission, setHasDesktopPermission] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const storageKey = `noewbar_notif_${scope}`;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const savedSound = localStorage.getItem("noewbar_sound_notif");
+      if (savedSound !== null) setSoundEnabled(savedSound === "true");
+      if ("Notification" in window) {
+        setHasDesktopPermission(Notification.permission === "granted");
+      }
+    } catch {}
+  }, []);
+
+  function toggleSound() {
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("noewbar_sound_notif", String(next));
+      } catch {}
+      if (next) playNotificationChime();
+      return next;
+    });
+  }
+
+  function requestDesktopPermission() {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      Notification.requestPermission().then((permission) => {
+        setHasDesktopPermission(permission === "granted");
+        if (permission === "granted") {
+          new Notification("Notifikasi Noewbar Aktif", {
+            body: "Anda akan menerima pemberitahuan instan saat ada pesanan atau bukti bayar baru.",
+            icon: "/favicon.ico",
+          });
+        }
+      });
+    }
+  }
 
   // 1. Muat riwayat notifikasi dari localStorage saat pertama mount
   useEffect(() => {
@@ -265,8 +344,34 @@ export function NotificationBell({
         return [notifItem!, ...prev.slice(0, 49)];
       });
       setHasNewAlert(true);
+
+      // Play audio chime if enabled
+      if (soundEnabled) {
+        playNotificationChime();
+      }
+
+      // Fire desktop browser notification if permission is granted
+      if (
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        Notification.permission === "granted"
+      ) {
+        try {
+          const n = new Notification(notifItem.title, {
+            body: notifItem.description,
+            icon: "/favicon.ico",
+          });
+          const targetTab = notifItem.targetTab;
+          if (targetTab && onNavigate) {
+            n.onclick = () => {
+              window.focus();
+              onNavigate(targetTab);
+            };
+          }
+        } catch {}
+      }
     }
-  }, [scope]);
+  }, [onNavigate, scope, soundEnabled]);
 
   // Use external event stream if parent provides one, otherwise fallback to own EventSource
   useEffect(() => {
@@ -418,13 +523,35 @@ export function NotificationBell({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-2xs">
+            <div className="flex items-center gap-1.5 text-2xs">
+              <button
+                type="button"
+                onClick={toggleSound}
+                className={cn(
+                  "p-1 rounded transition-colors",
+                  soundEnabled
+                    ? "text-signal-strong hover:bg-signal-wash"
+                    : "text-ink-400 hover:text-ink-600"
+                )}
+                title={
+                  soundEnabled
+                    ? "Suara notifikasi aktif (klik untuk membisukan)"
+                    : "Suara notifikasi dibisukan (klik untuk aktifkan)"
+                }
+                aria-label="Toggle Suara Notifikasi"
+              >
+                {soundEnabled ? (
+                  <Volume2 className="h-3.5 w-3.5" />
+                ) : (
+                  <VolumeX className="h-3.5 w-3.5 text-ink-400" />
+                )}
+              </button>
               {unreadCount > 0 && (
                 <button
                   type="button"
                   onClick={markAllAsRead}
                   className={cn(
-                    "font-medium transition-colors hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-signal",
+                    "font-medium transition-colors hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-signal ml-1",
                     isDark ? "text-emerald-400" : "text-signal-strong"
                   )}
                   title="Tandai semua telah dibaca"
@@ -452,6 +579,20 @@ export function NotificationBell({
               </button>
             </div>
           </div>
+
+          {/* Desktop Notification Permission Banner */}
+          {!hasDesktopPermission && (
+            <div className="flex items-center justify-between gap-2 border-b border-signal/25 bg-signal-wash px-4 py-2 text-2xs text-signal-strong">
+              <span>Notifikasi desktop saat browser diminimize:</span>
+              <button
+                type="button"
+                onClick={requestDesktopPermission}
+                className="rounded bg-signal-strong px-2 py-0.5 font-bold text-white shadow-2xs hover:bg-signal transition-colors whitespace-nowrap"
+              >
+                Aktifkan
+              </button>
+            </div>
+          )}
 
           {/* Filter Tab Sub-bar */}
           <div

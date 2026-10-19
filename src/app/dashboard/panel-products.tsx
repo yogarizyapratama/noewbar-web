@@ -77,6 +77,8 @@ export function PanelProducts() {
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
+  const [selectedStock, setSelectedStock] = useState<"ALL" | "LOW" | "OUT">("ALL");
+  const [adjustingStockId, setAdjustingStockId] = useState<string | null>(null);
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -107,7 +109,7 @@ export function PanelProducts() {
 
   useEffect(() => {
     loadProducts();
-  }, [search, selectedCat, selectedStatus]);
+  }, [search, selectedCat, selectedStatus, selectedStock]);
 
   async function loadProducts() {
     setLoading(true);
@@ -116,6 +118,7 @@ export function PanelProducts() {
       if (search) q.set("search", search);
       if (selectedCat !== "ALL") q.set("category", selectedCat);
       if (selectedStatus !== "ALL") q.set("status", selectedStatus);
+      if (selectedStock !== "ALL") q.set("stock", selectedStock);
 
       const res = await fetch(`/api/products?${q.toString()}`);
       const json = await res.json();
@@ -128,6 +131,35 @@ export function PanelProducts() {
       // silent
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function quickAdjustStock(id: string, delta: number) {
+    const prod = products.find((p) => p.id === id);
+    if (!prod) return;
+    const newStock = Math.max(0, prod.stock + delta);
+    if (newStock === prod.stock) return;
+
+    setProducts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, stock: newStock } : p))
+    );
+    setAdjustingStockId(id);
+
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update",
+          id,
+          stock: newStock,
+        }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      loadProducts();
+    } finally {
+      setAdjustingStockId(null);
     }
   }
 
@@ -384,7 +416,7 @@ export function PanelProducts() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={selectedCat}
             onChange={(e) => setSelectedCat(e.target.value)}
@@ -409,6 +441,17 @@ export function PanelProducts() {
             <option value="ACTIVE">Aktif</option>
             <option value="DRAFT">Draft</option>
             <option value="ARCHIVED">Arsip</option>
+          </select>
+
+          <select
+            value={selectedStock}
+            onChange={(e) => setSelectedStock(e.target.value as "ALL" | "LOW" | "OUT")}
+            aria-label="Filter Stok"
+            className="min-h-[44px] rounded-lg border border-ink-300 bg-white px-3 py-2 text-xs sm:text-sm text-ink focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal"
+          >
+            <option value="ALL">Semua Stok</option>
+            <option value="LOW">Stok Menipis (≤ 5)</option>
+            <option value="OUT">Stok Habis (0)</option>
           </select>
         </div>
       </div>
@@ -500,14 +543,40 @@ export function PanelProducts() {
                           )}
                         </td>
                         <td className="py-3 px-4 font-mono">
-                          <span
-                            className={cn(
-                              "font-semibold",
-                              p.stock > 0 ? "text-signal-strong" : "text-danger"
-                            )}
-                          >
-                            {p.stock}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => quickAdjustStock(p.id, -1)}
+                              disabled={p.stock <= 0 || adjustingStockId === p.id}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded border border-ink-200 bg-white text-xs font-bold text-ink-700 hover:bg-ink-100 disabled:opacity-30 transition-colors"
+                              title="Kurangi stok 1"
+                              aria-label={`Kurangi stok ${p.name}`}
+                            >
+                              -
+                            </button>
+                            <span
+                              className={cn(
+                                "min-w-[28px] text-center font-semibold",
+                                p.stock === 0
+                                  ? "text-danger"
+                                  : p.stock <= 5
+                                  ? "text-warn-strong"
+                                  : "text-signal-strong"
+                              )}
+                            >
+                              {p.stock}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => quickAdjustStock(p.id, 1)}
+                              disabled={adjustingStockId === p.id}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded border border-ink-200 bg-white text-xs font-bold text-ink-700 hover:bg-ink-100 disabled:opacity-30 transition-colors"
+                              title="Tambah stok 1"
+                              aria-label={`Tambah stok ${p.name}`}
+                            >
+                              +
+                            </button>
+                          </div>
                         </td>
                         <td className="py-3 px-4">
                           <Badge tone={p.status === "ACTIVE" ? "signal" : "neutral"}>

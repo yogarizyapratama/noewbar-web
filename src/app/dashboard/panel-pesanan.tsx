@@ -71,8 +71,21 @@ export function PanelPesanan({
     amount: number;
   } | null>(null);
 
-  function exportCsv() {
-    if (orders.length === 0) return;
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [bulkVerifying, setBulkVerifying] = useState(false);
+
+  function toggleSelectOrder(id: string) {
+    setSelectedOrders((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function exportCsv(customList?: OrderRow[]) {
+    const list = customList ?? orders;
+    if (list.length === 0) return;
     const headers = [
       "No Order",
       "Tanggal",
@@ -89,7 +102,7 @@ export function PanelPesanan({
       "No Resi",
       "Rincian Produk",
     ];
-    const rows = orders.map((o) => [
+    const rows = list.map((o) => [
       `"${o.order_number}"`,
       `"${new Date(o.created_at).toLocaleString("id-ID")}"`,
       `"${o.order_status_label}"`,
@@ -116,6 +129,32 @@ export function PanelPesanan({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  }
+
+  async function handleBulkVerify() {
+    const idsToVerify = Array.from(selectedOrders).filter((id) => {
+      const ord = orders.find((o) => o.id === id);
+      return (
+        ord &&
+        (ord.payment_status === "PROOF_SUBMITTED" || ord.payment_status === "UNDER_REVIEW")
+      );
+    });
+    if (idsToVerify.length === 0) return;
+    setBulkVerifying(true);
+    try {
+      for (const id of idsToVerify) {
+        await onVerify(id, true);
+      }
+      setSelectedOrders(new Set());
+    } finally {
+      setBulkVerifying(false);
+    }
+  }
+
+  function handleBulkExportCsv() {
+    const targetOrders = orders.filter((o) => selectedOrders.has(o.id));
+    if (targetOrders.length === 0) return;
+    exportCsv(targetOrders);
   }
 
   const filtered = useMemo(() => {
@@ -160,7 +199,7 @@ export function PanelPesanan({
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"
-              onClick={exportCsv}
+              onClick={() => exportCsv()}
               disabled={orders.length === 0}
             >
               <Download className="h-4 w-4" aria-hidden="true" />
@@ -197,15 +236,34 @@ export function PanelPesanan({
 
       {/* toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Segmented
-          label="Filter status pembayaran"
-          items={FILTERS.map((f) => ({
-            ...f,
-            count: f.id === "need_action" ? needActionCount : undefined,
-          }))}
-          value={filter}
-          onChange={setFilter}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <Segmented
+            label="Filter status pembayaran"
+            items={FILTERS.map((f) => ({
+              ...f,
+              count: f.id === "need_action" ? needActionCount : undefined,
+            }))}
+            value={filter}
+            onChange={setFilter}
+          />
+          {filtered.length > 0 && (
+            <label className="flex items-center gap-2 text-xs font-medium text-ink-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={selectedOrders.size > 0 && selectedOrders.size === filtered.length}
+                onChange={() => {
+                  if (selectedOrders.size === filtered.length) {
+                    setSelectedOrders(new Set());
+                  } else {
+                    setSelectedOrders(new Set(filtered.map((o) => o.id)));
+                  }
+                }}
+                className="h-4 w-4 rounded border-ink-300 text-signal focus:ring-signal"
+              />
+              <span>Pilih Semua ({filtered.length})</span>
+            </label>
+          )}
+        </div>
         <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
           <label htmlFor="order-search" className="sr-only">
             Cari pesanan
@@ -257,29 +315,45 @@ export function PanelPesanan({
             const awaiting =
               o.payment_status === "PROOF_SUBMITTED" || o.payment_status === "UNDER_REVIEW";
             const busyAction = Boolean(actions[o.id]);
+            const isSelected = selectedOrders.has(o.id);
             return (
-              <Card key={o.id} className={cn(awaiting && "border-warn/40")}>
+              <Card
+                key={o.id}
+                className={cn(
+                  awaiting && "border-warn/40",
+                  isSelected && "ring-2 ring-signal/50 border-signal/40"
+                )}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-ink-200 px-5 py-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-mono text-sm font-bold text-ink">{o.order_number}</p>
-                      <Badge tone={paymentTone(o.payment_status)}>{o.payment_status_label}</Badge>
-                      <Badge>{o.order_status_label}</Badge>
+                  <div className="flex items-start gap-3 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectOrder(o.id)}
+                      aria-label={`Pilih pesanan ${o.order_number}`}
+                      className="mt-1 h-4 w-4 rounded border-ink-300 text-signal focus:ring-signal cursor-pointer shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-mono text-sm font-bold text-ink">{o.order_number}</p>
+                        <Badge tone={paymentTone(o.payment_status)}>{o.payment_status_label}</Badge>
+                        <Badge>{o.order_status_label}</Badge>
+                      </div>
+                      <p className="mt-1.5 text-sm text-ink-600">
+                        {o.buyer_name ?? "Tanpa nama"}{" "}
+                        <span className="font-mono text-xs text-ink-400">
+                          {o.buyer_jid ? o.buyer_jid.split("@")[0] : "-"}
+                        </span>
+                      </p>
+                      <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-500">
+                        <span className="inline-flex items-center gap-1">
+                          <Truck className="h-3 w-3" aria-hidden="true" />
+                          {o.courier ?? "-"} ke {o.destination_subdistrict ?? "-"}
+                          {o.shipping_is_estimate ? " (ongkir estimasi)" : ""}
+                        </span>
+                        <span>{timeAgo(o.created_at)}</span>
+                      </p>
                     </div>
-                    <p className="mt-1.5 text-sm text-ink-600">
-                      {o.buyer_name ?? "Tanpa nama"}{" "}
-                      <span className="font-mono text-xs text-ink-400">
-                        {o.buyer_jid ? o.buyer_jid.split("@")[0] : "-"}
-                      </span>
-                    </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-500">
-                      <span className="inline-flex items-center gap-1">
-                        <Truck className="h-3 w-3" aria-hidden="true" />
-                        {o.courier ?? "-"} ke {o.destination_subdistrict ?? "-"}
-                        {o.shipping_is_estimate ? " (ongkir estimasi)" : ""}
-                      </span>
-                      <span>{timeAgo(o.created_at)}</span>
-                    </p>
                   </div>
                   <div className="text-right">
                     <p className="font-mono text-lg font-bold tabular-nums text-ink">
@@ -393,6 +467,17 @@ export function PanelPesanan({
                         Label Thermal
                       </a>
 
+                      <a
+                        href={`/api/orders/${o.id}/receipt`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white px-2.5 py-1 text-xs font-semibold text-ink-700 shadow-flat hover:bg-ink-50 hover:text-ink-900 transition-colors"
+                        title="Cetak struk nota belanja pelanggan"
+                      >
+                        <Receipt className="h-3.5 w-3.5 text-ink-600" aria-hidden="true" />
+                        Nota Struk
+                      </a>
+
                       {o.tracking_number ? (
                         <div className="inline-flex items-center gap-1.5 rounded bg-signal-wash px-2.5 py-1 text-xs font-semibold text-signal-strong">
                           <Truck className="h-3.5 w-3.5" aria-hidden="true" />
@@ -437,6 +522,49 @@ export function PanelPesanan({
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Floating Bulk Actions Bar */}
+      {selectedOrders.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-ink-800 bg-ink-900 px-5 py-3 text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <div className="flex items-center gap-2 text-xs font-medium">
+            <span className="rounded bg-white/20 px-2 py-0.5 font-mono font-bold text-white">
+              {selectedOrders.size}
+            </span>
+            <span>pesanan dipilih</span>
+          </div>
+          <div className="h-4 w-px bg-white/20" />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={handleBulkVerify}
+              loading={bulkVerifying}
+              className="bg-signal-strong hover:bg-signal text-white"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Verifikasi Terpilih
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleBulkExportCsv}
+              className="bg-white/10 hover:bg-white/20 text-white border-transparent"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Ekspor CSV
+            </Button>
+            <button
+              type="button"
+              onClick={() => setSelectedOrders(new Set())}
+              className="rounded p-1 text-white/70 hover:text-white transition-colors"
+              title="Batal pilih"
+              aria-label="Batal pilih"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       )}
 

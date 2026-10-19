@@ -37,6 +37,12 @@ export async function GET(req: Request) {
   if (category && category !== "ALL") {
     where.category = category;
   }
+  const stock = searchParams.get("stock")?.trim() || "";
+  if (stock === "OUT") {
+    where.stock = 0;
+  } else if (stock === "LOW") {
+    where.stock = { lte: 5, gt: 0 };
+  }
   if (search) {
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },

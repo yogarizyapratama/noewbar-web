@@ -35,6 +35,12 @@ type SimMessage = {
   content: string;
   media?: { url: string; caption?: string; kind: "image" | "video" }[];
   time: string;
+  telemetry?: {
+    model?: string;
+    latency_ms?: number;
+    tools?: Array<{ tool: string; summary?: string }>;
+    catalog_source?: string;
+  };
 };
 
 function cleanAiText(raw: string): string {
@@ -216,6 +222,12 @@ export function PanelSimulator({
             hour: "2-digit",
             minute: "2-digit",
           }),
+          telemetry: {
+            model: json.model,
+            latency_ms: json.latency_ms,
+            tools: json.tools ?? [],
+            catalog_source: json.catalog_source,
+          },
         };
         setMessages((prev) => [...prev, botReply]);
       } else {
@@ -449,6 +461,42 @@ export function PanelSimulator({
                       )}
 
                       <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+
+                      {/* AI Telemetry & Tool Outcomes */}
+                      {!isUser && m.telemetry && (
+                        <div className="mt-2 pt-1.5 border-t border-ink-100 flex flex-col gap-1 text-[10px] text-ink-500 font-mono">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {m.telemetry.latency_ms !== undefined && (
+                              <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 text-emerald-800 px-1.5 py-0.5 font-bold border border-emerald-200">
+                                ⚡ {m.telemetry.latency_ms}ms
+                              </span>
+                            )}
+                            {m.telemetry.model && (
+                              <span className="rounded bg-ink-100 px-1.5 py-0.5 text-ink-700">
+                                {m.telemetry.model}
+                              </span>
+                            )}
+                            {m.telemetry.catalog_source && (
+                              <span className="text-ink-400">
+                                {m.telemetry.catalog_source}
+                              </span>
+                            )}
+                          </div>
+                          {m.telemetry.tools && m.telemetry.tools.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {m.telemetry.tools.map((t, tIdx) => (
+                                <span
+                                  key={tIdx}
+                                  className="inline-flex items-center gap-1 rounded bg-sky-50 text-sky-800 px-1.5 py-0.5 border border-sky-200"
+                                  title={t.summary || t.tool}
+                                >
+                                  🛠️ {t.tool}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div className="mt-1 flex items-center justify-end gap-1 text-2xs text-ink-400">
                         <span>{m.time}</span>
