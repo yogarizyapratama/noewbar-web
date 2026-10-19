@@ -11,7 +11,7 @@
  * - Search, Category filter, Status toggle.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Archive,
   Download,
@@ -119,11 +119,7 @@ export function PanelProducts() {
       ? ((grossProfit / sellingPrice) * 100).toFixed(1)
       : null;
 
-  useEffect(() => {
-    loadProducts();
-  }, [search, selectedCat, selectedStatus, selectedStock]);
-
-  async function loadProducts() {
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
       const q = new URLSearchParams();
@@ -147,7 +143,11 @@ export function PanelProducts() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [search, selectedCat, selectedStatus, selectedStock]);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
 
   async function quickAdjustStock(id: string, delta: number) {
     const prod = products.find((p) => p.id === id);

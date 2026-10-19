@@ -606,7 +606,7 @@ export function PanelPromos({
             <div className="text-center py-6 border border-dashed border-ink-200 rounded-lg">
               <Tag className="mx-auto h-8 w-8 text-ink-300" />
               <p className="mt-2 text-xs font-medium text-ink-600">Belum ada aturan promo bundling aktif.</p>
-              <p className="text-2xs text-ink-400">Klik "Tambah Tier Promo" untuk menambahkan potongan harga beli banyak.</p>
+              <p className="text-2xs text-ink-400">Klik &quot;Tambah Tier Promo&quot; untuk menambahkan potongan harga beli banyak.</p>
             </div>
           ) : (
             <div className="divide-y divide-ink-100 border border-ink-200 rounded-lg overflow-hidden">
@@ -784,7 +784,7 @@ export function PanelPromos({
             <div className="text-center py-6 border border-dashed border-ink-200 rounded-lg">
               <Percent className="mx-auto h-8 w-8 text-ink-300" />
               <p className="mt-2 text-xs font-medium text-ink-600">Belum ada kupon diskon aktif.</p>
-              <p className="text-2xs text-ink-400">Klik "Tambah Kupon Baru" untuk membuat kode voucher toko.</p>
+              <p className="text-2xs text-ink-400">Klik &quot;Tambah Kupon Baru&quot; untuk membuat kode voucher toko.</p>
             </div>
           ) : (
             <div className="divide-y divide-ink-100 border border-ink-200 rounded-lg overflow-hidden">
