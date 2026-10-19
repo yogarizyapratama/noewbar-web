@@ -7,7 +7,10 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "tsx scripts/run-all.ts",
+    "dev:all": "tsx scripts/run-all.ts",
+    "dev:next": "next dev -p 3001",
+    "start:all": "tsx scripts/run-all.ts --prod",
     "build": "next build && npm run copy:static",
     "copy:static": "mkdir -p .next/standalone/public && cp -R public/. .next/standalone/public/ 2>/dev/null; cp -R .next/static .next/standalone/.next/static",
     "start": "node --env-file-if-exists=.env .next/standalone/server.js",
