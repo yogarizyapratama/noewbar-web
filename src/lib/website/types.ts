@@ -107,7 +107,7 @@ export const TEMPLATES: WebsiteTemplate[] = [
         position: 3,
         content: {
           title: "Produk Unggulan Kami",
-          subtitle: "Pilihan terbaik yang paling disukai ribuan pelanggan",
+          subtitle: "Pilihan produk terbaik untuk melengkapi kebutuhan Anda",
           limit: 6,
         },
         style: { bg_color: "#F9FAFB", padding: "md" },
@@ -118,10 +118,9 @@ export const TEMPLATES: WebsiteTemplate[] = [
         type: "testimonials",
         position: 4,
         content: {
-          title: "Kata Mereka yang Sudah Mencoba",
+          title: "Ulasan Pelanggan",
           items: [
-            { name: "Siti Rahma", role: "Pelanggan Terverifikasi", text: "Baru pakai 2 minggu kulit terasa jauh lebih lembap dan noda bekas jerawat memudar!", rating: 5 },
-            { name: "Dina Kartika", role: "Pelanggan Terverifikasi", text: "Teksturnya ringan banget, cepat meresap dan nggak lengket sama sekali di kulit berminyak.", rating: 5 },
+            { name: "Nama Pelanggan", role: "Ulasan Pembeli", text: "Tuliskan ulasan asli dari pelanggan toko Anda di sini melalui editor...", rating: 5 },
           ],
         },
         style: { bg_color: "#FFFFFF", padding: "md" },
@@ -584,10 +583,9 @@ export const AVAILABLE_SECTION_TEMPLATES: SectionBlueprint[] = [
       type: "testimonials",
       position: 0,
       content: {
-        title: "Apa Kata Pelanggan Setia Kami?",
+        title: "Ulasan Pembeli",
         items: [
-          { name: "Anisa Rahmawati", role: "Pelanggan Terverifikasi", text: "Barang sampai dengan cepat dan packingnya super aman berlapis bubble wrap. Kualitasnya juara!", rating: 5 },
-          { name: "Budi Pratama", role: "Pelanggan Terverifikasi", text: "Pelayanan admin WhatsApp ramah sekali dan sangat responsif menjawab pertanyaan. Recommended seller!", rating: 5 },
+          { name: "Nama Pelanggan", role: "Ulasan Pembeli", text: "Tuliskan testimoni atau ulasan asli pembeli toko Anda di sini melalui panel editor...", rating: 5 },
         ],
       },
       style: { bg_color: "#FFFFFF", padding: "md" },

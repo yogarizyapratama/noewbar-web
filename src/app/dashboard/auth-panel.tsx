@@ -698,20 +698,17 @@ export function AuthPanel({
             </div>
           </div>
 
-          {/* Customer Quote Card */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm space-y-3">
-            <p className="text-xs italic text-ink-200 leading-relaxed">
-              &ldquo;Dulu chat jam 11 malam ke atas selalu terlewat dan batal beli. Sejak pakai Noewbar, pembeli langsung dilayani, dicekkan ongkir, dan checkout sendiri. Konversi toko kami naik 34%.&rdquo;
-            </p>
-            <div className="flex items-center gap-3 pt-1 border-t border-white/10">
-              <div className="grid h-8 w-8 place-items-center rounded-full bg-emerald-600 text-white font-bold text-xs">
-                DP
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-white">Dimas P.</p>
-                <p className="text-2xs text-ink-400">Owner Bandung Apparel Store</p>
-              </div>
+          {/* Prinsip Keamanan & Kedaulatan Data */}
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm space-y-2.5">
+            <div className="flex items-center gap-2 text-emerald-400">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              <span className="text-xs font-bold uppercase tracking-wider text-white">
+                Prinsip Kedaulatan Data &amp; Zero-Custody
+              </span>
             </div>
+            <p className="text-xs text-ink-300 leading-relaxed">
+              Noewbar CS Pro tidak menjadi perantara pembayaran atau memotong biaya komisi transaksi. Seluruh uang pembeli mengalir 100% langsung ke rekening bank atau QRIS pribadi toko Anda. Kredensial toko terlindungi dengan enkripsi Argon2id dan basis data multi-tenant terisolasi.
+            </p>
           </div>
         </div>
 

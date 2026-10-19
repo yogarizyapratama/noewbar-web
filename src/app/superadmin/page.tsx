@@ -1195,7 +1195,7 @@ export default function SuperadminPage() {
                     {totalConversations} <span className="text-sm font-normal text-ink-500">chat</span>
                   </p>
                   <p className="mt-1 text-2xs text-ink-600 font-mono">
-                    Est. {rupiah(totalConversations * 450)} token terproses
+                    {totalConversations} riwayat percakapan tercatat di database
                   </p>
                 </div>
               </div>
@@ -1743,7 +1743,7 @@ export default function SuperadminPage() {
                                   {t.conversations} chat / {t.orders} order
                                 </span>
                                 <span className="text-[11px] text-ink-700 bg-ink-100 px-2 py-0.5 rounded border border-ink-200 mt-1 font-mono">
-                                  Est. {t.conversations * 450} Token
+                                  {t.conversations} Percakapan Tercatat
                                 </span>
                               </div>
                             </td>
@@ -2721,9 +2721,9 @@ export default function SuperadminPage() {
                   <span className="font-mono font-bold text-ink">{selectedTenant.products ?? 0}</span>
                 </div>
                 <div className="p-2 rounded bg-white border border-ink-100">
-                  <span className="text-ink-500 text-2xs block">Est. Token</span>
+                  <span className="text-ink-500 text-2xs block">Dokumen SOP</span>
                   <span className="font-mono font-bold text-signal-strong">
-                    {selectedTenant.conversations * 450}
+                    {selectedTenant.knowledge_docs ?? 0}
                   </span>
                 </div>
               </div>
