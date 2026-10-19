@@ -29,6 +29,7 @@ import {
 import { AppShell, type NavItem } from "@/components/app-shell";
 import { Badge, Button, ErrorState, StatusDot, cn } from "@/components/ui";
 import { AuthPanel } from "./auth-panel";
+import { DashboardLoadingScreen } from "./loading-screen";
 import { PanelStatus } from "./panel-status";
 import { PanelWhatsapp } from "./panel-whatsapp";
 import { PanelProducts } from "./panel-products";
@@ -209,12 +210,17 @@ export default function DashboardPage() {
         setAuthed(false);
         return;
       }
+      if (!res.ok) {
+        setAuthed(true);
+        setHealthError(`Status gateway mengembalikan kode error (${res.status}).`);
+        return;
+      }
       const json = await res.json();
       setAuthed(true);
       setHealth(json.data ?? json);
       setHealthError(null);
     } catch {
-      setHealthError("Tidak dapat membaca status sistem.");
+      setHealthError("Tidak dapat terhubung ke server toko. Periksa jaringan Anda.");
     } finally {
       setHealthLoading(false);
     }
@@ -443,11 +449,17 @@ export default function DashboardPage() {
 
   if (authed === null) {
     return (
-      <main className="grid min-h-screen place-items-center bg-surface-sunken px-5">
-        <p className="text-sm text-ink-500" role="status">
-          Memuat dashboard...
-        </p>
-      </main>
+      <DashboardLoadingScreen
+        error={healthError}
+        onRetry={() => {
+          setHealthError(null);
+          setHealthLoading(true);
+          loadHealth();
+        }}
+        onBypass={() => {
+          setAuthed(true);
+        }}
+      />
     );
   }
 
