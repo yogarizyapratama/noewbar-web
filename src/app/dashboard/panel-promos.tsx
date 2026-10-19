@@ -34,6 +34,7 @@ import {
   Sparkles,
   Tag,
   Trash2,
+  Truck,
 } from "lucide-react";
 import {
   Badge,
@@ -91,6 +92,54 @@ export function PanelPromos({
   const [simQty, setSimQty] = useState(2);
   const [testCoupon, setTestCoupon] = useState("");
   const [testCouponResult, setTestCouponResult] = useState<string | null>(null);
+
+  // Fast Courier Rate Calculator State
+  const [calcDest, setCalcDest] = useState("");
+  const [calcWeight, setCalcWeight] = useState(1000);
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [calcError, setCalcError] = useState<string | null>(null);
+  const [calcResult, setCalcResult] = useState<{
+    origin: string;
+    destination: string;
+    weight_kg: number;
+    rates: Array<{
+      courier: string;
+      service_type: string;
+      total_tariff: number;
+      estimated_days: string;
+      is_estimate: boolean;
+    }>;
+  } | null>(null);
+
+  async function handleCheckRates(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!calcDest.trim()) {
+      setCalcError("Silakan masukkan nama kecamatan tujuan.");
+      return;
+    }
+    setCalcLoading(true);
+    setCalcError(null);
+    try {
+      const res = await fetch("/api/shipping/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destination: calcDest.trim(),
+          weight_grams: calcWeight,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setCalcResult(json);
+      } else {
+        setCalcError(json.error || "Gagal mendapatkan tarif pengiriman.");
+      }
+    } catch {
+      setCalcError("Gagal menghubungi server logistik.");
+    } finally {
+      setCalcLoading(false);
+    }
+  }
 
   // Jam saat ini di WIB (UTC+7)
   const now = new Date();
@@ -380,6 +429,97 @@ export function PanelPromos({
               Simpan Jam Operasional
             </Button>
           </div>
+        </CardBody>
+      </Card>
+
+      {/* Bagian 1.B: Kalkulator Tarif Ekspedisi & Ongkir Cepat */}
+      <Card className="border-ink-200">
+        <CardHeader
+          icon={<Truck className="h-4 w-4 text-signal-strong" aria-hidden="true" />}
+          title="Kalkulator Tarif Kurir & Ongkir Cepat"
+          description="Uji coba perhitungan ongkir riil ekspedisi (J&T, SiCepat, JNE) ke seluruh Indonesia langsung dari data platform."
+        />
+        <CardBody className="space-y-4">
+          <form onSubmit={handleCheckRates} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+            <div className="sm:col-span-6">
+              <label htmlFor="calc-dest-input" className="block text-2xs font-semibold text-ink-600 mb-1">
+                Kecamatan / Kota Tujuan
+              </label>
+              <input
+                id="calc-dest-input"
+                type="text"
+                placeholder="Misal: Coblong, Bandung atau Kebayoran Baru"
+                value={calcDest}
+                onChange={(e) => setCalcDest(e.target.value)}
+                className="field field-sm"
+                required
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <label htmlFor="calc-weight-input" className="block text-2xs font-semibold text-ink-600 mb-1">
+                Berat Paket (Gram)
+              </label>
+              <input
+                id="calc-weight-input"
+                type="number"
+                min={100}
+                step={100}
+                value={calcWeight}
+                onChange={(e) => setCalcWeight(Number(e.target.value))}
+                className="field field-sm font-mono"
+                required
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                loading={calcLoading}
+                className="w-full"
+              >
+                <Truck className="mr-1.5 h-3.5 w-3.5" />
+                Cek Ongkir
+              </Button>
+            </div>
+          </form>
+
+          {calcError && (
+            <div className="rounded-lg bg-danger-wash border border-danger/30 p-2.5 text-xs text-danger flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{calcError}</span>
+            </div>
+          )}
+
+          {calcResult && (
+            <div className="rounded-lg border border-ink-200 bg-ink-50/50 p-4 space-y-3 animate-fade-up">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div>
+                  <span className="text-ink-500">Asal Pengiriman: </span>
+                  <strong className="text-ink">{calcResult.origin}</strong>
+                  <span className="mx-2 text-ink-300">→</span>
+                  <span className="text-ink-500">Tujuan: </span>
+                  <strong className="text-ink">{calcResult.destination}</strong>
+                  <span className="ml-2 font-mono text-ink-400">({calcResult.weight_kg} kg)</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {calcResult.rates.map((r, i) => (
+                  <div key={i} className="rounded-lg border border-ink-200 bg-white p-3 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-ink-900">{r.courier}</span>
+                      <span className="text-[10px] font-medium text-ink-500">{r.estimated_days}</span>
+                    </div>
+                    <p className="text-[11px] text-ink-500">{r.service_type}</p>
+                    <p className="font-mono text-sm font-bold text-signal-strong pt-1">
+                      Rp {rupiah(r.total_tariff)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardBody>
       </Card>
 

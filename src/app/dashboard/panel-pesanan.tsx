@@ -76,6 +76,45 @@ export function PanelPesanan({
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkVerifying, setBulkVerifying] = useState(false);
 
+  // Modal Ekspor Laporan Keuangan & Penjualan
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportRange, setExportRange] = useState<"today" | "7d" | "30d" | "all">("30d");
+  const [exportStatus, setExportStatus] = useState<"all" | "VERIFIED" | "UNPAID">("all");
+
+  const exportCandidates = useMemo(() => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const sevenDaysAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgo = now.getTime() - 30 * 24 * 60 * 60 * 1000;
+
+    return orders.filter((o) => {
+      if (exportStatus !== "all" && o.payment_status !== exportStatus) {
+        return false;
+      }
+      const t = new Date(o.created_at).getTime();
+      if (exportRange === "today") return t >= todayStart;
+      if (exportRange === "7d") return t >= sevenDaysAgo;
+      if (exportRange === "30d") return t >= thirtyDaysAgo;
+      return true;
+    });
+  }, [orders, exportRange, exportStatus]);
+
+  const exportSummary = useMemo(() => {
+    let totalRevenue = 0;
+    let totalShipping = 0;
+    for (const o of exportCandidates) {
+      if (o.payment_status === "VERIFIED") {
+        totalRevenue += o.total_amount;
+      }
+      totalShipping += (o.shipping_tariff || 0);
+    }
+    return {
+      count: exportCandidates.length,
+      revenue: totalRevenue,
+      shipping: totalShipping,
+    };
+  }, [exportCandidates]);
+
   async function handleSendReminder(orderId: string) {
     setReminding((r) => ({ ...r, [orderId]: true }));
     try {
@@ -103,7 +142,7 @@ export function PanelPesanan({
   }
 
   function exportCsv(customList?: OrderRow[]) {
-    const list = customList ?? orders;
+    const list = customList ?? (showExportModal ? exportCandidates : orders);
     if (list.length === 0) return;
     const headers = [
       "No Order",
@@ -143,11 +182,12 @@ export function PanelPesanan({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `rekap-pesanan-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `laporan-penjualan-${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    setShowExportModal(false);
   }
 
   async function handleBulkVerify() {
@@ -218,11 +258,11 @@ export function PanelPesanan({
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"
-              onClick={() => exportCsv()}
+              onClick={() => setShowExportModal(true)}
               disabled={orders.length === 0}
             >
               <Download className="h-4 w-4" aria-hidden="true" />
-              Rekap CSV
+              Ekspor Laporan
             </Button>
             <Button variant="secondary" onClick={onRefresh} loading={loading}>
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -675,6 +715,112 @@ export function PanelPesanan({
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Modal Ekspor Laporan Penjualan & Keuangan */}
+      <Modal open={showExportModal} onClose={() => setShowExportModal(false)}>
+        <div className="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-xl">
+          <div className="flex items-center justify-between border-b border-ink-200 px-5 py-4">
+            <div>
+              <h3 className="font-bold text-ink-900 text-sm">Ekspor Laporan Penjualan & Keuangan</h3>
+              <p className="text-xs text-ink-500">Unduh data transaksi ke format CSV / Excel dengan filter fleksibel.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowExportModal(false)}
+              className="rounded-lg p-1 text-ink-400 hover:bg-ink-100 hover:text-ink-700"
+              aria-label="Tutup"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="p-5 space-y-4 text-xs">
+            {/* Periode Tanggal */}
+            <div>
+              <label className="font-semibold text-ink-700 block mb-1.5">Periode Transaksi</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {[
+                  { id: "today", label: "Hari Ini" },
+                  { id: "7d", label: "7 Hari" },
+                  { id: "30d", label: "30 Hari" },
+                  { id: "all", label: "Semua Waktu" },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setExportRange(p.id as any)}
+                    className={cn(
+                      "rounded-lg border px-2.5 py-1.5 text-center font-medium transition-all text-xs",
+                      exportRange === p.id
+                        ? "border-ink-900 bg-ink-900 text-white shadow-xs"
+                        : "border-ink-200 bg-white text-ink-700 hover:bg-ink-50"
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Status Pembayaran */}
+            <div>
+              <label className="font-semibold text-ink-700 block mb-1.5">Filter Status Pembayaran</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: "all", label: "Semua Status" },
+                  { id: "VERIFIED", label: "Hanya Terverifikasi" },
+                  { id: "UNPAID", label: "Belum Dibayar" },
+                ].map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => setExportStatus(st.id as any)}
+                    className={cn(
+                      "rounded-lg border px-2.5 py-1.5 text-center font-medium transition-all text-xs",
+                      exportStatus === st.id
+                        ? "border-signal-strong bg-signal-wash text-signal-strong font-semibold shadow-xs"
+                        : "border-ink-200 bg-white text-ink-700 hover:bg-ink-50"
+                    )}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ringkasan Hasil Filter */}
+            <div className="rounded-lg border border-ink-200 bg-ink-50 p-3 space-y-1.5">
+              <div className="flex justify-between items-center text-ink-600">
+                <span>Pesanan Terfilter:</span>
+                <span className="font-mono font-bold text-ink-900">{exportSummary.count} transaksi</span>
+              </div>
+              <div className="flex justify-between items-center text-ink-600">
+                <span>Total Omzet Terverifikasi:</span>
+                <span className="font-mono font-bold text-signal-strong">Rp {rupiah(exportSummary.revenue)}</span>
+              </div>
+              <div className="flex justify-between items-center text-ink-600">
+                <span>Total Ongkos Kirim:</span>
+                <span className="font-mono font-medium text-ink-700">Rp {rupiah(exportSummary.shipping)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-ink-200 bg-ink-50 px-5 py-3">
+            <Button size="sm" variant="secondary" onClick={() => setShowExportModal(false)}>
+              Batal
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={exportSummary.count === 0}
+              onClick={() => exportCsv(exportCandidates)}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Unduh CSV ({exportSummary.count})
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

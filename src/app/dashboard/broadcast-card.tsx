@@ -5,9 +5,9 @@ import { AlertCircle, CheckCircle2, Image as ImageIcon, MessageSquare, Send, Shi
 import { Button, Card, CardBody, CardHeader, Badge } from "@/components/ui";
 
 export function BroadcastCard() {
-  const [segment, setSegment] = useState<"all" | "unpaid" | "inquiry">("all");
+  const [segment, setSegment] = useState<"all" | "unpaid" | "unpaid_old" | "inquiry">("all");
   const [message, setMessage] = useState(
-    "Halo Kak! Ada promo spesial dan diskon ongkir terbatas untuk belanja hari ini di toko kami. Yuk cek katalog terbaru kami ya! ✨"
+    "Halo {nama}! Ada promo spesial dan diskon ongkir terbatas untuk belanja hari ini di {nama_toko}. Yuk cek katalog terbaru kami ya! ✨"
   );
   const [imageUrl, setImageUrl] = useState("");
   const [testPhone, setTestPhone] = useState("");
@@ -21,6 +21,24 @@ export function BroadcastCard() {
     failed_count?: number;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const insertVariable = (tag: string) => {
+    setMessage((prev) => {
+      if (prev.endsWith(" ") || prev.length === 0) return prev + tag + " ";
+      return prev + " " + tag + " ";
+    });
+  };
+
+  const loadAbandonedTemplate = () => {
+    setMessage(
+      "Halo {nama}! Kami melihat pesanan Kakak di {nama_toko} masih menunggu konfirmasi transfer. Stok produk kami terbatas, apakah ada kendala pembayaran yang bisa kami bantu? 🙏"
+    );
+  };
+
+  const previewText = message
+    .replace(/\{nama\}/gi, "Kak Budi")
+    .replace(/\{nama_toko\}/gi, "Toko Kami")
+    .replace(/\{nomor_wa\}/gi, "08123456789");
 
   const handleTestSend = async () => {
     if (!testPhone.trim()) {
@@ -115,16 +133,22 @@ export function BroadcastCard() {
           <label className="text-xs font-semibold text-ink-700 flex items-center gap-1.5 mb-1.5">
             <Users className="h-3.5 w-3.5" /> Pilih Segmen Kontak Target
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             {[
               { id: "all", label: "Semua Pelanggan", desc: "Kontak yang pernah berinteraksi" },
-              { id: "unpaid", label: "Belum Bayar", desc: "Ada order UNPAID aktif" },
+              { id: "unpaid", label: "Belum Bayar (Semua)", desc: "Ada pesanan UNPAID aktif" },
+              { id: "unpaid_old", label: "Pending > 2 Jam", desc: "Draf order terbengkalai (2-48 jam)" },
               { id: "inquiry", label: "Baru Bertanya", desc: "Pernah chat tapi belum checkout" },
             ].map((s) => (
               <button
                 key={s.id}
                 type="button"
-                onClick={() => setSegment(s.id as any)}
+                onClick={() => {
+                  setSegment(s.id as any);
+                  if (s.id === "unpaid_old") {
+                    loadAbandonedTemplate();
+                  }
+                }}
                 className={`rounded-lg border p-2.5 text-left transition-all ${
                   segment === s.id
                     ? "border-ink-900 bg-ink-900 text-white shadow-flat"
@@ -144,9 +168,45 @@ export function BroadcastCard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="space-y-3">
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-ink-700">Isi Pesan Promosi</label>
                 <span className="text-[11px] font-mono text-ink-400">{message.length}/1000</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                <span className="text-[11px] font-medium text-ink-500">Sisipkan:</span>
+                <button
+                  type="button"
+                  onClick={() => insertVariable("{nama}")}
+                  className="rounded border border-ink-200 bg-ink-50 px-2 py-0.5 text-[11px] font-mono text-ink-700 hover:bg-ink-100 hover:border-ink-300 transition-colors"
+                  title="Nama pelanggan otomatis"
+                >
+                  + &#123;nama&#125;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertVariable("{nama_toko}")}
+                  className="rounded border border-ink-200 bg-ink-50 px-2 py-0.5 text-[11px] font-mono text-ink-700 hover:bg-ink-100 hover:border-ink-300 transition-colors"
+                  title="Nama toko otomatis"
+                >
+                  + &#123;nama_toko&#125;
+                </button>
+                <button
+                  type="button"
+                  onClick={() => insertVariable("{nomor_wa}")}
+                  className="rounded border border-ink-200 bg-ink-50 px-2 py-0.5 text-[11px] font-mono text-ink-700 hover:bg-ink-100 hover:border-ink-300 transition-colors"
+                  title="Nomor WhatsApp pelanggan"
+                >
+                  + &#123;nomor_wa&#125;
+                </button>
+                {segment === "unpaid_old" && (
+                  <button
+                    type="button"
+                    onClick={loadAbandonedTemplate}
+                    className="ml-auto text-[11px] font-semibold text-signal-strong hover:underline"
+                  >
+                    Muat Template Pemulihan
+                  </button>
+                )}
               </div>
               <textarea
                 rows={4}
@@ -210,7 +270,7 @@ export function BroadcastCard() {
                     />
                   </div>
                 )}
-                <p className="whitespace-pre-wrap leading-relaxed">{message}</p>
+                <p className="whitespace-pre-wrap leading-relaxed">{previewText}</p>
                 <p className="text-[10px] text-ink-500 italic border-t border-emerald-900/10 pt-1">
                   Balas STOP untuk berhenti menerima info promo.
                 </p>

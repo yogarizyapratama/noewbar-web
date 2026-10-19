@@ -160,7 +160,26 @@ export function buildSystemPrompt(vars: PromptVars): string {
   }
 
   if (vars.shippingSchedule) {
-    prompt += `\n\n## JADWAL PENGIRIMAN & CUT-OFF RESMI TOKO\n- Jam operasional: ${vars.shippingSchedule.open_hour}.00 sampai ${vars.shippingSchedule.close_hour}.00 WIB\n- Batas transfer untuk kirim hari yang sama (same-day): pukul ${vars.shippingSchedule.cut_off_hour}.00 WIB\n- Selalu panggil tool_cek_jadwal_pengiriman jika pembeli menanyakan jam kirim atau pengiriman hari ini.`;
+    const openH = vars.shippingSchedule.open_hour ?? 8;
+    const closeH = vars.shippingSchedule.close_hour ?? 21;
+    const cutOffH = vars.shippingSchedule.cut_off_hour ?? 15;
+
+    // Check current WIB hour (UTC+7)
+    const nowUtc = new Date();
+    const wibHour = (nowUtc.getUTCHours() + 7) % 24;
+    const isStoreOpen = wibHour >= openH && wibHour < closeH;
+
+    prompt += `\n\n## STATUS OPERASIONAL & JADWAL TOKO (WIB)\n- Jam operasional: ${openH}:00 sampai ${closeH}:00 WIB\n- Batas transfer kirim hari yang sama (same-day): pukul ${cutOffH}:00 WIB\n- Waktu server saat ini: pukul ${wibHour}:00 WIB`;
+
+    if (!isStoreOpen) {
+      prompt += `\n- ⚠️ PEMBERITAHUAN: TOKO SAAT INI SEDANG TUTUP (di luar jam ${openH}:00 - ${closeH}:00 WIB). Sampaikan dengan santun di awal bahwa toko sedang tutup/istirahat dan pengiriman pesanan akan diproses besok pagi saat toko buka pukul ${openH}:00 WIB. Kamu tetap melayani dan menjawab informasi produk, katalog, atau ongkir dengan ramah.`;
+    } else if (wibHour >= cutOffH) {
+      prompt += `\n- STATUS: Toko sedang buka, namun sudah melewati batas cut-off pengiriman hari ini (${cutOffH}:00 WIB). Pesanan yang dibayar sekarang akan diserahkan ke kurir besok pagi.`;
+    } else {
+      prompt += `\n- STATUS: Toko sedang buka dan masih dalam batas pengiriman hari ini (sebelum ${cutOffH}:00 WIB).`;
+    }
+
+    prompt += `\n- Selalu panggil tool_cek_jadwal_pengiriman jika pembeli menanyakan jam kirim atau pengiriman hari ini.`;
   }
 
   return prompt;

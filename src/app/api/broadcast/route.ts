@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 const broadcastSchema = z.object({
   message: z.string().min(5).max(1000),
-  segment: z.enum(["all", "unpaid", "inquiry"]).default("all"),
+  segment: z.enum(["all", "unpaid", "unpaid_old", "inquiry"]).default("all"),
   test_phone: z.string().optional(),
   image_url: z.string().url().optional().or(z.literal("")),
 });
@@ -36,20 +36,36 @@ export async function POST(req: NextRequest) {
 
   const { message, segment, test_phone, image_url } = parsed.data;
 
-  // Resolve connected WhatsApp instance
-  const instance = await prisma.waInstance.findFirst({
-    where: { tenant_id: session.sub, connection_status: "CONNECTED" },
-    select: { instance_key: true, phone_number: true },
-  });
+  // Resolve tenant details & connected WhatsApp instance
+  const [tenant, instance] = await Promise.all([
+    prisma.tenant.findUnique({
+      where: { id: session.sub },
+      select: { business_name: true },
+    }),
+    prisma.waInstance.findFirst({
+      where: { tenant_id: session.sub, connection_status: "CONNECTED" },
+      select: { instance_key: true, phone_number: true },
+    }),
+  ]);
+
+  const storeName = tenant?.business_name || "Toko Kami";
 
   if (!instance) {
     return fail("Tidak ada nomor WhatsApp yang terhubung aktif. Silakan hubungkan WhatsApp di tab WhatsApp.", 400);
   }
 
+  function personalizeMessage(template: string, name: string, phone: string): string {
+    return template
+      .replace(/\{nama\}/gi, name)
+      .replace(/\{nomor_wa\}/gi, phone)
+      .replace(/\{nama_toko\}/gi, storeName);
+  }
+
   // If test send requested
   if (test_phone && test_phone.trim()) {
     const formattedTest = test_phone.trim();
-    const testMsg = `${message}\n\n_Balas STOP untuk berhenti menerima info ini._`;
+    const cleanPhone = formattedTest.replace(/[^0-9]/g, "");
+    const testMsg = `${personalizeMessage(message, "Kak Budi (Tes)", cleanPhone)}\n\n_Balas STOP untuk berhenti menerima info ini._`;
     const res = image_url
       ? await waDaemon.sendMedia({
           instanceKey: instance.instance_key,
@@ -85,16 +101,29 @@ export async function POST(req: NextRequest) {
     },
     include: {
       orders: {
-        select: { id: true, payment_status: true },
+        select: { id: true, payment_status: true, created_at: true },
       },
     },
     take: 100, // Safety cap per batch
   });
 
+  const now = Date.now();
+  const twoHoursMs = 2 * 60 * 60 * 1000;
+  const fortyEightHoursMs = 48 * 60 * 60 * 1000;
+
   // Filter based on segment
   if (segment === "unpaid") {
     conversations = conversations.filter((c) =>
       c.orders.some((o) => o.payment_status === "UNPAID")
+    );
+  } else if (segment === "unpaid_old") {
+    // Abandoned / Pending transfer between 2h and 48h
+    conversations = conversations.filter((c) =>
+      c.orders.some((o) => {
+        if (o.payment_status !== "UNPAID") return false;
+        const diff = now - new Date(o.created_at).getTime();
+        return diff >= twoHoursMs && diff <= fortyEightHoursMs;
+      })
     );
   } else if (segment === "inquiry") {
     conversations = conversations.filter((c) => c.orders.length === 0);
@@ -113,10 +142,13 @@ export async function POST(req: NextRequest) {
   let sentCount = 0;
   const errors: Array<{ jid: string; error: string }> = [];
 
-  const finalMsg = `${message}\n\n_Balas STOP untuk berhenti menerima info promo._`;
-
   for (const conv of conversations) {
     try {
+      const recipientName = conv.buyer_name?.trim() || "Kak";
+      const recipientPhone = conv.buyer_jid ? conv.buyer_jid.split("@")[0] : "";
+      const personalized = personalizeMessage(message, recipientName, recipientPhone);
+      const finalMsg = `${personalized}\n\n_Balas STOP untuk berhenti menerima info promo._`;
+
       const res = image_url
         ? await waDaemon.sendMedia({
             instanceKey: instance.instance_key,
