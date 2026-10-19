@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CheckCircle2, Download, Loader2, MessageSquare, RefreshCw, Smartphone } from "lucide-react";
+import { Check, CheckCircle2, Copy, Download, KeyRound, Loader2, MessageSquare, QrCode, RefreshCw, Smartphone } from "lucide-react";
 import {
   Badge,
   Button,
@@ -33,6 +33,13 @@ const STEPS = [
   "Masuk ke Pengaturan, lalu Perangkat tertaut.",
   "Pilih Tautkan perangkat, arahkan kamera ke QR di samping.",
   "Tunggu sampai status berubah menjadi CONNECTED.",
+];
+
+const CODE_STEPS = [
+  "Buka WhatsApp di HP toko Anda.",
+  "Masuk ke Pengaturan > Perangkat tertaut.",
+  "Pilih Tautkan perangkat > Tautkan dengan nomor telepon saja.",
+  "Ketik 8 digit kode yang muncul di layar ini ke WhatsApp Anda.",
 ];
 
 export function PanelWhatsapp({
@@ -189,6 +196,49 @@ export function PanelWhatsapp({
     }
   }
 
+  const [pairMethod, setPairMethod] = useState<"qr" | "code">("qr");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function requestPairingCode() {
+    if (!phoneNumber.trim()) {
+      setError("Masukkan nomor WhatsApp toko Anda.");
+      return;
+    }
+    setCodeLoading(true);
+    setError(null);
+    setPairingCode(null);
+    try {
+      const res = await fetch("/api/wa/qr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "pair_phone",
+          phone: phoneNumber.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal mendapatkan kode pairing.");
+      }
+      setPairingCode(data.pairing_code);
+      pollForQr();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCodeLoading(false);
+    }
+  }
+
+  function copyCode() {
+    if (!pairingCode) return;
+    navigator.clipboard.writeText(pairingCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   return (
     <div className="page">
       <PageHeader
@@ -260,7 +310,52 @@ export function PanelWhatsapp({
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         {/* pairing card */}
         <Card>
-          <CardHeader title="Tautkan perangkat" description="QR berlaku sekitar 20 detik." />
+          <CardHeader
+            title="Tautkan perangkat"
+            description={
+              pairMethod === "qr"
+                ? "Pindai QR dengan kamera WhatsApp di HP Anda (berlaku ~20 detik)."
+                : "Tautkan via nomor HP tanpa perlu pindai kamera QR (cocok jika hanya punya 1 HP)."
+            }
+            actions={
+              !connected && (
+                <div className="inline-flex rounded-md border border-ink-200 bg-ink-50 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPairMethod("qr");
+                      setError(null);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                      pairMethod === "qr"
+                        ? "bg-white text-ink shadow-xs"
+                        : "text-ink-600 hover:text-ink"
+                    )}
+                  >
+                    <QrCode className="h-3.5 w-3.5" />
+                    Pindai QR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPairMethod("code");
+                      setError(null);
+                    }}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors",
+                      pairMethod === "code"
+                        ? "bg-white text-ink shadow-xs"
+                        : "text-ink-600 hover:text-ink"
+                    )}
+                  >
+                    <KeyRound className="h-3.5 w-3.5" />
+                    Kode 8-Digit
+                  </button>
+                </div>
+              )
+            }
+          />
           <CardBody>
             {error && (
               <div className="mb-4">
@@ -280,6 +375,97 @@ export function PanelWhatsapp({
                   </Button>
                 }
               />
+            ) : pairMethod === "code" ? (
+              <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
+                <div className="w-full shrink-0 rounded-lg border border-ink-200 bg-ink-50/50 p-4 sm:w-[280px]">
+                  <label htmlFor="wa-phone-input" className="block text-xs font-medium text-ink-800">
+                    Nomor WhatsApp Toko
+                  </label>
+                  <p className="mt-0.5 text-2xs text-ink-500">
+                    Contoh: 08123456789 atau 628123456789
+                  </p>
+                  <div className="mt-2">
+                    <input
+                      id="wa-phone-input"
+                      type="tel"
+                      placeholder="08xxxxxxxxxx"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      disabled={codeLoading}
+                      className="w-full rounded-md border border-ink-200 bg-white px-3 py-2 font-mono text-sm text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none focus:ring-1 focus:ring-ink-500"
+                    />
+                  </div>
+                  <Button
+                    variant="accent"
+                    size="sm"
+                    className="mt-3 w-full"
+                    onClick={requestPairingCode}
+                    loading={codeLoading}
+                  >
+                    <KeyRound className="h-3.5 w-3.5" />
+                    {pairingCode ? "Minta Ulang Kode" : "Dapatkan Kode Pairing"}
+                  </Button>
+
+                  {pairingCode && (
+                    <div className="mt-4 rounded-md border border-signal/40 bg-white p-3 text-center shadow-xs">
+                      <p className="text-2xs font-semibold uppercase tracking-wider text-signal-strong">
+                        Kode Pairing WhatsApp
+                      </p>
+                      <div className="mt-2 flex items-center justify-center gap-2">
+                        <span className="font-mono text-2xl font-bold tracking-widest text-ink select-all">
+                          {pairingCode.length === 8
+                            ? `${pairingCode.slice(0, 4)} - ${pairingCode.slice(4)}`
+                            : pairingCode}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={copyCode}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded border border-ink-200 bg-white text-ink-700 hover:bg-ink-50 active:bg-ink-100"
+                          title="Salin kode"
+                        >
+                          {copied ? (
+                            <Check className="h-4 w-4 text-signal-strong" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                      <p className="mt-1.5 text-2xs text-ink-500">
+                        {copied ? "Kode berhasil disalin!" : "Masukkan kode ini di WhatsApp HP Anda"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-ink-700">
+                    Cara Menautkan Tanpa Scan QR:
+                  </p>
+                  <ol className="mt-3 space-y-2.5">
+                    {CODE_STEPS.map((s, i) => (
+                      <li key={s} className="flex gap-2.5 text-sm text-ink-600">
+                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-sm bg-ink-100 font-mono text-2xs font-bold text-ink-600">
+                          {i + 1}
+                        </span>
+                        <span className="leading-relaxed">{s}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  {polling && (
+                    <p
+                      className="mt-4 rounded border border-signal/25 bg-signal-wash px-3 py-2 text-xs leading-relaxed text-signal-strong"
+                      role="status"
+                    >
+                      Permintaan kode aktif. Silakan masukkan kode pada WhatsApp HP Anda. Sistem otomatis menunggu konfirmasi sambungan.
+                    </p>
+                  )}
+                  {daemonDown && (
+                    <p className="mt-4 rounded border border-danger/25 bg-danger-wash px-3 py-2 text-xs text-danger">
+                      Server WhatsApp belum terhubung. Silakan periksa koneksi atau coba beberapa saat lagi.
+                    </p>
+                  )}
+                </div>
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
                 <div className="grid h-[220px] w-[220px] shrink-0 place-items-center rounded-lg border border-ink-200 bg-white p-2">

@@ -20,8 +20,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const actionSchema = z.object({
-  action: z.enum(["start", "poll", "logout"]),
+  action: z.enum(["start", "poll", "logout", "pair_phone"]),
   instance_key: z.string().min(1).optional(),
+  phone: z.string().optional(),
 });
 
 function webhookUrl(): string {
@@ -82,6 +83,31 @@ export async function POST(req: NextRequest) {
       daemon_ok: res.ok,
       daemon_error: res.ok ? null : res.error,
       connection_status: "OFFLINE",
+    });
+  }
+
+  if (action === "pair_phone") {
+    const phone = parsed.data.phone?.trim();
+    if (!phone) {
+      return fail("Nomor WhatsApp diperlukan untuk menghasilkan kode pairing", 400);
+    }
+    // Make sure instance is initialized in the daemon
+    await waDaemon.initInstance(instance.instance_key, webhookUrl());
+
+    const pairRes = await waDaemon.pairPhone({
+      instanceKey: instance.instance_key,
+      phone,
+    });
+
+    if (!pairRes.ok) {
+      return fail(pairRes.error || "Gagal membuat kode pairing WhatsApp", 500);
+    }
+
+    return ok({
+      action: "pair_phone",
+      pairing_code: pairRes.data.pairing_code,
+      phone: pairRes.data.phone,
+      instance_key: instance.instance_key,
     });
   }
 

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { Badge, IconButton, Kbd, StatusDot, cn } from "@/components/ui";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { NetworkStatus } from "@/components/network-status";
 
 export type NavItem<T extends string = string> = {
   id: T;
@@ -309,6 +310,8 @@ export function AppShell<T extends string>({
 
         <main className="flex-1">{children}</main>
       </div>
+
+      <NetworkStatus />
 
       {paletteOpen && (
         <CommandPalette

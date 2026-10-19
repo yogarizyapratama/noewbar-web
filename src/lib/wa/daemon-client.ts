@@ -92,6 +92,23 @@ export const waDaemon = {
     return call(`/instances/qr?key=${encodeURIComponent(instanceKey)}`, { method: "GET" });
   },
 
+  async pairPhone(params: {
+    instanceKey: string;
+    phone: string;
+  }): Promise<DaemonResult<{ success: boolean; pairing_code: string; phone: string }>> {
+    return call(
+      "/instances/pair-phone",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          instance_key: params.instanceKey,
+          phone: params.phone,
+        }),
+      },
+      25000
+    );
+  },
+
   async getStatus(
     instanceKey: string
   ): Promise<DaemonResult<{ instance_key: string; connection_status: InstanceStatus; phone_number: string }>> {

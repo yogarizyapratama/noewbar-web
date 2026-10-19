@@ -80,9 +80,12 @@ export function PanelPesanan({
       "Status Bayar",
       "Nama Pembeli",
       "No WhatsApp",
-      "Total",
+      "Subtotal (Rp)",
+      "Ongkir (Rp)",
+      "Kode Unik (Rp)",
+      "Total Bayar (Rp)",
       "Kurir",
-      "Tujuan",
+      "Kecamatan Tujuan",
       "No Resi",
       "Rincian Produk",
     ];
@@ -93,6 +96,9 @@ export function PanelPesanan({
       `"${o.payment_status_label}"`,
       `"${(o.buyer_name ?? "").replace(/"/g, '""')}"`,
       `"${o.buyer_jid ? o.buyer_jid.split("@")[0] : "-"}"`,
+      o.subtotal || (o.total_amount - (o.shipping_tariff || 0) - (o.unique_code || 0)),
+      o.shipping_tariff || 0,
+      o.unique_code || 0,
       o.total_amount,
       `"${o.courier ?? ""}"`,
       `"${(o.destination_subdistrict ?? "").replace(/"/g, '""')}"`,
@@ -100,15 +106,16 @@ export function PanelPesanan({
       `"${o.items.map((i) => `${i.name} (${i.variant || "-"}) x${i.qty}`).join("; ").replace(/"/g, '""')}"`,
     ]);
     const csvContent =
-      "data:text/csv;charset=utf-8,\uFEFF" +
-      [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
+      "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.href = url;
     link.setAttribute("download", `rekap-pesanan-${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   const filtered = useMemo(() => {

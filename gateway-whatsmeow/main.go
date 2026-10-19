@@ -113,6 +113,7 @@ func main() {
 	mux.HandleFunc("/instances/init", withAuth(handleInitInstance))
 	mux.HandleFunc("/instances/status", withAuth(handleStatusInstance))
 	mux.HandleFunc("/instances/qr", withAuth(handleQRInstance))
+	mux.HandleFunc("/instances/pair-phone", withAuth(handlePairPhone))
 	mux.HandleFunc("/instances/send", withAuth(handleSendMessage))
 	mux.HandleFunc("/instances/send-media", withAuth(handleSendMedia))
 	mux.HandleFunc("/instances/logout", withAuth(handleLogoutInstance))
@@ -385,6 +386,69 @@ func handleQRInstance(w http.ResponseWriter, r *http.Request) {
 		"status":       inst.statusOrDefault(),
 		"qr_base64":    inst.QRBase64,
 		"phone_number": inst.PhoneNumber,
+	})
+}
+
+type pairPhoneRequest struct {
+	InstanceKey string `json:"instance_key"`
+	Phone       string `json:"phone"`
+}
+
+func handlePairPhone(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "Method not allowed"})
+		return
+	}
+
+	var req pairPhoneRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.InstanceKey == "" || req.Phone == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "instance_key and phone are required"})
+		return
+	}
+
+	phone := strings.TrimSpace(req.Phone)
+	phone = strings.ReplaceAll(phone, "+", "")
+	phone = strings.ReplaceAll(phone, "-", "")
+	phone = strings.ReplaceAll(phone, " ", "")
+	if strings.HasPrefix(phone, "0") {
+		phone = "62" + phone[1:]
+	}
+
+	manager.mu.RLock()
+	inst, exists := manager.instances[req.InstanceKey]
+	manager.mu.RUnlock()
+
+	if !exists || inst.Client == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "Instance not initialized"})
+		return
+	}
+
+	if inst.Client.IsLoggedIn() {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "WhatsApp already connected"})
+		return
+	}
+
+	if !inst.Client.IsConnected() {
+		if err := inst.Client.Connect(); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": fmt.Sprintf("Failed to connect socket: %v", err)})
+			return
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	code, err := inst.Client.PairPhone(ctx, phone, true, whatsmeow.PairClientChrome, "Chrome (macOS)")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": fmt.Sprintf("PairPhone error: %v", err)})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":      true,
+		"pairing_code": code,
+		"phone":        phone,
 	})
 }
 

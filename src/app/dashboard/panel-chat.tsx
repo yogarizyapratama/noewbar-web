@@ -22,11 +22,17 @@ import {
   ArrowLeft,
   Bot,
   CheckCheck,
+  Download,
+  ExternalLink,
+  Headphones,
   Lock,
   MessageSquare,
+  Plus,
   Search,
   Send,
+  Settings2,
   Smartphone,
+  Trash2,
   User,
   UserRound,
   X,
@@ -39,6 +45,35 @@ import {
   timeAgo,
 } from "@/components/ui";
 import type { ConversationRow, MessageRow } from "./types";
+
+type CannedResponse = {
+  id: string;
+  label: string;
+  text: string;
+};
+
+const DEFAULT_CANNED: CannedResponse[] = [
+  {
+    id: "greet",
+    label: "👋 Salam Sapa",
+    text: "Halo kak! Ada yang bisa kami bantu seputar produk hari ini? 😊",
+  },
+  {
+    id: "ship",
+    label: "📦 Info Pengiriman",
+    text: "Baik kak, pesanan kakak sedang kami siapkan untuk jadwal pengiriman terdekat ya! 📦",
+  },
+  {
+    id: "rek",
+    label: "💳 Info Rekening",
+    text: "Pembayaran dapat ditransfer ke rekening resmi toko kami. Mohon kirimkan bukti transfer berupa foto atau struk ya kak! 💳",
+  },
+  {
+    id: "katalog",
+    label: "🛍️ Kirim Katalog",
+    text: "Kakak bisa cek katalog lengkap produk dan promo kami di link website toko ya! 🛍️",
+  },
+];
 
 export function PanelChat({
   conversations,
@@ -63,7 +98,58 @@ export function PanelChat({
   const [mobileThread, setMobileThread] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [chatFilter, setChatFilter] = useState<"all" | "takeover" | "bot" | "unread">("all");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Custom Canned Responses
+  const [cannedList, setCannedList] = useState<CannedResponse[]>(DEFAULT_CANNED);
+  const [cannedModalOpen, setCannedModalOpen] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newText, setNewText] = useState("");
+
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("noewbar_canned_responses");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCannedList(parsed);
+        }
+      }
+    } catch {
+      // fallback to default
+    }
+  }, []);
+
+  function saveCannedList(items: CannedResponse[]) {
+    setCannedList(items);
+    try {
+      localStorage.setItem("noewbar_canned_responses", JSON.stringify(items));
+    } catch {
+      // ignore
+    }
+  }
+
+  function addCannedItem() {
+    if (!newLabel.trim() || !newText.trim()) return;
+    const updated = [
+      ...cannedList,
+      {
+        id: "canned-" + Date.now(),
+        label: newLabel.trim(),
+        text: newText.trim(),
+      },
+    ];
+    saveCannedList(updated);
+    setNewLabel("");
+    setNewText("");
+  }
+
+  function removeCannedItem(id: string) {
+    const updated = cannedList.filter((item) => item.id !== id);
+    saveCannedList(updated);
+  }
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
 
@@ -97,7 +183,7 @@ export function PanelChat({
   }
 
   function insertCannedResponse(text: string) {
-    setReply(text);
+    setReply((prev) => (prev ? `${prev} ${text}` : text));
   }
 
   // Helper formatting jam pesan
@@ -491,8 +577,50 @@ export function PanelChat({
                           )}
                         </div>
 
+                        {/* Multimedia Preview (Image / Audio) */}
+                        {m.media_url && (
+                          <div className="my-2">
+                            {m.message_type === "AUDIO" ||
+                            m.media_url.match(/\.(ogg|mp3|wav|m4a|aac)($|\?)/i) ? (
+                              <div className="flex flex-col gap-1.5 rounded-lg border border-ink-200/80 bg-white/90 p-2 shadow-2xs">
+                                <div className="flex items-center gap-1.5 text-2xs font-semibold text-ink-700">
+                                  <Headphones className="h-3.5 w-3.5 text-signal-strong" />
+                                  <span>Voice Note / Audio</span>
+                                </div>
+                                <audio
+                                  controls
+                                  src={m.media_url}
+                                  className="h-8 w-full max-w-xs"
+                                  preload="metadata"
+                                />
+                              </div>
+                            ) : (
+                              <div className="group relative overflow-hidden rounded-lg border border-ink-200/60 bg-black/5">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={m.media_url}
+                                  alt="Lampiran media chat"
+                                  className="max-h-64 w-auto cursor-pointer rounded-lg object-contain transition-transform duration-150 hover:scale-[1.01]"
+                                  onClick={() => setPreviewImage(m.media_url)}
+                                  loading="lazy"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewImage(m.media_url)}
+                                  className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-2xs font-medium text-white opacity-0 backdrop-blur-xs transition-opacity group-hover:opacity-100"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Perbesar
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {/* Isi Teks Pesan */}
-                        <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                        {m.content && (
+                          <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                        )}
 
                         {/* Footer Waktu & Status Checkmark */}
                         <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-[#667781] font-mono">
@@ -522,33 +650,25 @@ export function PanelChat({
                 <span className="text-[10px] font-bold text-ink-700 uppercase shrink-0 mr-1">
                   Balas Cepat:
                 </span>
+                {cannedList.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => insertCannedResponse(item.text)}
+                    className="px-3 py-1.5 min-h-[36px] flex items-center rounded-md bg-white hover:bg-emerald-50 border border-ink-200 text-xs text-ink-800 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                    title={item.text}
+                  >
+                    {item.label}
+                  </button>
+                ))}
                 <button
                   type="button"
-                  onClick={() => insertCannedResponse("Halo kak! Ada yang bisa kami bantu seputar produk hari ini? 😊")}
-                  className="px-3 py-1.5 min-h-[36px] flex items-center rounded-md bg-white hover:bg-emerald-50 border border-ink-200 text-xs text-ink-800 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+                  onClick={() => setCannedModalOpen(true)}
+                  className="px-2.5 py-1.5 min-h-[36px] flex items-center gap-1 rounded-md bg-ink-100 hover:bg-ink-200 border border-ink-200 text-xs font-medium text-ink-700 whitespace-nowrap transition-colors"
+                  title="Kelola templat balas cepat"
                 >
-                  👋 Salam Sapa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertCannedResponse("Baik kak, pesanan kakak sedang kami siapkan untuk pengiriman hari ini ya! 📦")}
-                  className="px-3 py-1.5 min-h-[36px] flex items-center rounded-md bg-white hover:bg-emerald-50 border border-ink-200 text-xs text-ink-800 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
-                >
-                  📦 Info Pengiriman
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertCannedResponse("Pembayaran bisa ditransfer ke rekening BCA kami: 1234567890 a.n Toko Noewbar. Mohon kirimkan bukti fotonya ya kak! 💳")}
-                  className="px-3 py-1.5 min-h-[36px] flex items-center rounded-md bg-white hover:bg-emerald-50 border border-ink-200 text-xs text-ink-800 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
-                >
-                  💳 Info Rekening
-                </button>
-                <button
-                  type="button"
-                  onClick={() => insertCannedResponse("Kakak bisa cek katalog lengkap produk dan promo kami di link website toko ya! 🛍️")}
-                  className="px-3 py-1.5 min-h-[36px] flex items-center rounded-md bg-white hover:bg-emerald-50 border border-ink-200 text-xs text-ink-800 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
-                >
-                  🛍️ Kirim Katalog
+                  <Settings2 className="h-3.5 w-3.5" />
+                  <span>Kelola</span>
                 </button>
               </div>
 
@@ -586,6 +706,128 @@ export function PanelChat({
           )}
         </section>
       </div>
+
+      {/* Image Lightbox Modal */}
+      {previewImage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative flex max-h-[92vh] max-w-[92vw] flex-col overflow-hidden rounded-lg bg-ink-950 p-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-2 pb-2 text-white">
+              <span className="text-xs font-medium">Lampiran Gambar</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewImage}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="flex items-center gap-1 rounded bg-white/10 px-2.5 py-1 text-xs text-white hover:bg-white/20 transition-colors"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Unduh
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImage(null)}
+                  className="rounded p-1 text-white hover:bg-white/20 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewImage}
+              alt="Pratinjau Gambar"
+              className="max-h-[82vh] max-w-full rounded object-contain"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Canned Response Management Modal */}
+      {cannedModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={() => setCannedModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border border-ink-200 bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-ink-100 pb-3">
+              <h3 className="text-sm font-semibold text-ink">Kelola Balas Cepat</h3>
+              <button
+                type="button"
+                onClick={() => setCannedModalOpen(false)}
+                className="rounded p-1 text-ink-500 hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-3 max-h-56 space-y-2 overflow-y-auto pr-1">
+              {cannedList.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-start justify-between gap-2 rounded border border-ink-200 bg-ink-50/50 p-2.5 text-xs"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-ink">{item.label}</p>
+                    <p className="mt-0.5 line-clamp-2 text-ink-600">{item.text}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeCannedItem(item.id)}
+                    className="p-1 text-ink-400 hover:text-danger"
+                    title="Hapus"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 border-t border-ink-100 pt-3">
+              <p className="text-xs font-semibold text-ink">Tambah Balasan Baru</p>
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Label (contoh: 📍 Alamat Toko)"
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  className="w-full rounded border border-ink-200 px-2.5 py-1.5 text-xs text-ink focus:border-ink-500 focus:outline-none"
+                />
+                <textarea
+                  placeholder="Isi pesan balasan otomatis..."
+                  value={newText}
+                  onChange={(e) => setNewText(e.target.value)}
+                  rows={2}
+                  className="w-full rounded border border-ink-200 px-2.5 py-1.5 text-xs text-ink focus:border-ink-500 focus:outline-none"
+                />
+                <Button
+                  size="sm"
+                  variant="accent"
+                  className="w-full"
+                  onClick={addCannedItem}
+                  disabled={!newLabel.trim() || !newText.trim()}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Simpan Balas Cepat
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
