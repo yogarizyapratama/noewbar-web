@@ -85,6 +85,8 @@ export type TenantShippingSchedule = {
   cut_off_hour: number;
   open_hour: number;
   close_hour: number;
+  free_shipping_enabled?: boolean;
+  free_shipping_min_amount?: number;
 };
 
 /**
@@ -117,6 +119,11 @@ export type ToolContext = {
   voucherRules?: TenantVoucher[];
   /** Dynamic per-tenant shipping schedule & cut-off */
   shippingSchedule?: TenantShippingSchedule;
+  /** Dynamic per-tenant free shipping rules */
+  freeShipping?: {
+    enabled: boolean;
+    minAmount: number;
+  };
 };
 
 /** Structurally identical to the OpenAI function-calling tool schema. */

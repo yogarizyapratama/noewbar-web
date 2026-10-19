@@ -41,6 +41,8 @@ export type CreateOrderInput = {
    * A SKU missing from the map is treated as unavailable (fail closed).
    */
   stockSnapshot: Record<string, number>;
+  freeShippingEnabled?: boolean;
+  freeShippingThreshold?: number;
 };
 
 export type CreateOrderResult =
@@ -123,6 +125,8 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       orderTotalAmount: subtotal,
       weightKg,
       courierFilter: input.courier,
+      freeShippingEnabled: input.freeShippingEnabled,
+      freeShippingThreshold: input.freeShippingThreshold,
     });
   } catch (err) {
     return {

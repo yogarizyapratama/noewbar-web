@@ -80,6 +80,8 @@ const actionSchema = z.discriminatedUnion("action", [
     shipping_cut_off_hour: z.number().int().min(0).max(23).optional(),
     shipping_open_hour: z.number().int().min(0).max(23).optional(),
     shipping_close_hour: z.number().int().min(0).max(23).optional(),
+    free_shipping_enabled: z.boolean().optional(),
+    free_shipping_min_amount: z.number().int().min(0).optional(),
   }),
 ]);
 
@@ -137,6 +139,8 @@ export async function GET() {
       cut_off_hour: settings?.shipping_cut_off_hour ?? 15,
       open_hour: settings?.shipping_open_hour ?? 8,
       close_hour: settings?.shipping_close_hour ?? 21,
+      free_shipping_enabled: settings?.free_shipping_enabled ?? false,
+      free_shipping_min_amount: settings?.free_shipping_min_amount ? Number(settings.free_shipping_min_amount) : 200000,
     },
     storage: {
       used_bytes: used,
@@ -370,6 +374,8 @@ export async function POST(req: NextRequest) {
     if (body.shipping_cut_off_hour !== undefined) data.shipping_cut_off_hour = body.shipping_cut_off_hour;
     if (body.shipping_open_hour !== undefined) data.shipping_open_hour = body.shipping_open_hour;
     if (body.shipping_close_hour !== undefined) data.shipping_close_hour = body.shipping_close_hour;
+    if (body.free_shipping_enabled !== undefined) data.free_shipping_enabled = body.free_shipping_enabled;
+    if (body.free_shipping_min_amount !== undefined) data.free_shipping_min_amount = body.free_shipping_min_amount;
 
     const updated = await prisma.catalogSetting.upsert({
       where: { tenant_id: session.sub },
@@ -380,6 +386,8 @@ export async function POST(req: NextRequest) {
         shipping_cut_off_hour: body.shipping_cut_off_hour ?? 15,
         shipping_open_hour: body.shipping_open_hour ?? 8,
         shipping_close_hour: body.shipping_close_hour ?? 21,
+        free_shipping_enabled: body.free_shipping_enabled ?? false,
+        free_shipping_min_amount: body.free_shipping_min_amount ?? 200000,
       },
       update: data,
     });
@@ -390,6 +398,8 @@ export async function POST(req: NextRequest) {
         cut_off_hour: updated.shipping_cut_off_hour,
         open_hour: updated.shipping_open_hour,
         close_hour: updated.shipping_close_hour,
+        free_shipping_enabled: updated.free_shipping_enabled,
+        free_shipping_min_amount: Number(updated.free_shipping_min_amount),
       },
     });
   }

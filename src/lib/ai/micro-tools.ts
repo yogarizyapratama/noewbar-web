@@ -273,6 +273,8 @@ export async function toolCekOngkir(
     orderTotalAmount: args.order_total ?? 0,
     weightKg: args.weight_kg ?? 1,
     courierFilter,
+    freeShippingEnabled: ctx.freeShipping?.enabled,
+    freeShippingThreshold: ctx.freeShipping?.minAmount,
   });
 
   const cheapest = cheapestRate(result.rates);
@@ -396,6 +398,8 @@ export async function toolAturNudge(
         : undefined,
     originSubdistrict: ctx.originSubdistrict,
     stockSnapshot,
+    freeShippingEnabled: ctx.freeShipping?.enabled,
+    freeShippingThreshold: ctx.freeShipping?.minAmount,
   });
 
   if (!created.ok) {

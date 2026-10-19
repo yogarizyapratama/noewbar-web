@@ -47,6 +47,10 @@ export async function POST(req: NextRequest) {
       destinationSubdistrict: parsed.data.destination.trim(),
       weightKg: Math.max(0.1, parsed.data.weight_grams / 1000),
       orderTotalAmount: parsed.data.order_amount,
+      freeShippingEnabled: tenant?.catalog_settings?.free_shipping_enabled,
+      freeShippingThreshold: tenant?.catalog_settings?.free_shipping_min_amount
+        ? Number(tenant.catalog_settings.free_shipping_min_amount)
+        : 200000,
     });
 
     return NextResponse.json({
@@ -54,6 +58,9 @@ export async function POST(req: NextRequest) {
       origin: result.origin_subdistrict,
       destination: result.destination_subdistrict,
       weight_kg: result.weight_kg,
+      is_eligible_free_shipping: result.is_eligible_free_shipping,
+      free_shipping_threshold: result.free_shipping_threshold,
+      free_shipping_enabled: result.free_shipping_enabled,
       rates: result.rates,
       calculated_at: result.calculated_at,
     });

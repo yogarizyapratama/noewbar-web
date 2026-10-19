@@ -100,6 +100,10 @@ export type PromptVars = {
   promoRules?: TenantPromoTier[];
   voucherRules?: TenantVoucher[];
   shippingSchedule?: TenantShippingSchedule;
+  freeShipping?: {
+    enabled: boolean;
+    minAmount: number;
+  };
 };
 
 export function buildSystemPrompt(vars: PromptVars): string {
@@ -180,6 +184,12 @@ export function buildSystemPrompt(vars: PromptVars): string {
     }
 
     prompt += `\n- Selalu panggil tool_cek_jadwal_pengiriman jika pembeli menanyakan jam kirim atau pengiriman hari ini.`;
+  }
+
+  if (vars.freeShipping?.enabled) {
+    prompt += `\n\n## ATURAN PROMO GRATIS ONGKIR RESMI TOKO\n- Toko mengaktifkan promo GRATIS ONGKIR otomatis untuk setiap pesanan dengan total belanja minimal Rp ${vars.freeShipping.minAmount.toLocaleString("id-ID")}!\n- Jika total belanja pembeli mencapai minimal Rp ${vars.freeShipping.minAmount.toLocaleString("id-ID")}, sampaikan dengan antusias bahwa pembeli mendapatkan fasilitas GRATIS ONGKIR (ongkir Rp 0).`;
+  } else {
+    prompt += `\n\n## ATURAN PROMO GRATIS ONGKIR\n- Toko saat ini TIDAK mengaktifkan promo gratis ongkir otomatis. Ongkir dihitung normal sesuai tarif ekspedisi resmi (kecuali pembeli memiliki kupon/voucher khusus). Jangan menjanjikan gratis ongkir tanpa syarat.`;
   }
 
   return prompt;

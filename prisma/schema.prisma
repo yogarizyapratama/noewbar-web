@@ -88,6 +88,9 @@ model CatalogSetting {
   shipping_cut_off_hour  Int       @default(15)
   shipping_open_hour     Int       @default(8)
   shipping_close_hour    Int       @default(21)
+  /// Aturan Gratis Ongkir per tenant: aktif/tidak dan batas minimal belanja
+  free_shipping_enabled  Boolean   @default(false)
+  free_shipping_min_amount Decimal @default(200000) @db.Decimal(12, 2)
   last_synced_at         DateTime?
   created_at             DateTime  @default(now())
   updated_at             DateTime  @updatedAt

@@ -291,6 +291,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
         promoRules: input.ctx.promoRules,
         voucherRules: input.ctx.voucherRules,
         shippingSchedule: input.ctx.shippingSchedule,
+        freeShipping: input.ctx.freeShipping,
       }),
     },
     // History is already windowed by the query in handleInboundMessage
@@ -607,6 +608,13 @@ export async function handleInboundMessage(params: InboundParams): Promise<Handl
     cut_off_hour: settings?.shipping_cut_off_hour ?? 15,
     open_hour: settings?.shipping_open_hour ?? 8,
     close_hour: settings?.shipping_close_hour ?? 21,
+    free_shipping_enabled: settings?.free_shipping_enabled ?? false,
+    free_shipping_min_amount: settings?.free_shipping_min_amount ? Number(settings.free_shipping_min_amount) : 200000,
+  };
+
+  const freeShipping = {
+    enabled: settings?.free_shipping_enabled ?? false,
+    minAmount: settings?.free_shipping_min_amount ? Number(settings.free_shipping_min_amount) : 200000,
   };
 
   const ctx: ToolContext = {
@@ -628,6 +636,7 @@ export async function handleInboundMessage(params: InboundParams): Promise<Handl
     promoRules,
     voucherRules,
     shippingSchedule,
+    freeShipping,
   };
 
   const persist = params.persist ?? true;

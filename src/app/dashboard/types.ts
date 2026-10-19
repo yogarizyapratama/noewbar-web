@@ -68,6 +68,8 @@ export type TenantShippingSchedule = {
   cut_off_hour: number;
   open_hour: number;
   close_hour: number;
+  free_shipping_enabled?: boolean;
+  free_shipping_min_amount?: number;
 };
 
 export type StorageStats = {

@@ -52,7 +52,7 @@ import type { TenantPromoTier, TenantShippingSchedule, TenantVoucher } from "./t
 export function PanelPromos({
   initialPromoRules = [],
   initialVouchers = [],
-  initialShipping = { cut_off_hour: 15, open_hour: 8, close_hour: 21 },
+  initialShipping = { cut_off_hour: 15, open_hour: 8, close_hour: 21, free_shipping_enabled: false, free_shipping_min_amount: 200000 },
   onRefresh,
 }: {
   initialPromoRules?: TenantPromoTier[];
@@ -78,6 +78,8 @@ export function PanelPromos({
   const [shippingCutOff, setShippingCutOff] = useState(initialShipping.cut_off_hour ?? 15);
   const [shippingOpen, setShippingOpen] = useState(initialShipping.open_hour ?? 8);
   const [shippingClose, setShippingClose] = useState(initialShipping.close_hour ?? 21);
+  const [freeShippingEnabled, setFreeShippingEnabled] = useState(initialShipping.free_shipping_enabled ?? false);
+  const [freeShippingMinAmount, setFreeShippingMinAmount] = useState(initialShipping.free_shipping_min_amount ?? 200000);
 
   // Status API & Feedback
   const [savingPromos, setSavingPromos] = useState(false);
@@ -262,11 +264,13 @@ export function PanelPromos({
           shipping_cut_off_hour: Number(shippingCutOff),
           shipping_open_hour: Number(shippingOpen),
           shipping_close_hour: Number(shippingClose),
+          free_shipping_enabled: freeShippingEnabled,
+          free_shipping_min_amount: Number(freeShippingMinAmount),
         }),
       });
       const data = await res.json();
       if (data.ok) {
-        setShippingMessage("Jadwal operasional dan cut-off berhasil disimpan.");
+        setShippingMessage("Jadwal operasional dan pengaturan gratis ongkir berhasil disimpan.");
         onRefresh();
       } else {
         setShippingError(data.error || "Gagal menyimpan jadwal pengiriman.");
@@ -404,6 +408,56 @@ export function PanelPromos({
             </div>
           </div>
 
+          {/* Pengaturan Promo Gratis Ongkir Otomatis */}
+          <div className="rounded-xl border border-ink-200 bg-ink-50/60 p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                  <h4 className="text-xs font-bold text-ink">Promo Gratis Ongkir Otomatis</h4>
+                </div>
+                <p className="mt-0.5 text-2xs text-ink-500">
+                  Aktifkan jika toko Anda ingin memberikan ongkir Rp 0 otomatis untuk pesanan yang mencapai batas minimal belanja tertentu.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer min-h-[44px]">
+                <input
+                  type="checkbox"
+                  checked={freeShippingEnabled}
+                  onChange={(e) => setFreeShippingEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-ink-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[10px] after:left-[2px] after:bg-white after:border-ink-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                <span className="ml-2.5 text-xs font-semibold text-ink-700">
+                  {freeShippingEnabled ? "Aktif" : "Nonaktif"}
+                </span>
+              </label>
+            </div>
+
+            {freeShippingEnabled && (
+              <div className="pt-3 border-t border-ink-200/80 flex flex-col sm:flex-row sm:items-center gap-3">
+                <label htmlFor="min-free-shipping" className="text-xs font-semibold text-ink-700 whitespace-nowrap">
+                  Minimal Belanja (Rp):
+                </label>
+                <div className="relative max-w-[220px]">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-xs text-ink-400 font-medium">Rp</span>
+                  <input
+                    id="min-free-shipping"
+                    type="number"
+                    min={0}
+                    step={10000}
+                    value={freeShippingMinAmount}
+                    onChange={(e) => setFreeShippingMinAmount(Math.max(0, Number(e.target.value)))}
+                    className="field field-sm pl-9 font-mono"
+                  />
+                </div>
+                <span className="text-2xs text-ink-500">
+                  Pembeli yang berbelanja &ge; Rp {rupiah(freeShippingMinAmount)} akan otomatis mendapatkan ongkir Rp 0 di keranjang &amp; WhatsApp.
+                </span>
+              </div>
+            )}
+          </div>
+
           {shippingMessage && (
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -426,7 +480,7 @@ export function PanelPromos({
               onClick={handleSaveShipping}
             >
               <Save className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-              Simpan Jam Operasional
+              Simpan Pengaturan Pengiriman
             </Button>
           </div>
         </CardBody>

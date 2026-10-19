@@ -39,6 +39,7 @@ export interface ShippingCalculationResult {
   order_total_amount: number;
   is_eligible_free_shipping: boolean;
   free_shipping_threshold: number;
+  free_shipping_enabled: boolean;
   rates: CourierRateOption[];
   provider_configured: boolean;
   calculated_at: string;
@@ -346,6 +347,8 @@ export async function calculateShippingRates(params: {
   orderTotalAmount?: number;
   weightKg?: number;
   courierFilter?: CourierCode;
+  freeShippingEnabled?: boolean;
+  freeShippingThreshold?: number;
 }): Promise<ShippingCalculationResult> {
   const origin = (params.originSubdistrict || "Jakarta Selatan").trim();
   const destination = (params.destinationSubdistrict || "").trim();
@@ -357,7 +360,9 @@ export async function calculateShippingRates(params: {
   const weight = calculateCourierBillableWeight(params.weightKg || 1);
   const weightGrams = Math.max(1000, Math.round(weight * 1000));
   const totalAmount = params.orderTotalAmount || 0;
-  const isFree = totalAmount >= FREE_SHIPPING_THRESHOLD;
+  const freeEnabled = params.freeShippingEnabled ?? (params.freeShippingThreshold !== undefined ? true : true);
+  const freeThreshold = params.freeShippingThreshold ?? FREE_SHIPPING_THRESHOLD;
+  const isFree = freeEnabled && totalAmount >= freeThreshold;
   const providerConfigured =
     env.BITESHIP_API_KEY.trim().length > 0 ||
     env.RAJAONGKIR_API_KEY.trim().length > 0 ||
@@ -490,7 +495,8 @@ export async function calculateShippingRates(params: {
     weight_kg: weight,
     order_total_amount: totalAmount,
     is_eligible_free_shipping: isFree,
-    free_shipping_threshold: FREE_SHIPPING_THRESHOLD,
+    free_shipping_threshold: freeThreshold,
+    free_shipping_enabled: freeEnabled,
     rates,
     provider_configured: providerConfigured,
     calculated_at: new Date().toISOString(),

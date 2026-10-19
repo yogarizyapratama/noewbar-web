@@ -537,6 +537,36 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.ok(rates.rates.every((r) => r.is_free_shipping_applied === true));
   });
 
+  await test("calculateShippingRates: respects tenant free shipping disabled setting", async () => {
+    const rates = await calculateShippingRates({
+      originSubdistrict: "Jakarta Selatan",
+      destinationSubdistrict: "Surabaya",
+      weightKg: 1,
+      orderTotalAmount: 300000,
+      freeShippingEnabled: false,
+    });
+    assert.strictEqual(rates.is_eligible_free_shipping, false);
+    assert.strictEqual(rates.free_shipping_enabled, false);
+    assert.ok(rates.rates.every((r) => r.total_tariff > 0));
+    assert.ok(rates.rates.every((r) => r.is_free_shipping_applied === false));
+  });
+
+  await test("calculateShippingRates: triggers free shipping dynamically with custom threshold", async () => {
+    const rates = await calculateShippingRates({
+      originSubdistrict: "Jakarta Selatan",
+      destinationSubdistrict: "Surabaya",
+      weightKg: 1,
+      orderTotalAmount: 120000,
+      freeShippingEnabled: true,
+      freeShippingThreshold: 100000,
+    });
+    assert.strictEqual(rates.is_eligible_free_shipping, true);
+    assert.strictEqual(rates.free_shipping_enabled, true);
+    assert.strictEqual(rates.free_shipping_threshold, 100000);
+    assert.ok(rates.rates.every((r) => r.total_tariff === 0));
+    assert.ok(rates.rates.every((r) => r.is_free_shipping_applied === true));
+  });
+
   test("cheapestRate: accurately identifies the cheapest courier option", () => {
     const options = [
       { courier: "JNE" as const, service_type: "REG", tariff_per_kg: 19000, total_tariff: 19000, estimated_days: "2-3 Hari", is_free_shipping_applied: false, source: "estimate" as const, is_estimate: true },
