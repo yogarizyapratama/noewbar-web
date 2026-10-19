@@ -16,6 +16,7 @@
 import {
   ArrowRight,
   Bot,
+  Calendar,
   CheckCircle2,
   ChevronRight,
   Globe,
@@ -140,6 +141,36 @@ export function PanelStatus({
     !hasPendingProof,
   ];
   const readinessScore = readinessChecks.filter(Boolean).length;
+
+  // Rekapan Tren Penjualan 7 Hari Terakhir
+  const dailyTrends = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().slice(0, 10);
+    const dayName = new Intl.DateTimeFormat("id-ID", { weekday: "short" }).format(d);
+    const dayDate = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(d);
+
+    const dayOrders = orders.filter((o) => o.created_at && o.created_at.slice(0, 10) === dateStr);
+    const verifiedDayOrders = dayOrders.filter((o) => o.payment_status === "VERIFIED");
+    const revenue = verifiedDayOrders.reduce((acc, o) => acc + (o.total_amount || 0), 0);
+    const orderCount = dayOrders.length;
+    const verifiedCount = verifiedDayOrders.length;
+
+    return {
+      dateStr,
+      dayName,
+      dayDate,
+      revenue,
+      orderCount,
+      verifiedCount,
+      isToday: i === 6,
+    };
+  });
+
+  const maxDailyRevenue = Math.max(...dailyTrends.map((t) => t.revenue), 1);
+  const total7dRevenue = dailyTrends.reduce((acc, t) => acc + t.revenue, 0);
+  const total7dOrders = dailyTrends.reduce((acc, t) => acc + t.orderCount, 0);
+  const total7dVerified = dailyTrends.reduce((acc, t) => acc + t.verifiedCount, 0);
 
   return (
     <div className="page space-y-6">
@@ -296,6 +327,79 @@ export function PanelStatus({
           </Card>
         </div>
       </div>
+
+      {/* Rekapan Tren Omzet Harian 7 Hari Terakhir */}
+      <Card className="border-ink-200 p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ink-100 pb-3.5">
+          <div className="flex items-center gap-2">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <Calendar className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-ink-800">
+                Tren Omzet Harian (7 Hari Terakhir)
+              </h2>
+              <p className="text-2xs text-ink-500">
+                Omzet terverifikasi dan volume transaksi per hari langsung dari database PostgreSQL.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge tone="signal" className="font-mono text-2xs">
+              7 Hari: Rp {rupiah(total7dRevenue)} • {total7dVerified} lunas / {total7dOrders} order
+            </Badge>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+          {dailyTrends.map((t) => {
+            const barHeightPct = Math.max(8, Math.round((t.revenue / maxDailyRevenue) * 100));
+            return (
+              <div
+                key={t.dateStr}
+                className={cn(
+                  "flex flex-col justify-between rounded-xl border p-3 transition-colors",
+                  t.isToday
+                    ? "border-emerald-300 bg-emerald-50/40 shadow-xs"
+                    : "border-ink-200 bg-white hover:border-ink-300"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-xs text-ink-700">{t.dayName}</span>
+                  {t.isToday ? (
+                    <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">
+                      Hari Ini
+                    </span>
+                  ) : (
+                    <span className="font-mono text-[10px] text-ink-400">{t.dayDate}</span>
+                  )}
+                </div>
+
+                {/* Relative Bar Indicator */}
+                <div className="my-2.5 flex h-14 items-end rounded-md bg-ink-50/80 p-1">
+                  <div
+                    className={cn(
+                      "w-full rounded-sm transition-all duration-300",
+                      t.revenue > 0 ? "bg-emerald-600" : "bg-ink-200"
+                    )}
+                    style={{ height: `${t.revenue > 0 ? barHeightPct : 8}%` }}
+                    title={`Rp ${rupiah(t.revenue)}`}
+                  />
+                </div>
+
+                <div>
+                  <p className="font-mono text-xs font-bold tracking-tight text-ink">
+                    Rp {rupiah(t.revenue)}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-ink-500">
+                    {t.verifiedCount} lunas ({t.orderCount} order)
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       {/* Visual Sales Conversion Funnel */}
       <Card className="border-ink-200 p-5">

@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Activity, Check, CheckCircle2, Copy, Download, KeyRound, Loader2, MessageSquare, QrCode, RefreshCw, Smartphone } from "lucide-react";
+import { Activity, Check, CheckCircle2, Copy, Download, ExternalLink, KeyRound, Loader2, MessageSquare, QrCode, RefreshCw, Smartphone } from "lucide-react";
 import {
   Badge,
   Button,
@@ -96,6 +96,27 @@ export function PanelWhatsapp({
 
   const connected = health?.whatsapp?.connection_status === "CONNECTED";
   const daemonDown = health?.whatsapp ? health.whatsapp.daemon_reachable === false : false;
+
+  const [waLinkGreeting, setWaLinkGreeting] = useState("Halo kak, saya ingin tanya produk di toko!");
+  const [waLinkCopied, setWaLinkCopied] = useState(false);
+
+  const rawWaPhone = health?.whatsapp?.phone_number || "";
+  const cleanWaDigits = rawWaPhone.replace(/\D/g, "");
+  const formattedWaPhone = cleanWaDigits.startsWith("0")
+    ? "62" + cleanWaDigits.slice(1)
+    : cleanWaDigits.startsWith("62")
+    ? cleanWaDigits
+    : cleanWaDigits ? "62" + cleanWaDigits : "";
+  const waChatUrl = formattedWaPhone
+    ? `https://wa.me/${formattedWaPhone}?text=${encodeURIComponent(waLinkGreeting)}`
+    : "";
+
+  const handleCopyWaLink = () => {
+    if (!waChatUrl) return;
+    navigator.clipboard.writeText(waChatUrl);
+    setWaLinkCopied(true);
+    setTimeout(() => setWaLinkCopied(false), 2000);
+  };
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -459,17 +480,96 @@ export function PanelWhatsapp({
             )}
 
             {connected ? (
-              <EmptyState
-                tone="signal"
-                icon={<CheckCircle2 className="h-5 w-5 text-signal" aria-hidden="true" />}
-                title="Nomor sudah tertaut"
-                description="Tidak perlu scan ulang. Untuk mengganti nomor, putuskan sesi dari HP lalu mulai pairing baru."
-                action={
-                  <Button variant="secondary" onClick={startPairing} loading={busy}>
-                    Mulai pairing ulang
-                  </Button>
-                }
-              />
+              <div className="space-y-4">
+                <EmptyState
+                  tone="signal"
+                  icon={<CheckCircle2 className="h-5 w-5 text-signal" aria-hidden="true" />}
+                  title="Nomor sudah tertaut"
+                  description="Bot WhatsApp aktif melayani pelanggan. Untuk mengganti nomor, putuskan sesi dari HP lalu mulai pairing baru."
+                  action={
+                    <Button variant="secondary" onClick={startPairing} loading={busy}>
+                      Mulai pairing ulang
+                    </Button>
+                  }
+                />
+
+                {formattedWaPhone && (
+                  <div className="rounded-xl border border-signal/30 bg-signal-wash/40 p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-signal-strong" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-signal-strong">
+                          Tautan Chat WhatsApp Toko (wa.me)
+                        </h4>
+                      </div>
+                      <Badge tone="signal" className="text-[10px]">
+                        Link Bio Siap
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-2xs text-ink-600">
+                      Gunakan tautan ini untuk bio Instagram, TikTok, tombol website, atau kartu nama agar pembeli langsung membuka obrolan dengan pesan pembuka otomatis.
+                    </p>
+
+                    <div className="mt-3 space-y-2.5">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-ink-700">
+                          Pesan Pembuka Otomatis (Greeting)
+                        </label>
+                        <input
+                          type="text"
+                          value={waLinkGreeting}
+                          onChange={(e) => setWaLinkGreeting(e.target.value)}
+                          placeholder="Misal: Halo kak, mau tanya katalog produk..."
+                          className="mt-1 w-full rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-ink-700">
+                          Tautan Siap Salin
+                        </label>
+                        <div className="mt-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={waChatUrl}
+                            className="flex-1 select-all truncate rounded-md border border-ink-200 bg-white px-3 py-1.5 font-mono text-xs text-ink focus:outline-none"
+                          />
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={handleCopyWaLink}
+                              className="text-xs"
+                            >
+                              {waLinkCopied ? (
+                                <>
+                                  <Check className="mr-1 h-3.5 w-3.5 text-white" />
+                                  Tersalin!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="mr-1 h-3.5 w-3.5" />
+                                  Salin Tautan
+                                </>
+                              )}
+                            </Button>
+                            <a
+                              href={waChatUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center rounded-md border border-ink-200 bg-white px-3 py-1.5 text-xs font-medium text-ink-700 hover:bg-ink-50 transition-colors"
+                            >
+                              <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                              Uji Chat
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : pairMethod === "code" ? (
               <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
                 <div className="w-full shrink-0 rounded-lg border border-ink-200 bg-ink-50/50 p-4 sm:w-[280px]">

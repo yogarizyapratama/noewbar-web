@@ -96,6 +96,42 @@ const SUGGESTIONS = [
   "Saya mau pesan 2 pcs kak, minta nomor rekeningnya",
 ];
 
+const PERSONA_PRESETS = [
+  {
+    id: "friendly",
+    label: "Ramah & Konsultatif",
+    desc: "Cocok untuk Skincare, Fashion, & Produk Konsultatif",
+    botName: "Siti (Beauty Advisor)",
+    tone: "RAMAH",
+    prompt:
+      "Panggil pembeli dengan sebutan 'Kakak' atau 'Bunda'. Berikan edukasi singkat tentang manfaat bahan/kandungan produk sebelum menawarkan varian yang cocok. Bersikap sabar dan tawarkan rekomendasi produk komplementer.",
+    greeting:
+      "Halo Kak! Selamat datang di toko kami. Ada produk atau keluhan tertentu yang ingin dikonsultasikan?",
+  },
+  {
+    id: "flash_sale",
+    label: "Flash Sale & Closing",
+    desc: "Dorong checkout segera & amankan kuota promo",
+    botName: "Admin Promo",
+    tone: "SANTAI",
+    prompt:
+      "Fokus pada konversi dan closing cepat. Ingatkan bahwa kuota promo dan stok terbatas hari ini. Jelaskan diskon bertingkat atau gratis ongkir jika beli lebih dari 1 pcs. Dorong pembeli segera konfirmasi transfer.",
+    greeting:
+      "Halo Kak! Promo spesial hari ini masih ada kuota terbatas. Mau pesan varian apa biar kami amankan stoknya?",
+  },
+  {
+    id: "formal",
+    label: "Formal & Profesional",
+    desc: "Bahasa baku rapi untuk B2B, Elektronik, & Bisnis Resmi",
+    botName: "Customer Service",
+    tone: "FORMAL",
+    prompt:
+      "Gunakan bahasa Indonesia baku yang sopan dan profesional. Panggil pelanggan dengan sebutan 'Bapak/Ibu' atau 'Kakak'. Berikan detail spesifikasi lengkap, garansi keaslian, dan prosedur pengiriman terasuransi.",
+    greeting:
+      "Selamat datang. Terima kasih telah menghubungi kami. Ada yang dapat kami bantu terkait katalog produk kami?",
+  },
+];
+
 export function PanelSimulator({
   health,
   onRefreshHealth,
@@ -284,6 +320,42 @@ export function PanelSimulator({
               description="Bot akan meniru persona ini di setiap obrolan dengan pembeli."
             />
             <CardBody className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xs font-bold uppercase tracking-wider text-ink-500">
+                    Preset Persona Siap Pakai (1-Klik)
+                  </span>
+                  <span className="text-[10px] text-ink-400">Pilih untuk isi otomatis</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {PERSONA_PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        setBotName(p.botName);
+                        setBotTone(p.tone);
+                        setCustomPrompt(p.prompt);
+                        setGreetingMessage(p.greeting);
+                      }}
+                      className="group flex flex-col justify-between rounded-lg border border-ink-200 bg-ink-50/50 p-2.5 text-left transition-colors hover:border-ink-400 hover:bg-white"
+                    >
+                      <div>
+                        <p className="text-xs font-semibold text-ink group-hover:text-ink-900">
+                          {p.label}
+                        </p>
+                        <p className="mt-0.5 text-[10px] text-ink-500 line-clamp-2 leading-tight">
+                          {p.desc}
+                        </p>
+                      </div>
+                      <span className="mt-2 text-[9px] font-semibold text-signal-strong underline">
+                        Terapkan &rarr;
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <TextField
                 id="bot_name"
                 label="Nama Panggilan CS / Bot"

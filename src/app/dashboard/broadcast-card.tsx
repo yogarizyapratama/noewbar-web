@@ -1,11 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { AlertCircle, CheckCircle2, Image as ImageIcon, MessageSquare, Send, ShieldCheck, Smartphone, Users, X } from "lucide-react";
-import { Button, Card, CardBody, CardHeader, Badge } from "@/components/ui";
+import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, Clock, Image as ImageIcon, MessageSquare, Send, ShieldCheck, Smartphone, Users, X } from "lucide-react";
+import { Button, Card, CardBody, CardHeader, Badge, timeAgo } from "@/components/ui";
+
+type LastBroadcast = {
+  timestamp: string;
+  segment: string;
+  sent_count: number;
+  failed_count: number;
+  total_targets: number;
+};
 
 export function BroadcastCard() {
   const [segment, setSegment] = useState<"all" | "unpaid" | "unpaid_old" | "inquiry">("all");
+  const [lastBroadcast, setLastBroadcast] = useState<LastBroadcast | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("noewbar_last_broadcast");
+      if (saved) setLastBroadcast(JSON.parse(saved));
+    } catch {}
+  }, []);
   const [message, setMessage] = useState(
     "Halo {nama}! Ada promo spesial dan diskon ongkir terbatas untuk belanja hari ini di {nama_toko}. Yuk cek katalog terbaru kami ya! ✨"
   );
@@ -101,6 +117,18 @@ export function BroadcastCard() {
       if (!res.ok) {
         throw new Error(data.error || "Gagal menjalankan broadcast.");
       }
+      const hist: LastBroadcast = {
+        timestamp: new Date().toISOString(),
+        segment,
+        sent_count: data.sent_count ?? 0,
+        failed_count: data.failed_count ?? 0,
+        total_targets: data.total_targets ?? 0,
+      };
+      try {
+        localStorage.setItem("noewbar_last_broadcast", JSON.stringify(hist));
+      } catch {}
+      setLastBroadcast(hist);
+
       setResult({
         success: true,
         total_targets: data.total_targets,
@@ -128,6 +156,37 @@ export function BroadcastCard() {
         }
       />
       <CardBody className="space-y-4">
+        {/* Riwayat Broadcast Terakhir */}
+        {lastBroadcast && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-ink-200 bg-ink-50/70 px-4 py-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-white border border-ink-200 text-ink-700">
+                <Clock className="h-4 w-4" />
+              </span>
+              <div>
+                <p className="font-semibold text-ink">
+                  Broadcast Terakhir: {timeAgo(lastBroadcast.timestamp)}
+                </p>
+                <p className="text-[11px] text-ink-500">
+                  Target segmen <span className="font-mono font-medium uppercase text-ink-700">{lastBroadcast.segment}</span> • {lastBroadcast.sent_count} terkirim{lastBroadcast.failed_count > 0 ? `, ${lastBroadcast.failed_count} gagal` : ""}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem("noewbar_last_broadcast");
+                } catch {}
+                setLastBroadcast(null);
+              }}
+              className="text-[11px] font-medium text-ink-400 hover:text-ink-700 self-end sm:self-center"
+            >
+              Hapus Catatan
+            </button>
+          </div>
+        )}
+
         {/* Segmen Penerima */}
         <div>
           <label className="text-xs font-semibold text-ink-700 flex items-center gap-1.5 mb-1.5">

@@ -37,6 +37,7 @@ import {
   PageHeader,
   TextField,
   cn,
+  rupiah,
 } from "@/components/ui";
 import { CsvImportModal, downloadOfficialCsvTemplate } from "./csv-import-modal";
 
@@ -95,6 +96,7 @@ export function PanelProducts() {
   const [formCatSelect, setFormCatSelect] = useState("Umum");
   const [formPrice, setFormPrice] = useState("");
   const [formDiscPrice, setFormDiscPrice] = useState("");
+  const [formCostPrice, setFormCostPrice] = useState("");
   const [formStock, setFormStock] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formImages, setFormImages] = useState<string[]>([]);
@@ -107,6 +109,15 @@ export function PanelProducts() {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [manualUrl, setManualUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Live profit calculation for modal
+  const sellingPrice = formDiscPrice ? Number(formDiscPrice) : Number(formPrice) || 0;
+  const costPrice = Number(formCostPrice) || 0;
+  const grossProfit = sellingPrice > 0 && costPrice > 0 ? sellingPrice - costPrice : null;
+  const marginPercent =
+    grossProfit !== null && sellingPrice > 0
+      ? ((grossProfit / sellingPrice) * 100).toFixed(1)
+      : null;
 
   useEffect(() => {
     loadProducts();
@@ -248,6 +259,7 @@ export function PanelProducts() {
     setFormCatSelect("Umum");
     setFormPrice("");
     setFormDiscPrice("");
+    setFormCostPrice("");
     setFormStock("10");
     setFormDesc("");
     setFormImages([]);
@@ -268,6 +280,8 @@ export function PanelProducts() {
     setFormCatSelect(isKnown ? cat : "__CUSTOM__");
     setFormPrice(String(p.price));
     setFormDiscPrice(p.discount_price ? String(p.discount_price) : "");
+    const cp = p.attributes?.cost_price;
+    setFormCostPrice(cp !== undefined && cp !== null ? String(cp) : "");
     setFormStock(String(p.stock));
     setFormDesc(p.description || "");
     const imgs = Array.isArray(p.images)
@@ -285,6 +299,12 @@ export function PanelProducts() {
     setFormBusy(true);
     setFormError(null);
     try {
+      const costPriceNum = formCostPrice.trim() ? Number(formCostPrice) : null;
+      const currentAttrs =
+        editingProduct?.attributes && typeof editingProduct.attributes === "object"
+          ? editingProduct.attributes
+          : {};
+
       const payload: any = {
         action: editingProduct ? "update" : "create",
         id: editingProduct?.id,
@@ -296,6 +316,10 @@ export function PanelProducts() {
         stock: parseInt(formStock || "0", 10),
         description: formDesc.trim(),
         images: formImages.slice(0, 5),
+        attributes: {
+          ...currentAttrs,
+          ...(costPriceNum !== null ? { cost_price: costPriceNum } : { cost_price: null }),
+        },
       };
 
       const res = await fetch("/api/products", {
@@ -577,14 +601,25 @@ export function PanelProducts() {
                         <td className="py-3 px-4 font-mono font-medium text-ink-600">{p.sku}</td>
                         <td className="py-3 px-4 text-ink-600">{p.category}</td>
                         <td className="py-3 px-4">
-                          <span className="font-mono font-bold text-ink">
-                            Rp {(disc ?? price).toLocaleString("id-ID")}
-                          </span>
-                          {disc && (
-                            <span className="ml-1.5 font-mono text-2xs text-ink-400 line-through">
-                              Rp {price.toLocaleString("id-ID")}
+                          <div>
+                            <span className="font-mono font-bold text-ink">
+                              Rp {(disc ?? price).toLocaleString("id-ID")}
                             </span>
-                          )}
+                            {disc && (
+                              <span className="ml-1.5 font-mono text-2xs text-ink-400 line-through">
+                                Rp {price.toLocaleString("id-ID")}
+                              </span>
+                            )}
+                          </div>
+                          {p.attributes?.cost_price ? (
+                            <div className="mt-0.5 flex items-center gap-1 font-mono text-[10px] text-emerald-700">
+                              <span>HPP Rp {Number(p.attributes.cost_price).toLocaleString("id-ID")}</span>
+                              <span>•</span>
+                              <span>
+                                {Math.round((((disc ?? price) - Number(p.attributes.cost_price)) / (disc ?? price)) * 100)}%
+                              </span>
+                            </div>
+                          ) : null}
                         </td>
                         <td className="py-3 px-4 font-mono">
                           <div className="flex items-center gap-1.5">
@@ -761,7 +796,7 @@ export function PanelProducts() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <TextField
                   id="p_price"
                   label="Harga Normal (Rp) *"
@@ -780,6 +815,15 @@ export function PanelProducts() {
                   optional
                 />
                 <TextField
+                  id="p_cost"
+                  label="Harga Modal / HPP (Rp)"
+                  placeholder="120000"
+                  inputMode="numeric"
+                  value={formCostPrice}
+                  onChange={(e) => setFormCostPrice(e.target.value)}
+                  optional
+                />
+                <TextField
                   id="p_stock"
                   label="Stok *"
                   placeholder="15"
@@ -788,6 +832,23 @@ export function PanelProducts() {
                   onChange={(e) => setFormStock(e.target.value)}
                 />
               </div>
+
+              {/* Live Profit Margin Indicator */}
+              {grossProfit !== null && (
+                <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-xs">
+                  <span className="text-emerald-800 font-medium">
+                    Estimasi Gross Margin / Laba Kotor per unit:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-emerald-900">
+                      Rp {rupiah(grossProfit)}
+                    </span>
+                    <Badge tone={Number(marginPercent) >= 20 ? "signal" : "warn"} className="text-[10px]">
+                      {marginPercent}% Margin
+                    </Badge>
+                  </div>
+                </div>
+              )}
 
               {/* Direct Multi-Image Upload Field */}
               <div>

@@ -51,6 +51,11 @@ export default async function PublicStorePage({
     include: {
       tenant: {
         include: {
+          wa_instances: {
+            where: { connection_status: "CONNECTED" },
+            select: { phone_number: true },
+            take: 1,
+          },
           products: {
             where: { status: "ACTIVE" },
             orderBy: { created_at: "desc" },
@@ -76,7 +81,8 @@ export default async function PublicStorePage({
     return digits;
   };
 
-  const defaultWaNumber = formatWa(tenant.owner_whatsapp || "");
+  const connectedBotPhone = tenant.wa_instances?.[0]?.phone_number;
+  const defaultWaNumber = formatWa(connectedBotPhone || tenant.owner_whatsapp || "");
 
   const makeWaLink = (msg: string, overrideNumber?: string | null) => {
     const targetNumber = overrideNumber && overrideNumber.trim() ? formatWa(overrideNumber) : defaultWaNumber;
@@ -764,16 +770,20 @@ export default async function PublicStorePage({
         })}
 
       {/* Floating WhatsApp Quick Contact Button */}
-      <a
-        href={waLink(`Halo ${tenant.business_name}, saya melihat website resmi Anda dan ingin bertanya.`)}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat WhatsApp Sekarang"
-        className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-      >
-        <MessageCircle className="h-7 w-7" />
-        <span className="sr-only">Chat WhatsApp</span>
-      </a>
+      {defaultWaNumber && (
+        <a
+          href={waLink(`Halo ${tenant.business_name}, saya melihat katalog online resmi Anda dan ingin bertanya.`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Chat WhatsApp Sekarang"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-3.5 text-white shadow-xl hover:bg-emerald-700 active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 group min-h-[48px]"
+        >
+          <MessageCircle className="h-6 w-6 shrink-0" />
+          <span className="font-semibold text-xs pr-1 hidden sm:inline-block">
+            Chat WhatsApp
+          </span>
+        </a>
+      )}
     </div>
   );
 }
