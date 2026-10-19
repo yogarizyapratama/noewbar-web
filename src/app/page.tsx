@@ -38,7 +38,7 @@ import { RoiCalculator } from "@/components/landing/roi-calculator";
 
 const ECOSYSTEM = {
   couriers: ["J&T Express", "SiCepat", "JNE Express", "Anteraja"],
-  payments: ["QRIS Instant", "Bank BCA", "Mandiri", "BNI", "BRI", "Midtrans"],
+  payments: ["QRIS Pribadi Toko", "Bank BCA", "Mandiri", "BNI", "BRI", "Transfer Antarbank"],
   sync: ["Google Sheets", "PostgreSQL", "WhatsApp Web API"],
 };
 
@@ -48,6 +48,12 @@ const COMPARISON = [
     manual: "8 - 10 jam (chat malam terabaikan)",
     legacyBot: "24 jam (pilihan tombol kaku)",
     noewbar: "24 Jam Nonstop (< 2 detik respons natural)",
+  },
+  {
+    feature: "Alur Pembayaran & Fee",
+    manual: "Manual kirim rekening, rawan salah cek mutasi",
+    legacyBot: "Wajib Gateway (fee 1.5 - 3%, dana di-hold)",
+    noewbar: "Langsung ke Rekening/QRIS Toko (0% Fee, Uang Masuk Instan)",
   },
   {
     feature: "Kirim Foto & Video Produk",
@@ -90,7 +96,7 @@ const FAQ = [
   },
   {
     q: "Apakah uang pembayaran dari pembeli ditampung Noewbar?",
-    a: "Tidak. Dana pembeli 100% masuk langsung ke rekening atau QRIS toko Anda. Noewbar hanya membantu menyusun tagihan dan mengingatkan pembeli.",
+    a: "Tidak. Dana pembeli 100% masuk langsung ke rekening bank atau QRIS toko Anda sendiri tanpa perantara dan tanpa potongan fee transaksi. Noewbar hanya membantu menyusun rincian invoice dan mengirim instruksi transfer.",
   },
   {
     q: "Bagaimana bot tahu stok dan harga terbaru?",
@@ -98,7 +104,7 @@ const FAQ = [
   },
   {
     q: "Apa yang terjadi setelah 7 hari uji coba berakhir?",
-    a: "Sistem mengirim notifikasi perpanjangan lewat WhatsApp. Kalau puas, bayar Rp 199.000 via QRIS Midtrans. Kalau tidak, bot otomatis nonaktif tanpa tagihan tersembunyi.",
+    a: "Sistem mengirim notifikasi perpanjangan lewat WhatsApp. Anda dapat memperpanjang paket Rp 199.000 dengan mudah lewat invoice resmi. Jika tidak diperpanjang, bot otomatis nonaktif tanpa tagihan tersembunyi.",
   },
 ];
 

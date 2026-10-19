@@ -1877,16 +1877,16 @@ export default function SuperadminPage() {
                     <span className="text-ink-300">&bull;</span>
                     <span className="text-danger-strong">{data.subscription_counts["EXPIRED"] ?? 0} Expired</span>
                   </div>
-                  <div className="mt-3">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="text-2xs h-6 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
-                      onClick={() => act({ action: "reconcile" })}
-                    >
-                      Pindai Status Midtrans
-                    </Button>
-                  </div>
+                    <div className="mt-3">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="text-2xs h-6 bg-white hover:bg-ink-50 border border-ink-200 text-ink-700"
+                        onClick={() => act({ action: "reconcile" })}
+                      >
+                        Sinkronisasi Status Langganan
+                      </Button>
+                    </div>
                 </div>
               </div>
 
