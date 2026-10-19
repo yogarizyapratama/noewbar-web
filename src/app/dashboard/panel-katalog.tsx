@@ -187,6 +187,7 @@ export function PanelKatalog({
 
   // Products count & CSV import modal
   const [productCount, setProductCount] = useState<number | null>(null);
+  const [inventoryAlert, setInventoryAlert] = useState<{ outOfStock: number; lowStock: number } | null>(null);
   const [showCsvModal, setShowCsvModal] = useState(false);
 
   useEffect(() => {
@@ -200,6 +201,9 @@ export function PanelKatalog({
       const json = await res.json();
       if (json.ok) {
         setProductCount(json.total ?? (json.products ? json.products.length : 0));
+        if (json.inventorySummary) {
+          setInventoryAlert(json.inventorySummary);
+        }
       }
     } catch {
       // silent
@@ -515,8 +519,42 @@ export function PanelKatalog({
             {qrisUrl ? "Gambar Aktif" : "Belum Diunggah"}
           </p>
           <p className="text-2xs text-ink-500">Otomatis dilampirkan ke pembeli</p>
-        </div>
       </div>
+      </div>
+
+      {/* Low Stock Inventory Warning Banner */}
+      {inventoryAlert && (inventoryAlert.outOfStock > 0 || inventoryAlert.lowStock > 0) && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-warn-strong/30 bg-warn-wash p-3.5 text-xs text-ink-900">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-warn/20 text-warn-strong font-bold">
+              !
+            </span>
+            <div>
+              <p className="font-semibold text-ink-900">
+                Peringatan Stok Inventaris Toko
+              </p>
+              <p className="text-ink-600">
+                {inventoryAlert.outOfStock > 0 && (
+                  <span className="font-semibold text-danger mr-2">
+                    {inventoryAlert.outOfStock} produk habis (0 stok)
+                  </span>
+                )}
+                {inventoryAlert.lowStock > 0 && (
+                  <span className="font-semibold text-warn-strong">
+                    {inventoryAlert.lowStock} produk stok kritis (≤ 3 stok)
+                  </span>
+                )}
+                — Segera perbarui stok agar AI Bot tidak menolak transaksi pembeli.
+              </p>
+            </div>
+          </div>
+          {onGoProducts && (
+            <Button size="sm" variant="secondary" onClick={onGoProducts} className="shrink-0">
+              Lihat & Tambah Stok
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Main Content Layout */}
       <div className="grid gap-6 lg:grid-cols-[1fr_380px]">

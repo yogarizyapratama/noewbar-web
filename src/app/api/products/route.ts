@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     ];
   }
 
-  const [total, products, categories] = await Promise.all([
+  const [total, products, categories, outOfStockCount, lowStockCount] = await Promise.all([
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
@@ -64,6 +64,12 @@ export async function GET(req: Request) {
       select: { category: true },
       distinct: ["category"],
     }),
+    prisma.product.count({
+      where: { tenant_id: tenantId, stock: 0, status: "ACTIVE" },
+    }),
+    prisma.product.count({
+      where: { tenant_id: tenantId, stock: { gt: 0, lte: 3 }, status: "ACTIVE" },
+    }),
   ]);
 
   return NextResponse.json({
@@ -73,6 +79,10 @@ export async function GET(req: Request) {
     limit,
     products,
     categories: categories.map((c) => c.category).filter(Boolean),
+    inventorySummary: {
+      outOfStock: outOfStockCount,
+      lowStock: lowStockCount,
+    },
   });
 }
 

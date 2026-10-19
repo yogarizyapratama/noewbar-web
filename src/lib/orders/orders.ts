@@ -569,7 +569,8 @@ export async function shipOrder(params: {
     if (activeInstance && updated.buyer_jid) {
       const courierName = params.courierOverride || updated.courier || "Ekspedisi";
       const storeName = updated.tenant?.business_name || "Toko Kami";
-      const message = `Halo Kak *${updated.buyer_name || "Pelanggan"}*! 🚚\n\nPesanan Anda *${updated.order_number}* telah diserahkan ke kurir dan sedang dalam perjalanan.\n\n📦 *Kurir:* ${courierName}\n🔢 *Nomor Resi:* ${params.trackingNumber}\n\nAnda dapat melacak status paket secara berkala. Terima kasih telah berbelanja di *${storeName}*! 🙏`;
+      const trackingUrl = `https://berdu.id/cek-resi?resi=${encodeURIComponent(params.trackingNumber.trim())}`;
+      const message = `Halo Kak *${updated.buyer_name || "Pelanggan"}*! 🚚\n\nPesanan Anda *${updated.order_number}* telah diserahkan ke kurir dan sedang dalam perjalanan.\n\n📦 *Kurir:* ${courierName}\n🔢 *Nomor Resi:* ${params.trackingNumber}\n🔗 *Lacak Posisi Paket:* ${trackingUrl}\n\nAnda dapat melacak status paket secara berkala melalui tautan di atas. Terima kasih telah berbelanja di *${storeName}*! 🙏`;
 
       await waDaemon.sendText({
         instanceKey: activeInstance.instance_key,

@@ -20,6 +20,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Bell,
   Bot,
   CheckCheck,
   Download,
@@ -28,10 +29,14 @@ import {
   Lock,
   MessageSquare,
   Plus,
+  Printer,
+  Receipt,
   Search,
   Send,
   Settings2,
+  ShoppingBag,
   Smartphone,
+  Sparkles,
   Trash2,
   User,
   UserRound,
@@ -42,6 +47,7 @@ import {
   Button,
   StatusDot,
   cn,
+  rupiah,
   timeAgo,
 } from "@/components/ui";
 import type { ConversationRow, MessageRow } from "./types";
@@ -105,6 +111,82 @@ export function PanelChat({
   const [cannedModalOpen, setCannedModalOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newText, setNewText] = useState("");
+
+  // Customer Profile & Order History Drawer
+  const [customerDrawerOpen, setCustomerDrawerOpen] = useState(false);
+  const [customerOrders, setCustomerOrders] = useState<Array<{
+    id: string;
+    order_number: string;
+    order_status: string;
+    payment_status: string;
+    total_amount: number;
+  }>>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [remindingOrder, setRemindingOrder] = useState<Record<string, boolean>>({});
+  const [remindMsg, setRemindMsg] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!activeId) {
+      setCustomerOrders([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingOrders(true);
+    fetch(`/api/conversations?conversation_id=${activeId}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (!cancelled && json.ok && Array.isArray(json.orders)) {
+          setCustomerOrders(json.orders);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingOrders(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
+
+  async function generateAiSuggestion() {
+    if (!activeId || suggesting) return;
+    setSuggesting(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/conversations/${activeId}/suggest`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (json.ok && json.suggestion) {
+        setReply(json.suggestion);
+        setFeedback("✨ Draf balasan AI berhasil dibuat! Silakan periksa atau langsung kirim.");
+      } else {
+        setFeedback(json.error || "Gagal membuat saran balasan AI.");
+      }
+    } catch {
+      setFeedback("Gagal menghubungi AI Copilot.");
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
+  async function remindCustomerOrder(orderId: string) {
+    setRemindingOrder((r) => ({ ...r, [orderId]: true }));
+    try {
+      const res = await fetch(`/api/orders/${orderId}/remind`, { method: "POST" });
+      const json = await res.json();
+      if (json.ok) {
+        setRemindMsg((m) => ({ ...m, [orderId]: "Terkirim!" }));
+      } else {
+        setRemindMsg((m) => ({ ...m, [orderId]: json.error || "Gagal" }));
+      }
+    } catch {
+      setRemindMsg((m) => ({ ...m, [orderId]: "Gagal" }));
+    } finally {
+      setRemindingOrder((r) => ({ ...r, [orderId]: false }));
+    }
+  }
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -404,7 +486,7 @@ export function PanelChat({
         {/* ==================================================== 2. RIGHT PANEL (WHATSAPP CHAT THREAD) */}
         <section
           className={cn(
-            "flex-1 flex flex-col h-full bg-[#efeae2] relative",
+            "flex-1 flex flex-row h-full bg-[#efeae2] relative min-w-0 overflow-hidden",
             !mobileThread ? "hidden lg:flex" : "flex"
           )}
         >
@@ -428,33 +510,34 @@ export function PanelChat({
           ) : (
             /* Active Chat Thread */
             <>
-              {/* WhatsApp Chat Header */}
-              <div className="bg-[#f0f2f5] px-4 py-2.5 border-b border-[#d1d7db] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => setMobileThread(false)}
-                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-[#54656f] hover:bg-black/5 hover:text-[#111b21] active:scale-95 transition-all lg:hidden"
-                    aria-label="Kembali ke daftar percakapan"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </button>
+              <div className="flex-1 flex flex-col h-full relative min-w-0 overflow-hidden">
+                {/* WhatsApp Chat Header */}
+                <div className="bg-[#f0f2f5] px-4 py-2.5 border-b border-[#d1d7db] flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setMobileThread(false)}
+                      className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-[#54656f] hover:bg-black/5 hover:text-[#111b21] active:scale-95 transition-all lg:hidden"
+                      aria-label="Kembali ke daftar percakapan"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </button>
 
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#dfe5e7] text-[#54656f] font-bold text-xs">
-                    {(active.buyer_name || (active.buyer_jid ? active.buyer_jid.slice(0, 2) : "WA")).slice(0, 2).toUpperCase()}
-                  </div>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#dfe5e7] text-[#54656f] font-bold text-xs">
+                      {(active.buyer_name || (active.buyer_jid ? active.buyer_jid.slice(0, 2) : "WA")).slice(0, 2).toUpperCase()}
+                    </div>
 
-                  <div className="min-w-0">
-                    <p className="font-bold text-xs text-[#111b21] truncate">
-                      {active.buyer_name || (active.buyer_jid ? active.buyer_jid.replace(/@s\.whatsapp\.net$/, "") : "-")}
-                    </p>
-                    <p className="text-[10px] text-[#667781] flex items-center gap-1.5 truncate">
-                      <span className="font-mono">{active.buyer_jid ? active.buyer_jid.split("@")[0] : "-"}</span>
-                      <span>&bull;</span>
-                      <span className="text-[#00a884] font-medium">WhatsApp Online</span>
-                    </p>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-[#111b21] truncate">
+                        {active.buyer_name || (active.buyer_jid ? active.buyer_jid.replace(/@s\.whatsapp\.net$/, "") : "-")}
+                      </p>
+                      <p className="text-[10px] text-[#667781] flex items-center gap-1.5 truncate">
+                        <span className="font-mono">{active.buyer_jid ? active.buyer_jid.split("@")[0] : "-"}</span>
+                        <span>&bull;</span>
+                        <span className="text-[#00a884] font-medium">WhatsApp Online</span>
+                      </p>
+                    </div>
                   </div>
-                </div>
 
                 {/* Takeover Control Switch */}
                 <div className="flex items-center gap-2 shrink-0">
@@ -498,6 +581,26 @@ export function PanelChat({
                       </>
                     )}
                   </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCustomerDrawerOpen((v) => !v)}
+                    className={cn(
+                      "px-2.5 py-1.5 h-8 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs",
+                      customerDrawerOpen
+                        ? "bg-[#111b21] text-white border-[#111b21]"
+                        : "bg-white text-ink-800 border-ink-200 hover:bg-ink-50"
+                    )}
+                    title="Buka ringkasan riwayat belanja & pesanan pembeli ini"
+                  >
+                    <ShoppingBag className="h-3.5 w-3.5 text-signal" />
+                    <span className="hidden md:inline">Profil &amp; Pesanan</span>
+                    {customerOrders.length > 0 && (
+                      <span className="rounded-full bg-signal px-1.5 py-0.2 text-[10px] font-bold text-white">
+                        {customerOrders.length}
+                      </span>
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -650,6 +753,16 @@ export function PanelChat({
                 <span className="text-[10px] font-bold text-ink-700 uppercase shrink-0 mr-1">
                   Balas Cepat:
                 </span>
+                <button
+                  type="button"
+                  onClick={generateAiSuggestion}
+                  disabled={suggesting}
+                  className="px-2.5 py-1.5 min-h-[36px] flex items-center gap-1.5 rounded-md bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold whitespace-nowrap shadow-xs transition-colors disabled:opacity-50"
+                  title="Minta AI merangkai draf balasan ramah & solutif berdasarkan konteks percakapan dan katalog toko"
+                >
+                  <Sparkles className={cn("h-3.5 w-3.5", suggesting && "animate-spin")} />
+                  <span>{suggesting ? "Menulis..." : "✨ Draf AI Copilot"}</span>
+                </button>
                 {cannedList.map((item) => (
                   <button
                     key={item.id}
@@ -702,9 +815,154 @@ export function PanelChat({
                   <Send className="h-4 w-4" />
                 </button>
               </form>
-            </>
-          )}
-        </section>
+            </div>
+
+            {/* Customer Profile & Orders Drawer */}
+            {customerDrawerOpen && active && (
+              <aside className="w-80 shrink-0 border-l border-[#d1d7db] bg-white flex flex-col h-full overflow-y-auto animate-fade-in shadow-lg z-10">
+                <div className="bg-[#f0f2f5] px-4 py-3 border-b border-[#d1d7db] flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-ink-700" />
+                    <h3 className="text-xs font-bold text-ink-900">Profil &amp; Riwayat Belanja</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCustomerDrawerOpen(false)}
+                    className="p-1 rounded text-ink-500 hover:bg-ink-200"
+                    title="Tutup Panel"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {/* Profile Card */}
+                  <div className="rounded-xl border border-ink-200 bg-ink-50/50 p-3.5 text-center space-y-2">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#00a884] text-white font-bold text-base shadow-sm">
+                      {(active.buyer_name || "PL").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-ink-900">{active.buyer_name || "Pelanggan"}</p>
+                      <p className="font-mono text-xs text-ink-500">{active.buyer_jid ? active.buyer_jid.split("@")[0] : "-"}</p>
+                    </div>
+                    <div className="flex items-center justify-center gap-1.5 pt-1">
+                      <Badge tone="signal" className="text-[10px]">
+                        {active.pipeline_stage}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Lifetime Value (LTV) Card */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-ink-200 bg-white p-2.5 text-center">
+                      <span className="text-[10px] font-semibold uppercase text-ink-500 block">Total Omzet (LTV)</span>
+                      <span className="font-mono text-xs font-bold text-emerald-800">
+                        Rp {rupiah(
+                          customerOrders
+                            .filter((o) => o.payment_status === "VERIFIED")
+                            .reduce((sum, o) => sum + (o.total_amount || 0), 0)
+                        )}
+                      </span>
+                    </div>
+                    <div className="rounded-lg border border-ink-200 bg-white p-2.5 text-center">
+                      <span className="text-[10px] font-semibold uppercase text-ink-500 block">Total Order</span>
+                      <span className="font-mono text-xs font-bold text-ink-900">
+                        {customerOrders.length} transaksi
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Orders History List */}
+                  <div className="space-y-2 pt-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xs font-bold uppercase tracking-wider text-ink-500">
+                        Riwayat Pesanan Pelanggan
+                      </span>
+                      <span className="text-[10px] font-mono text-ink-400">
+                        {customerOrders.length} tercatat
+                      </span>
+                    </div>
+
+                    {loadingOrders ? (
+                      <div className="py-6 text-center text-xs text-ink-500">
+                        Memuat data pesanan...
+                      </div>
+                    ) : customerOrders.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-ink-200 p-4 text-center text-2xs text-ink-500">
+                        Belum ada transaksi pesanan dari pembeli ini.
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {customerOrders.map((ord) => (
+                          <div
+                            key={ord.id}
+                            className="rounded-lg border border-ink-200 bg-white p-2.5 space-y-1.5 shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between gap-1 text-2xs">
+                              <span className="font-bold text-ink-900">{ord.order_number}</span>
+                              <Badge
+                                tone={
+                                  ord.payment_status === "VERIFIED"
+                                    ? "signal"
+                                    : ord.payment_status === "UNPAID"
+                                    ? "warn"
+                                    : "neutral"
+                                }
+                                className="text-[9px] px-1.5 py-0"
+                              >
+                                {ord.payment_status}
+                              </Badge>
+                            </div>
+                            <p className="font-mono text-xs font-semibold text-ink-800">
+                              Rp {rupiah(ord.total_amount)}
+                            </p>
+
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-ink-100">
+                              <a
+                                href={`/api/orders/${ord.id}/receipt`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded border border-ink-200 px-2 py-0.5 text-[10px] font-medium text-ink-700 hover:bg-ink-50"
+                                title="Lihat Struk Nota"
+                              >
+                                <Receipt className="h-3 w-3" />
+                                Nota
+                              </a>
+                              <a
+                                href={`/api/orders/${ord.id}/label`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded border border-ink-200 px-2 py-0.5 text-[10px] font-medium text-ink-700 hover:bg-ink-50"
+                                title="Cetak Label Pengiriman"
+                              >
+                                <Printer className="h-3 w-3" />
+                                Label
+                              </a>
+
+                              {ord.payment_status === "UNPAID" && (
+                                <button
+                                  type="button"
+                                  disabled={remindingOrder[ord.id]}
+                                  onClick={() => remindCustomerOrder(ord.id)}
+                                  className="inline-flex items-center gap-1 rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 hover:bg-amber-100 ml-auto"
+                                  title="Kirim reminder tagihan via WhatsApp"
+                                >
+                                  <Bell className="h-3 w-3 text-amber-600" />
+                                  {remindMsg[ord.id] || (remindingOrder[ord.id] ? "Kirim..." : "Ingatkan")}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </aside>
+            )}
+          </>
+        )}
+      </section>
       </div>
 
       {/* Image Lightbox Modal */}

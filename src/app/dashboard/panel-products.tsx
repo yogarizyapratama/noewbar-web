@@ -73,6 +73,7 @@ export function PanelProducts() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [total, setTotal] = useState(0);
+  const [inventorySummary, setInventorySummary] = useState<{ outOfStock: number; lowStock: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("ALL");
@@ -126,6 +127,9 @@ export function PanelProducts() {
         setProducts(json.products || []);
         setCategories(json.categories || []);
         setTotal(json.total || 0);
+        if (json.inventorySummary) {
+          setInventorySummary(json.inventorySummary);
+        }
       }
     } catch {
       // silent
@@ -396,10 +400,50 @@ export function PanelProducts() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded bg-white px-2.5 py-1 text-xs font-mono font-bold text-emerald-900 border border-emerald-200">
-            {total} Produk Tersedia
-          </span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSelectedStock("ALL")}
+            className={cn(
+              "rounded px-2.5 py-1 text-xs font-mono font-bold transition-all border",
+              selectedStock === "ALL"
+                ? "bg-ink-800 text-white border-ink-800 shadow-xs"
+                : "bg-white text-ink-700 border-ink-200 hover:bg-ink-50"
+            )}
+            title="Tampilkan semua produk"
+          >
+            {total} Total
+          </button>
+          {inventorySummary && inventorySummary.lowStock > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedStock("LOW")}
+              className={cn(
+                "rounded px-2.5 py-1 text-xs font-mono font-bold transition-all border flex items-center gap-1",
+                selectedStock === "LOW"
+                  ? "bg-warn-strong text-white border-warn-strong shadow-xs"
+                  : "bg-warn-wash text-warn-strong border-warn/30 hover:bg-warn/20"
+              )}
+              title="Filter produk dengan stok kritis (1-3)"
+            >
+              <span>⚠ {inventorySummary.lowStock} Kritis</span>
+            </button>
+          )}
+          {inventorySummary && inventorySummary.outOfStock > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedStock("OUT")}
+              className={cn(
+                "rounded px-2.5 py-1 text-xs font-mono font-bold transition-all border flex items-center gap-1",
+                selectedStock === "OUT"
+                  ? "bg-danger text-white border-danger shadow-xs"
+                  : "bg-danger-wash text-danger border-danger/30 hover:bg-danger/20"
+              )}
+              title="Filter produk dengan stok habis (0)"
+            >
+              <span>✕ {inventorySummary.outOfStock} Habis</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -559,6 +603,8 @@ export function PanelProducts() {
                                 "min-w-[28px] text-center font-semibold",
                                 p.stock === 0
                                   ? "text-danger"
+                                  : p.stock <= 3
+                                  ? "text-danger"
                                   : p.stock <= 5
                                   ? "text-warn-strong"
                                   : "text-signal-strong"
@@ -577,6 +623,15 @@ export function PanelProducts() {
                               +
                             </button>
                           </div>
+                          {p.stock === 0 ? (
+                            <div className="mt-1">
+                              <Badge tone="danger">Stok Habis</Badge>
+                            </div>
+                          ) : p.stock <= 3 ? (
+                            <div className="mt-1">
+                              <Badge tone="warn">Kritis ({p.stock})</Badge>
+                            </div>
+                          ) : null}
                         </td>
                         <td className="py-3 px-4">
                           <Badge tone={p.status === "ACTIVE" ? "signal" : "neutral"}>

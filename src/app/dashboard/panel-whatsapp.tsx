@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, CheckCircle2, Copy, Download, KeyRound, Loader2, MessageSquare, QrCode, RefreshCw, Smartphone } from "lucide-react";
+import { Activity, Check, CheckCircle2, Copy, Download, KeyRound, Loader2, MessageSquare, QrCode, RefreshCw, Smartphone } from "lucide-react";
 import {
   Badge,
   Button,
@@ -57,6 +57,43 @@ export function PanelWhatsapp({
   const [countdown, setCountdown] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Live Gateway Ping Probe state
+  const [pingLoading, setPingLoading] = useState(false);
+  const [pingResult, setPingResult] = useState<{
+    latency_ms: number;
+    status: string;
+    ok: boolean;
+  } | null>(null);
+
+  const handlePingGateway = useCallback(async () => {
+    setPingLoading(true);
+    try {
+      const res = await fetch("/api/whatsapp/ping");
+      const json = await res.json();
+      if (json.ok) {
+        setPingResult({
+          latency_ms: json.latency_ms,
+          status: json.status,
+          ok: true,
+        });
+      } else {
+        setPingResult({
+          latency_ms: json.latency_ms ?? 0,
+          status: json.status || "UNREACHABLE",
+          ok: false,
+        });
+      }
+    } catch {
+      setPingResult({
+        latency_ms: 0,
+        status: "ERROR",
+        ok: false,
+      });
+    } finally {
+      setPingLoading(false);
+    }
+  }, []);
+
   const connected = health?.whatsapp?.connection_status === "CONNECTED";
   const daemonDown = health?.whatsapp ? health.whatsapp.daemon_reachable === false : false;
 
@@ -68,6 +105,10 @@ export function PanelWhatsapp({
   }, []);
 
   useEffect(() => clearTimer, [clearTimer]);
+
+  useEffect(() => {
+    handlePingGateway();
+  }, [handlePingGateway]);
 
   const requestQr = useCallback(
     async (action: "start" | "poll" | "logout") => {
@@ -247,10 +288,21 @@ export function PanelWhatsapp({
         description="Pindai QR dengan WhatsApp di HP toko. Sesi disimpan terpisah per toko, jadi nomor satu toko tidak pernah tercampur dengan yang lain."
         icon={<MessageSquare className="h-4 w-4" aria-hidden="true" />}
         actions={
-          <Button variant="secondary" onClick={recheckStatus}>
-            <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            Periksa status
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={handlePingGateway}
+              loading={pingLoading}
+              title="Uji round-trip latency ke WhatsApp daemon"
+            >
+              <Activity className="h-4 w-4 text-signal-strong" aria-hidden="true" />
+              {pingResult ? `Ping: ${pingResult.latency_ms} ms` : "Uji Ping Gateway"}
+            </Button>
+            <Button variant="secondary" onClick={recheckStatus}>
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Periksa status
+            </Button>
+          </div>
         }
       />
 
@@ -295,6 +347,49 @@ export function PanelWhatsapp({
                 )}
               >
                 {daemonDown ? "belum terhubung" : "Online & Siap"}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-4 px-5 py-2.5">
+              <dt className="text-xs text-ink-600 flex items-center gap-1.5">
+                <span>Latensi Gateway Probe</span>
+                {pingResult && (
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono font-bold",
+                      pingResult.ok && pingResult.latency_ms < 50
+                        ? "bg-signal-wash text-signal-strong"
+                        : pingResult.ok && pingResult.latency_ms < 200
+                        ? "bg-warn-wash text-warn-strong"
+                        : "bg-danger-wash text-danger"
+                    )}
+                  >
+                    {pingResult.latency_ms} ms
+                  </span>
+                )}
+              </dt>
+              <dd className="flex items-center gap-2">
+                {pingResult ? (
+                  <span className="font-mono text-xs text-ink-700">
+                    {pingResult.ok
+                      ? pingResult.latency_ms < 50
+                        ? "Optimal (<50ms)"
+                        : "Stabil"
+                      : "Unreachable"}
+                  </span>
+                ) : (
+                  <span className="text-xs text-ink-400">Belum diuji</span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePingGateway}
+                  loading={pingLoading}
+                  className="h-6 px-2 text-[11px]"
+                  title="Uji ulang latency probe"
+                >
+                  <Activity className="mr-1 h-3 w-3" />
+                  Uji Ping
+                </Button>
               </dd>
             </div>
             <div className="flex items-baseline justify-between gap-4 px-5 py-2.5">

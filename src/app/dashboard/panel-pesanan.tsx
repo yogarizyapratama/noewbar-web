@@ -531,6 +531,16 @@ export function PanelPesanan({
                           <Truck className="h-3.5 w-3.5" aria-hidden="true" />
                           Resi: <span className="font-mono">{o.tracking_number}</span>
                           {o.courier && <span className="text-ink-500">({o.courier})</span>}
+                          <a
+                            href={`https://berdu.id/cek-resi?resi=${encodeURIComponent(o.tracking_number.trim())}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-1 inline-flex items-center gap-1 rounded border border-emerald-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-signal-strong shadow-xs hover:bg-emerald-50 transition-colors"
+                            title="Lacak posisi paket langsung di portal kurir"
+                          >
+                            <span>Lacak</span>
+                            <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                          </a>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5">
