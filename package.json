@@ -20,6 +20,7 @@
     "prisma:push": "prisma db push",
     "gates": "tsx scripts/gates.ts",
     "scheduler": "tsx scripts/scheduler.ts",
+    "db:backup": "tsx scripts/backup-db.ts",
     "smoke": "node scripts/smoke-test.mjs",
     "sse:verify": "node scripts/sse-verify.mjs",
     "artifacts:verify": "tsx scripts/artifact-verify.ts",

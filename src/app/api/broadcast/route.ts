@@ -1,0 +1,141 @@
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import prisma from "@/lib/prisma";
+import { ok, fail } from "@/lib/http";
+import { requireTenant } from "@/lib/auth";
+import { waDaemon } from "@/lib/wa/daemon-client";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const broadcastSchema = z.object({
+  message: z.string().min(5).max(1000),
+  segment: z.enum(["all", "unpaid", "inquiry"]).default("all"),
+  test_phone: z.string().optional(),
+});
+
+/**
+ * Segmented Broadcast API with Anti-Spam Protection & Opt-Out Enforcement.
+ */
+export async function POST(req: NextRequest) {
+  const session = await requireTenant();
+  if (!session) return fail("Unauthorized", 401);
+
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return fail("Body must be valid JSON", 400);
+  }
+
+  const parsed = broadcastSchema.safeParse(raw);
+  if (!parsed.success) {
+    return fail("Parameter broadcast tidak valid", 422, parsed.error.issues);
+  }
+
+  const { message, segment, test_phone } = parsed.data;
+
+  // Resolve connected WhatsApp instance
+  const instance = await prisma.waInstance.findFirst({
+    where: { tenant_id: session.sub, connection_status: "CONNECTED" },
+    select: { instance_key: true, phone_number: true },
+  });
+
+  if (!instance) {
+    return fail("Tidak ada nomor WhatsApp yang terhubung aktif. Silakan hubungkan WhatsApp di tab WhatsApp.", 400);
+  }
+
+  // If test send requested
+  if (test_phone && test_phone.trim()) {
+    const formattedTest = test_phone.trim();
+    const testMsg = `${message}\n\n_Balas STOP untuk berhenti menerima info ini._`;
+    const res = await waDaemon.sendText({
+      instanceKey: instance.instance_key,
+      to: formattedTest,
+      message: testMsg,
+      simulateTyping: true,
+    });
+    if (!res.ok) {
+      return fail(`Gagal mengirim pesan uji coba: ${res.error}`, 500);
+    }
+    return ok({
+      success: true,
+      test_mode: true,
+      sent_to: formattedTest,
+      note: "Pesan uji coba berhasil terkirim ke nomor Anda.",
+    });
+  }
+
+  // Query conversations for the tenant, strictly excluding OPT_OUT
+  let conversations = await prisma.conversation.findMany({
+    where: {
+      tenant_id: session.sub,
+      pipeline_stage: { not: "OPT_OUT" },
+    },
+    include: {
+      orders: {
+        select: { id: true, payment_status: true },
+      },
+    },
+    take: 100, // Safety cap per batch
+  });
+
+  // Filter based on segment
+  if (segment === "unpaid") {
+    conversations = conversations.filter((c) =>
+      c.orders.some((o) => o.payment_status === "UNPAID")
+    );
+  } else if (segment === "inquiry") {
+    conversations = conversations.filter((c) => c.orders.length === 0);
+  }
+
+  if (conversations.length === 0) {
+    return ok({
+      success: true,
+      total_targets: 0,
+      sent_count: 0,
+      note: "Tidak ada kontak penerima yang cocok dengan kriteria segmen ini atau semua kontak telah opt-out.",
+    });
+  }
+
+  // Deliver with human-like jitter delay between contacts (Anti-Ban Rate Limiting)
+  let sentCount = 0;
+  const errors: Array<{ jid: string; error: string }> = [];
+
+  const finalMsg = `${message}\n\n_Balas STOP untuk berhenti menerima info promo._`;
+
+  for (const conv of conversations) {
+    try {
+      const res = await waDaemon.sendText({
+        instanceKey: instance.instance_key,
+        to: conv.buyer_jid,
+        message: finalMsg,
+        simulateTyping: true,
+      });
+
+      if (res.ok) {
+        sentCount++;
+      } else {
+        errors.push({ jid: conv.buyer_jid, error: res.error });
+      }
+
+      // Safe jitter gap: 1500ms - 3500ms between recipients to prevent spam flags
+      const gap = 1500 + Math.floor(Math.random() * 2000);
+      await new Promise((r) => setTimeout(r, gap));
+    } catch (err) {
+      errors.push({
+        jid: conv.buyer_jid,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return ok({
+    success: true,
+    segment,
+    total_targets: conversations.length,
+    sent_count: sentCount,
+    failed_count: errors.length,
+    errors: errors.slice(0, 5),
+  });
+}

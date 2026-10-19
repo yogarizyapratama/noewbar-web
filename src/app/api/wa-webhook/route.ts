@@ -16,6 +16,7 @@ import { reverseGeocode } from "@/lib/geo/geocode";
 import { notifyTenant } from "@/lib/realtime/event-bus";
 import { submitPaymentProof } from "@/lib/orders/orders";
 import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
+import { transcribeVoiceNote } from "@/lib/ai/whisper";
 
 /**
  * Inbound WhatsApp webhook (chapter 4 + chapter 5).
@@ -43,7 +44,7 @@ const webhookSchema = z.object({
   message_id: z.string().optional(),
   /** Inbound media (daemon downloads to /media/<file> and forwards the URL). */
   media_url: z.string().url().optional(),
-  media_kind: z.enum(["image", "video", "document"]).optional(),
+  media_kind: z.enum(["image", "video", "document", "audio"]).optional(),
   media_mime: z.string().optional(),
   media_caption: z.string().optional().default(""),
   /** Share-Location pin (GPS coordinates). */
@@ -150,7 +151,14 @@ export async function POST(req: NextRequest) {
       senderJid: payload.sender_jid,
       senderName: payload.sender_name || null,
       daemonMediaUrl: payload.media_url,
-      kind: payload.media_kind === "video" ? "video" : payload.media_kind === "document" ? "document" : "image",
+      kind:
+        payload.media_kind === "video"
+          ? "video"
+          : payload.media_kind === "document"
+            ? "document"
+            : payload.media_kind === "audio"
+              ? "audio"
+              : "image",
       caption: payload.media_caption,
       messageId: payload.message_id,
     });
@@ -233,7 +241,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // B-2 FIX: jika ada caption/teks pada pesan bergambar, lanjut ke pipeline AI.
+    // Voice Note Transcription (Whisper AI): jika media adalah audio/voice note,
+    // transkripsikan rekaman suara pembeli ke teks bahasa Indonesia secara otomatis.
+    if (ingest.ok && payload.media_kind === "audio" && ingest.bytes) {
+      const voiceResult = await transcribeVoiceNote({
+        bytes: ingest.bytes,
+        mime: ingest.mime,
+      });
+      if (voiceResult.ok && voiceResult.text) {
+        payload.body = voiceResult.text;
+      }
+    }
+
+    // B-2 FIX: jika ada caption/teks pada pesan bergambar/suara, lanjut ke pipeline AI.
     // Hanya return di sini jika body benar-benar kosong (media-only tanpa keterangan atau produk terdeteksi).
     if (!payload.body.trim()) {
       return ok({
@@ -284,6 +304,41 @@ export async function POST(req: NextRequest) {
   if (!payload.body.trim()) {
     // Nothing to answer: no text, no media, no location.
     return ok({ accepted: false, reason: "empty_body" });
+  }
+
+  // --- Opt-Out / Stop Broadcast Mechanism (Anti-Spam & Consumer Protection) ---
+  const normalizedCmd = payload.body.trim().toUpperCase();
+  if (normalizedCmd === "STOP" || normalizedCmd === "BERHENTI" || normalizedCmd === "UNSUBSCRIBE") {
+    try {
+      await prisma.conversation.upsert({
+        where: { tenant_id_buyer_jid: { tenant_id: tenant.id, buyer_jid: payload.sender_jid } },
+        create: {
+          tenant_id: tenant.id,
+          buyer_jid: payload.sender_jid,
+          buyer_name: payload.sender_name || null,
+          pipeline_stage: "OPT_OUT",
+        },
+        update: {
+          pipeline_stage: "OPT_OUT",
+        },
+      });
+    } catch {
+      // Non-fatal if DB is temporarily unreachable
+    }
+
+    const connectedInstance = tenant.wa_instances?.find(
+      (i: { connection_status: string }) => i.connection_status === "CONNECTED"
+    );
+    if (connectedInstance) {
+      await waDaemon.sendText({
+        instanceKey: connectedInstance.instance_key,
+        to: payload.sender_jid,
+        message:
+          "Nomor WhatsApp Anda telah dinonaktifkan dari pesan promosi dan broadcast kami. Jika Anda membutuhkan bantuan belanja atau ingin bertanya kembali, silakan chat kami kapan saja ya! 🙏",
+        simulateTyping: true,
+      });
+    }
+    return ok({ accepted: true, replied: true, action: "opt_out_success" });
   }
 
   // 3. Tenant-scoped catalog read (graceful degradation to cache).

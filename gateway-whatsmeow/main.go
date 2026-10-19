@@ -450,7 +450,7 @@ func handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.SimulateTyping {
-		simulateTyping(inst, targetJID)
+		simulateTyping(inst, targetJID, len(req.Message))
 	}
 
 	msg := &waE2E.Message{Conversation: proto.String(req.Message)}
@@ -545,12 +545,32 @@ func handleSendMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.SimulateTyping {
-		simulateTyping(inst, targetJID)
+		simulateTyping(inst, targetJID, len(req.Caption))
 	}
 
 	ctx := context.Background()
 
 	switch kind {
+	case "audio":
+		uploaded, err := inst.Client.Upload(ctx, data, whatsmeow.MediaAudio)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": fmt.Sprintf("Upload failed: %v", err)})
+			return
+		}
+		msg := &waE2E.Message{
+			AudioMessage: &waE2E.AudioMessage{
+				Mimetype:      proto.String(mime),
+				URL:           proto.String(uploaded.URL),
+				DirectPath:    proto.String(uploaded.DirectPath),
+				MediaKey:      uploaded.MediaKey,
+				FileEncSHA256: uploaded.FileEncSHA256,
+				FileSHA256:    uploaded.FileSHA256,
+				FileLength:    proto.Uint64(uint64(len(data))),
+				PTT:           proto.Bool(true),
+			},
+		}
+		sendAndRespond(inst, w, targetJID, msg)
+
 	case "video":
 		uploaded, err := inst.Client.Upload(ctx, data, whatsmeow.MediaVideo)
 		if err != nil {
@@ -720,6 +740,13 @@ func handleWhatsAppEvent(inst *SessionInstance, rawEvt any) {
 				payload["media_kind"] = "document"
 				payload["media_mime"] = mime
 			}
+		} else if aud := evt.Message.GetAudioMessage(); aud != nil {
+			if data, err := inst.Client.Download(context.Background(), aud); err == nil && len(data) > 0 {
+				url, mime := saveMedia(inst.Key, evt.Info.ID, "audio", data, aud.GetMimetype())
+				payload["media_url"] = url
+				payload["media_kind"] = "audio"
+				payload["media_mime"] = mime
+			}
 		}
 
 		// Share-Location (chapter 2 USP: GPS -> subdistrict -> ongkir).
@@ -886,13 +913,21 @@ func parseRecipient(to string) (types.JID, error) {
 }
 
 // simulateTyping holds a composing presence for a randomised human-like pause
-// (1.8s - 3.2s), which is the core anti-ban measure of chapter 5.
-func simulateTyping(inst *SessionInstance, to types.JID) {
+// scaled by message length + jitter (1.2s - 4.5s), which is the core anti-ban measure.
+func simulateTyping(inst *SessionInstance, to types.JID, msgLen int) {
 	ctx := context.Background()
 	_ = inst.Client.SendChatPresence(ctx, to, types.ChatPresenceComposing, types.ChatPresenceMediaText)
 
-	delay := 1800 + time.Now().UnixNano()%1400
-	time.Sleep(time.Duration(delay) * time.Millisecond)
+	baseMs := 1200 + (msgLen * 20)
+	if baseMs > 4200 {
+		baseMs = 4200
+	}
+	jitter := int(time.Now().UnixNano()%800) - 400
+	totalDelay := baseMs + jitter
+	if totalDelay < 1000 {
+		totalDelay = 1000
+	}
+	time.Sleep(time.Duration(totalDelay) * time.Millisecond)
 
 	_ = inst.Client.SendChatPresence(ctx, to, types.ChatPresencePaused, types.ChatPresenceMediaText)
 }
@@ -903,6 +938,8 @@ func guessMime(kind string) string {
 		return "video/mp4"
 	case "document":
 		return "application/pdf"
+	case "audio":
+		return "audio/ogg; codecs=opus"
 	default:
 		return "image/jpeg"
 	}

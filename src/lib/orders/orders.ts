@@ -10,6 +10,7 @@ import {
   type PaymentState,
 } from "@/lib/orders/state";
 import type { CartLine, ProductRow } from "@/lib/ai/types";
+import { waDaemon } from "@/lib/wa/daemon-client";
 
 /**
  * Order lifecycle (chapter 8.C + chapter 16).
@@ -542,7 +543,7 @@ export async function shipOrder(params: {
     return { ok: false, error: `Status ${order.order_status} tidak bisa diserahkan ke kurir` };
   }
 
-  await prisma.order.update({
+  const updated = await prisma.order.update({
     where: { id: params.orderId },
     data: {
       order_status: "SHIPPED",
@@ -550,7 +551,36 @@ export async function shipOrder(params: {
       shipped_at: new Date(),
       ...(params.courierOverride ? { courier: params.courierOverride } : {}),
     },
+    include: {
+      tenant: {
+        include: {
+          wa_instances: {
+            where: { connection_status: "CONNECTED" },
+            take: 1,
+          },
+        },
+      },
+    },
   });
+
+  // Feature 4: Live Resi Alert - Kirim notifikasi WhatsApp otomatis ke pembeli
+  try {
+    const activeInstance = updated.tenant?.wa_instances?.[0];
+    if (activeInstance && updated.buyer_jid) {
+      const courierName = params.courierOverride || updated.courier || "Ekspedisi";
+      const storeName = updated.tenant?.business_name || "Toko Kami";
+      const message = `Halo Kak *${updated.buyer_name || "Pelanggan"}*! 🚚\n\nPesanan Anda *${updated.order_number}* telah diserahkan ke kurir dan sedang dalam perjalanan.\n\n📦 *Kurir:* ${courierName}\n🔢 *Nomor Resi:* ${params.trackingNumber}\n\nAnda dapat melacak status paket secara berkala. Terima kasih telah berbelanja di *${storeName}*! 🙏`;
+
+      await waDaemon.sendText({
+        instanceKey: activeInstance.instance_key,
+        to: updated.buyer_jid,
+        message,
+        simulateTyping: true,
+      });
+    }
+  } catch (err) {
+    console.warn("[shipOrder] Gagal mengirim WhatsApp notifikasi resi:", err);
+  }
 
   return { ok: true, orderStatus: "SHIPPED" };
 }

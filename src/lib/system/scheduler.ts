@@ -19,6 +19,7 @@
 import { ensureNudgeWorker, sweepDueNudges, nudgeQueueStats } from "@/lib/queue/nudge-queue";
 import { expireStaleReservations } from "@/lib/orders/orders";
 import { reconcileSubscriptions } from "@/lib/billing/midtrans";
+import { monitorDaemonHeartbeat } from "@/lib/alerts/daemon-health";
 
 export type SweepResult = {
   nudges: { delivered: number; error?: string };
@@ -55,6 +56,9 @@ export async function runMaintenanceSweep(options: MaintenanceSweepOptions = {})
   const subscriptions = reconcile
     ? await isolate(() => reconcileSubscriptions())
     : { checked: 0, activated: 0, grace: 0, suspended: 0, skipped: true };
+
+  // Feature 6: Monitor WhatsApp Daemon Heartbeat & Alert Telegram if offline
+  await isolate(() => monitorDaemonHeartbeat());
 
   return { nudges, reservations, subscriptions, worker };
 }

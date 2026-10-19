@@ -45,6 +45,7 @@ import {
   cn,
   rupiah,
 } from "@/components/ui";
+import { BroadcastCard } from "./broadcast-card";
 import type { TenantPromoTier, TenantShippingSchedule, TenantVoucher } from "./types";
 
 export function PanelPromos({
@@ -739,6 +740,9 @@ export function PanelPromos({
           </div>
         </CardBody>
       </Card>
+
+      {/* Broadcast & Re-engagement */}
+      <BroadcastCard />
     </div>
   );
 }

@@ -39,7 +39,7 @@ export async function ingestInboundMedia(params: {
   senderJid: string;
   senderName: string | null;
   daemonMediaUrl: string;
-  kind: "image" | "video" | "document";
+  kind: "image" | "video" | "document" | "audio";
   caption?: string;
   messageId?: string;
 }): Promise<IngestedMedia> {
@@ -60,18 +60,28 @@ export async function ingestInboundMedia(params: {
     }
 
     // 2. Determine an extension from the kind.
-    const ext = params.kind === "video" ? "mp4" : params.kind === "document" ? "pdf" : "jpg";
-    const mime = params.kind === "video" ? "video/mp4" : params.kind === "document" ? "application/pdf" : "image/jpeg";
+    const ext =
+      params.kind === "video"
+        ? "mp4"
+        : params.kind === "document"
+          ? "pdf"
+          : params.kind === "audio"
+            ? "ogg"
+            : "jpg";
+    const mime =
+      params.kind === "video"
+        ? "video/mp4"
+        : params.kind === "document"
+          ? "application/pdf"
+          : params.kind === "audio"
+            ? "audio/ogg"
+            : "image/jpeg";
     const id = params.messageId ?? `${Date.now()}`;
     const key = `tenants/${params.tenantId}/inbound/${id}.${ext}`;
     const up = await uploadObject(key, Buffer.from(bytes), mime);
     if (!up.success) return { ok: false, error: "upload MinIO gagal" };
 
-    // 3. Record the message (IMAGE/VIDEO/DOCUMENT) for the conversation view.
-    // `conversation_id` is a UUID column with a foreign key, so it can never be
-    // an empty string: a buyer whose FIRST message is media (no conversation row
-    // yet) must get one created here, otherwise the insert aborts and the upload
-    // is silently discarded even though MinIO stored the file.
+    // 3. Record the message (IMAGE/VIDEO/DOCUMENT/AUDIO) for the conversation view.
     const conversationId = await resolveConversationId({
       tenantId: params.tenantId,
       buyerJid: params.senderJid,
@@ -83,8 +93,15 @@ export async function ingestInboundMedia(params: {
       data: {
         conversation_id: conversationId,
         sender_type: "BUYER",
-        message_type: params.kind === "video" ? "VIDEO" : params.kind === "document" ? "DOCUMENT" : "IMAGE",
-        content: params.caption ?? "[media]",
+        message_type:
+          params.kind === "video"
+            ? "VIDEO"
+            : params.kind === "document"
+              ? "DOCUMENT"
+              : params.kind === "audio"
+                ? "AUDIO"
+                : "IMAGE",
+        content: params.caption ?? (params.kind === "audio" ? "[Pesan Suara]" : "[media]"),
         media_url: publicUrlFor(key),
       },
     });

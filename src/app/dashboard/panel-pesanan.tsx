@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Check, Download, ExternalLink, Receipt, RefreshCw, Truck, X } from "lucide-react";
+import { Check, Download, ExternalLink, Printer, Receipt, RefreshCw, Truck, X } from "lucide-react";
 import {
   Badge,
   Button,
@@ -375,6 +375,17 @@ export function PanelPesanan({
 
                   {o.payment_status === "VERIFIED" && (
                     <div className="flex flex-wrap items-center gap-2">
+                      <a
+                        href={`/api/orders/${o.id}/label`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-ink-200 bg-white px-2.5 py-1 text-xs font-semibold text-ink-700 shadow-flat hover:bg-ink-50 hover:text-ink-900 transition-colors"
+                        title="Cetak label pengiriman thermal 100x150 mm"
+                      >
+                        <Printer className="h-3.5 w-3.5 text-ink-600" aria-hidden="true" />
+                        Label Thermal
+                      </a>
+
                       {o.tracking_number ? (
                         <div className="inline-flex items-center gap-1.5 rounded bg-signal-wash px-2.5 py-1 text-xs font-semibold text-signal-strong">
                           <Truck className="h-3.5 w-3.5" aria-hidden="true" />
