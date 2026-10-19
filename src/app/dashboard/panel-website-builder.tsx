@@ -45,6 +45,7 @@ import {
   Settings,
   Smartphone,
   Sparkles,
+  Tablet,
   Trash2,
   Upload,
   Video,
@@ -407,7 +408,7 @@ export function PanelWebsiteBuilder() {
   const [currentSite, setCurrentSite] = useState<WebsiteRecord | null>(null);
   const [sections, setSections] = useState<WebsiteSection[]>([]);
   const [selectedSecId, setSelectedSecId] = useState<string | null>(null);
-  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "tablet" | "mobile">("desktop");
 
   // AI Prompt generation state
   const [aiPrompt, setAiPrompt] = useState("");
@@ -1811,19 +1812,33 @@ export function PanelWebsiteBuilder() {
                   onClick={() => setPreviewDevice("desktop")}
                   className={cn(
                     "rounded px-2.5 py-1 text-2xs font-semibold transition-colors flex items-center gap-1",
-                    previewDevice === "desktop" ? "bg-white text-ink shadow-flat" : "text-ink-500"
+                    previewDevice === "desktop" ? "bg-white text-ink shadow-flat" : "text-ink-500 hover:text-ink-700"
                   )}
+                  title="Tampilan Desktop (Fluid)"
                 >
                   <Monitor className="h-3 w-3" />
                   Desktop
                 </button>
                 <button
                   type="button"
+                  onClick={() => setPreviewDevice("tablet")}
+                  className={cn(
+                    "rounded px-2.5 py-1 text-2xs font-semibold transition-colors flex items-center gap-1",
+                    previewDevice === "tablet" ? "bg-white text-ink shadow-flat" : "text-ink-500 hover:text-ink-700"
+                  )}
+                  title="Tampilan Tablet iPad (768px)"
+                >
+                  <Tablet className="h-3 w-3" />
+                  Tablet
+                </button>
+                <button
+                  type="button"
                   onClick={() => setPreviewDevice("mobile")}
                   className={cn(
                     "rounded px-2.5 py-1 text-2xs font-semibold transition-colors flex items-center gap-1",
-                    previewDevice === "mobile" ? "bg-white text-ink shadow-flat" : "text-ink-500"
+                    previewDevice === "mobile" ? "bg-white text-ink shadow-flat" : "text-ink-500 hover:text-ink-700"
                   )}
+                  title="Tampilan Smartphone Mobile (375px)"
                 >
                   <Smartphone className="h-3 w-3" />
                   Mobile
@@ -2072,7 +2087,11 @@ export function PanelWebsiteBuilder() {
               <div
                 className={cn(
                   "bg-white shadow-overlay transition-all duration-300 rounded-xl overflow-hidden border border-ink-200 w-full",
-                  previewDevice === "desktop" ? "max-w-4xl" : "max-w-[375px]"
+                  previewDevice === "desktop"
+                    ? "max-w-4xl"
+                    : previewDevice === "tablet"
+                    ? "max-w-[768px]"
+                    : "max-w-[375px]"
                 )}
               >
                 {/* Mock Browser Header */}
@@ -2087,9 +2106,18 @@ export function PanelWebsiteBuilder() {
                       https://noewbar.com/store/{currentSite.slug}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 rounded bg-signal-wash border border-signal/30 px-2.5 py-0.5 text-[10px] font-semibold text-signal-strong">
-                    <Sparkles className="h-3 w-3 shrink-0" />
-                    <span>Mode Direct Edit Aktif (Klik Teks / Foto)</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-ink-500 bg-white border border-ink-200 px-2 py-0.5 rounded">
+                      {previewDevice === "desktop"
+                        ? "Desktop (Fluid)"
+                        : previewDevice === "tablet"
+                        ? "Tablet (768px)"
+                        : "Mobile (375px)"}
+                    </span>
+                    <div className="flex items-center gap-1.5 rounded bg-signal-wash border border-signal/30 px-2.5 py-0.5 text-[10px] font-semibold text-signal-strong">
+                      <Sparkles className="h-3 w-3 shrink-0" />
+                      <span>Mode Direct Edit Aktif (Klik Teks / Foto)</span>
+                    </div>
                   </div>
                 </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, MessageSquare, Send, ShieldCheck, Smartphone, Users } from "lucide-react";
+import { AlertCircle, CheckCircle2, Image as ImageIcon, MessageSquare, Send, ShieldCheck, Smartphone, Users, X } from "lucide-react";
 import { Button, Card, CardBody, CardHeader, Badge } from "@/components/ui";
 
 export function BroadcastCard() {
@@ -9,6 +9,7 @@ export function BroadcastCard() {
   const [message, setMessage] = useState(
     "Halo Kak! Ada promo spesial dan diskon ongkir terbatas untuk belanja hari ini di toko kami. Yuk cek katalog terbaru kami ya! ✨"
   );
+  const [imageUrl, setImageUrl] = useState("");
   const [testPhone, setTestPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
@@ -37,6 +38,7 @@ export function BroadcastCard() {
           message,
           segment,
           test_phone: testPhone.trim(),
+          image_url: imageUrl.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -74,6 +76,7 @@ export function BroadcastCard() {
         body: JSON.stringify({
           message,
           segment,
+          image_url: imageUrl.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -139,20 +142,52 @@ export function BroadcastCard() {
 
         {/* Message Input & Live Preview */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-ink-700">Isi Pesan Promosi</label>
-              <span className="text-[11px] font-mono text-ink-400">{message.length}/1000</span>
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-ink-700">Isi Pesan Promosi</label>
+                <span className="text-[11px] font-mono text-ink-400">{message.length}/1000</span>
+              </div>
+              <textarea
+                rows={4}
+                maxLength={1000}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Tulis pesan promosi atau kabar toko..."
+                className="w-full rounded-lg border border-ink-300 bg-white p-3 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
+              />
             </div>
-            <textarea
-              rows={5}
-              maxLength={1000}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Tulis pesan promosi atau kabar toko..."
-              className="w-full rounded-lg border border-ink-300 bg-white p-3 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
-            />
-            <p className="mt-1 text-[11px] text-ink-500">
+
+            {/* Flyer Image URL Input */}
+            <div>
+              <label className="text-xs font-semibold text-ink-700 flex items-center justify-between mb-1.5">
+                <span className="flex items-center gap-1.5">
+                  <ImageIcon className="h-3.5 w-3.5 text-ink-500" />
+                  Lampiran Gambar / Flyer Promo (URL Publik)
+                </span>
+                {imageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl("")}
+                    className="text-[11px] text-danger hover:underline flex items-center gap-0.5"
+                  >
+                    <X className="h-3 w-3" /> Hapus Flyer
+                  </button>
+                )}
+              </label>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://domain.com/poster-promo.jpg (Opsional)"
+                className="w-full rounded-lg border border-ink-300 bg-white px-3 py-2 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
+              />
+              <p className="mt-1 text-[11px] text-ink-500">
+                Gambar poster/brosur akan dikirimkan bersama caption pesan ke WhatsApp pelanggan.
+              </p>
+            </div>
+
+            <p className="text-[11px] text-ink-500">
               *Footer proteksi <em>&quot;Balas STOP untuk berhenti&quot;</em> ditambahkan otomatis demi kepatuhan anti-spam.
             </p>
           </div>
@@ -160,8 +195,21 @@ export function BroadcastCard() {
           {/* WhatsApp Chat Preview */}
           <div>
             <p className="text-xs font-semibold text-ink-700 mb-1.5">Pratinjau Gelembung Chat WhatsApp</p>
-            <div className="rounded-xl border border-ink-200 bg-[#EFEAE2] p-4 min-h-[130px] flex flex-col justify-end">
-              <div className="max-w-[85%] self-end rounded-lg bg-[#E7FFDB] p-3 text-xs text-ink-900 shadow-flat space-y-2">
+            <div className="rounded-xl border border-ink-200 bg-[#EFEAE2] p-4 min-h-[160px] flex flex-col justify-end">
+              <div className="max-w-[85%] self-end rounded-lg bg-[#E7FFDB] p-2.5 text-xs text-ink-900 shadow-flat space-y-2">
+                {imageUrl && (
+                  <div className="relative rounded overflow-hidden border border-black/5 bg-black/10 max-h-44 flex items-center justify-center">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageUrl}
+                      alt="Pratinjau flyer broadcast"
+                      className="w-full h-auto max-h-44 object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
                 <p className="whitespace-pre-wrap leading-relaxed">{message}</p>
                 <p className="text-[10px] text-ink-500 italic border-t border-emerald-900/10 pt-1">
                   Balas STOP untuk berhenti menerima info promo.

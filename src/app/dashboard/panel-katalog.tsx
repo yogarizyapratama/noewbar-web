@@ -115,7 +115,7 @@ export function PanelKatalog({
   const [docs, setDocs] = useState<KnowledgeDocItem[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [showAddDoc, setShowAddDoc] = useState(false);
-  const [addMode, setAddMode] = useState<"file" | "text">("file");
+  const [addMode, setAddMode] = useState<"file" | "text" | "preset">("preset");
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [docTitle, setDocTitle] = useState("");
   const [docType, setDocType] = useState<"FAQ" | "SOP" | "SIZE_CHART" | "POLICY" | "OTHER">("FAQ");
@@ -124,6 +124,66 @@ export function PanelKatalog({
   const [docMsg, setDocMsg] = useState<string | null>(null);
   const [docError, setDocError] = useState<string | null>(null);
   const [expandedDoc, setExpandedDoc] = useState<string | null>(null);
+
+  // Structured Policy Preset States
+  const [policyReturn, setPolicyReturn] = useState(
+    "1. Wajib menyertakan video unboxing utuh tanpa cut saat paket dibuka.\n2. Batas waktu klaim komplain maksimal 2x24 jam sejak paket diterima menurut data resi kurir.\n3. Ongkir retur ditanggung penjual jika kesalahan dari toko (salah varian/cacat)."
+  );
+  const [policyShipping, setPolicyShipping] = useState(
+    "1. Pengiriman setiap hari Senin s/d Sabtu. Hari Minggu dan libur nasional tidak ada pengiriman.\n2. Pesanan sebelum jam 15:00 WIB dikirim di hari yang sama.\n3. Kurir yang didukung: JNE, J&T Express, SiCepat."
+  );
+  const [policyWarranty, setPolicyWarranty] = useState(
+    "1. Semua produk dijamin 100% original dan baru.\n2. Garansi cacat produksi ganti barang baru jika dilaporkan sesuai prosedur unboxing."
+  );
+  const [policyPayment, setPolicyPayment] = useState(
+    "1. Pembayaran resmi hanya ditransfer ke rekening bank toko atau QRIS yang tertera pada invoice.\n2. Wajib transfer sesuai nominal total hingga 3 digit kode unik agar verifikasi cepat.\n3. Unggah foto struk transfer ke WhatsApp untuk proses konfirmasi otomatis."
+  );
+
+  async function savePolicyPreset() {
+    setDocBusy(true);
+    setDocError(null);
+    setDocMsg(null);
+    try {
+      const compiledMarkdown = [
+        "# Kebijakan & FAQ Resmi Toko",
+        "",
+        "## 1. Kebijakan Komplain & Retur Barang",
+        policyReturn.trim(),
+        "",
+        "## 2. Jadwal & Ekspedisi Pengiriman",
+        policyShipping.trim(),
+        "",
+        "## 3. Garansi & Keaslian Produk",
+        policyWarranty.trim(),
+        "",
+        "## 4. Ketentuan Pembayaran & Verifikasi",
+        policyPayment.trim(),
+      ].join("\n");
+
+      const res = await fetch("/api/knowledge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save",
+          title: "Kebijakan & FAQ Resmi Toko",
+          doc_type: "POLICY",
+          content_text: compiledMarkdown,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setDocMsg("SOP Kebijakan & FAQ Toko berhasil disimpan dan aktif menjadi pedoman AI Bot.");
+        setShowAddDoc(false);
+        await loadDocs();
+      } else {
+        setDocError(json.error ?? "Gagal menyimpan kebijakan toko.");
+      }
+    } catch {
+      setDocError("Gagal menghubungi server.");
+    } finally {
+      setDocBusy(false);
+    }
+  }
 
   // Products count & CSV import modal
   const [productCount, setProductCount] = useState<number | null>(null);
@@ -660,7 +720,20 @@ export function PanelKatalog({
             <CardBody className="space-y-4">
               {showAddDoc && (
                 <div className="space-y-4 rounded-xl border border-ink-300 bg-ink-50/60 p-4 shadow-flat">
-                  <div className="flex items-center gap-2 border-b border-ink-200 pb-3">
+                  <div className="flex flex-wrap items-center gap-2 border-b border-ink-200 pb-3">
+                    <button
+                      type="button"
+                      onClick={() => setAddMode("preset")}
+                      className={cn(
+                        "rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors flex items-center gap-1.5",
+                        addMode === "preset"
+                          ? "bg-ink-900 text-white"
+                          : "bg-ink-100 text-ink-700 hover:bg-ink-200"
+                      )}
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Template Kebijakan &amp; FAQ Toko
+                    </button>
                     <button
                       type="button"
                       onClick={() => setAddMode("file")}
@@ -687,7 +760,81 @@ export function PanelKatalog({
                     </button>
                   </div>
 
-                  {addMode === "file" ? (
+                  {addMode === "preset" ? (
+                    <div className="space-y-4">
+                      <div className="rounded-lg bg-sky-50 border border-sky-200/80 p-3 text-xs text-sky-800 space-y-1">
+                        <p className="font-bold flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-sky-600" />
+                          Template SOP &amp; Kebijakan Toko Siap Pakai
+                        </p>
+                        <p className="text-[11px] text-sky-700">
+                          AI CS akan otomatis mengacu pada aturan di bawah ini saat pembeli menanyakan syarat retur, jam kirim, garansi produk, atau tata cara transfer.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        {/* Policy 1: Retur & Komplain */}
+                        <div className="rounded-xl border border-ink-200 bg-white p-3 space-y-1.5 shadow-flat">
+                          <label className="text-xs font-bold text-ink-800 flex items-center justify-between">
+                            <span>1. Kebijakan Komplain &amp; Retur Barang</span>
+                            <span className="text-[10px] text-ink-400 font-normal">Wajib Unboxing</span>
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={policyReturn}
+                            onChange={(e) => setPolicyReturn(e.target.value)}
+                            className="w-full rounded-lg border border-ink-300 p-2 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
+                            placeholder="Aturan komplain, syarat unboxing, batas waktu klaim..."
+                          />
+                        </div>
+
+                        {/* Policy 2: Jadwal Kirim */}
+                        <div className="rounded-xl border border-ink-200 bg-white p-3 space-y-1.5 shadow-flat">
+                          <label className="text-xs font-bold text-ink-800 flex items-center justify-between">
+                            <span>2. Jadwal &amp; Ekspedisi Pengiriman</span>
+                            <span className="text-[10px] text-ink-400 font-normal">Cut-off &amp; Kurir</span>
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={policyShipping}
+                            onChange={(e) => setPolicyShipping(e.target.value)}
+                            className="w-full rounded-lg border border-ink-300 p-2 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
+                            placeholder="Hari operasional, jam cut-off, daftar kurir..."
+                          />
+                        </div>
+
+                        {/* Policy 3: Garansi & Keaslian */}
+                        <div className="rounded-xl border border-ink-200 bg-white p-3 space-y-1.5 shadow-flat">
+                          <label className="text-xs font-bold text-ink-800 flex items-center justify-between">
+                            <span>3. Garansi &amp; Keaslian Produk</span>
+                            <span className="text-[10px] text-ink-400 font-normal">100% Original</span>
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={policyWarranty}
+                            onChange={(e) => setPolicyWarranty(e.target.value)}
+                            className="w-full rounded-lg border border-ink-300 p-2 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
+                            placeholder="Jaminan mutu, garansi tukar, keaslian barang..."
+                          />
+                        </div>
+
+                        {/* Policy 4: Aturan Pembayaran */}
+                        <div className="rounded-xl border border-ink-200 bg-white p-3 space-y-1.5 shadow-flat">
+                          <label className="text-xs font-bold text-ink-800 flex items-center justify-between">
+                            <span>4. Ketentuan Pembayaran &amp; Rekening</span>
+                            <span className="text-[10px] text-ink-400 font-normal">Kode Unik &amp; Struk</span>
+                          </label>
+                          <textarea
+                            rows={4}
+                            value={policyPayment}
+                            onChange={(e) => setPolicyPayment(e.target.value)}
+                            className="w-full rounded-lg border border-ink-300 p-2 text-xs text-ink placeholder:text-ink-400 focus:border-ink-500 focus:outline-none"
+                            placeholder="Aturan transfer kode unik, upload struk, batas waktu..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ) : addMode === "file" ? (
                     <div className="space-y-3">
                       <div>
                         <label className="mb-1 block text-xs font-semibold text-ink-700">
@@ -832,8 +979,20 @@ export function PanelKatalog({
                   )}
 
                   <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-ink-200">
-                    <Button variant="primary" size="sm" onClick={saveDoc} loading={docBusy}>
-                      Simpan Dokumen ke AI
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={addMode === "preset" ? savePolicyPreset : saveDoc}
+                      loading={docBusy}
+                    >
+                      {addMode === "preset" ? (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5 mr-1" />
+                          Simpan SOP Kebijakan ke AI Bot
+                        </>
+                      ) : (
+                        "Simpan Dokumen ke AI"
+                      )}
                     </Button>
                     <Button
                       variant="ghost"

@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { Check, Download, ExternalLink, Printer, Receipt, RefreshCw, Truck, X } from "lucide-react";
+import { Bell, Check, Download, ExternalLink, Printer, Receipt, RefreshCw, Truck, X } from "lucide-react";
 import {
   Badge,
   Button,
@@ -65,6 +65,8 @@ export function PanelPesanan({
   const [actions, setActions] = useState<Record<string, boolean>>({});
   const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
   const [shipping, setShipping] = useState<Record<string, boolean>>({});
+  const [reminding, setReminding] = useState<Record<string, boolean>>({});
+  const [reminderMsg, setReminderMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [previewImage, setPreviewImage] = useState<{
     url: string;
     orderNumber: string;
@@ -73,6 +75,23 @@ export function PanelPesanan({
 
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkVerifying, setBulkVerifying] = useState(false);
+
+  async function handleSendReminder(orderId: string) {
+    setReminding((r) => ({ ...r, [orderId]: true }));
+    try {
+      const res = await fetch(`/api/orders/${orderId}/remind`, { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        setReminderMsg((m) => ({ ...m, [orderId]: { ok: false, text: json.error || "Gagal kirim pengingat" } }));
+      } else {
+        setReminderMsg((m) => ({ ...m, [orderId]: { ok: true, text: "Pengingat WA terkirim!" } }));
+      }
+    } catch {
+      setReminderMsg((m) => ({ ...m, [orderId]: { ok: false, text: "Jaringan bermasalah" } }));
+    } finally {
+      setReminding((r) => ({ ...r, [orderId]: false }));
+    }
+  }
 
   function toggleSelectOrder(id: string) {
     setSelectedOrders((prev) => {
@@ -427,7 +446,36 @@ export function PanelPesanan({
                         </a>
                       </div>
                     ) : (
-                      <span className="text-xs text-ink-500">Belum ada bukti transfer diunggah.</span>
+                      <div className="flex flex-col gap-2 items-start">
+                        <span className="text-xs text-ink-500">Belum ada bukti transfer diunggah.</span>
+                        {o.payment_status === "UNPAID" && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              loading={reminding[o.id]}
+                              onClick={() => handleSendReminder(o.id)}
+                              className="text-xs py-1 px-2.5 h-auto font-medium text-amber-800 border-amber-300 bg-amber-50/60 hover:bg-amber-100/80 transition-colors"
+                              title="Kirim pesan pengingat rekening & tagihan via WhatsApp"
+                            >
+                              <Bell className="h-3 w-3 mr-1 text-amber-600" aria-hidden="true" />
+                              Ingatkan Bayar via WA
+                            </Button>
+                            {reminderMsg[o.id] && (
+                              <span
+                                className={cn(
+                                  "text-[11px] font-medium px-2 py-0.5 rounded",
+                                  reminderMsg[o.id].ok
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : "bg-rose-50 text-rose-700 border border-rose-200"
+                                )}
+                              >
+                                {reminderMsg[o.id].text}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 

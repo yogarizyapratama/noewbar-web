@@ -16,6 +16,7 @@
 import {
   ArrowRight,
   Bot,
+  CheckCircle2,
   ChevronRight,
   Globe,
   MessageSquare,
@@ -24,6 +25,7 @@ import {
   RefreshCw,
   Smartphone,
   Tag,
+  TrendingUp,
   Wallet,
 } from "lucide-react";
 import {
@@ -110,6 +112,18 @@ export function PanelStatus({
     (counts.PROOF_SUBMITTED ?? 0) + (counts.UNDER_REVIEW ?? 0);
   const unpaidOrdersCount = counts.UNPAID ?? 0;
   const humanTakeoverCount = conversations.filter((c) => c.is_human_takeover).length;
+
+  // Metrik Visual Sales Conversion Funnel
+  const funnelChats = Math.max(conversations.length, orders.length);
+  const funnelOrders = orders.length;
+  const funnelProofs = (counts.PROOF_SUBMITTED ?? 0) + (counts.UNDER_REVIEW ?? 0) + verifiedOrders.length;
+  const funnelPaid = verifiedOrders.length;
+
+  const pctOrder = funnelChats > 0 ? Math.round((funnelOrders / funnelChats) * 100) : 0;
+  const pctProof = funnelOrders > 0 ? Math.round((funnelProofs / funnelOrders) * 100) : 0;
+  const pctPaid = funnelProofs > 0 ? Math.round((funnelPaid / (funnelProofs || 1)) * 100) : 0;
+  const conversionOverall = funnelChats > 0 ? Math.round((funnelPaid / funnelChats) * 100) : 0;
+  const recoveryRate = funnelOrders > 0 ? Math.round((funnelPaid / funnelOrders) * 100) : 0;
 
   const waOk = health?.whatsapp?.connection_status === "CONNECTED";
   const aiOk = Boolean(health?.ai?.gateway_ok);
@@ -282,6 +296,132 @@ export function PanelStatus({
           </Card>
         </div>
       </div>
+
+      {/* Visual Sales Conversion Funnel */}
+      <Card className="border-ink-200 p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ink-100 pb-3.5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <TrendingUp className="h-4 w-4" />
+              </span>
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-800">
+                  Funnel Konversi Penjualan WhatsApp
+                </h2>
+                <p className="text-2xs text-ink-500">
+                  Pelacakan real-time dari pesan masuk sampai dana terverifikasi di rekening.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 bg-ink-50 px-3.5 py-2 rounded-lg border border-ink-100">
+            <div>
+              <span className="text-2xs font-medium text-ink-500 block">Konversi Akhir (Paid)</span>
+              <span className="font-mono text-base font-bold text-signal-strong">
+                {conversionOverall}%
+              </span>
+            </div>
+            <div className="h-6 w-px bg-ink-200" />
+            <div>
+              <span className="text-2xs font-medium text-ink-500 block">Payment Recovery</span>
+              <span className="font-mono text-base font-bold text-ink-800">
+                {recoveryRate}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Funnel 4-Stage Steps */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4">
+          {/* Step 1: Chat Masuk */}
+          <div className="relative rounded-xl border border-ink-200 bg-white p-3.5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between text-2xs font-semibold text-ink-500 mb-1">
+                <span>1. Chat Masuk</span>
+                <span className="font-mono">100%</span>
+              </div>
+              <p className="font-mono text-xl font-bold text-ink">{funnelChats} <span className="text-xs font-normal text-ink-500">kontak</span></p>
+              <p className="text-2xs text-ink-400 mt-0.5">Inquiry pembeli via WhatsApp</p>
+            </div>
+            <div className="mt-3">
+              <div className="h-1.5 w-full bg-ink-100 rounded-full overflow-hidden">
+                <div className="h-full bg-ink-700 rounded-full w-full" />
+              </div>
+              <span className="text-[10px] text-ink-500 mt-1 block">Basis awal prospek</span>
+            </div>
+          </div>
+
+          {/* Step 2: Checkout Pesanan */}
+          <div className="relative rounded-xl border border-ink-200 bg-white p-3.5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between text-2xs font-semibold text-ink-500 mb-1">
+                <span>2. Checkout Pesanan</span>
+                <span className="font-mono">{pctOrder}%</span>
+              </div>
+              <p className="font-mono text-xl font-bold text-sky-800">{funnelOrders} <span className="text-xs font-normal text-ink-500">order</span></p>
+              <p className="text-2xs text-ink-400 mt-0.5">Order snapshot dengan kode unik</p>
+            </div>
+            <div className="mt-3">
+              <div className="h-1.5 w-full bg-ink-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-sky-600 rounded-full"
+                  style={{ width: `${Math.min(100, Math.max(5, pctOrder))}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-sky-700 mt-1 block font-medium">
+                {pctOrder}% chat berlanjut checkout
+              </span>
+            </div>
+          </div>
+
+          {/* Step 3: Unggah Bukti Bayar */}
+          <div className="relative rounded-xl border border-ink-200 bg-white p-3.5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between text-2xs font-semibold text-ink-500 mb-1">
+                <span>3. Unggah Bukti</span>
+                <span className="font-mono">{pctProof}%</span>
+              </div>
+              <p className="font-mono text-xl font-bold text-amber-800">{funnelProofs} <span className="text-xs font-normal text-ink-500">struk</span></p>
+              <p className="text-2xs text-ink-400 mt-0.5">Foto bukti transfer dikirim pembeli</p>
+            </div>
+            <div className="mt-3">
+              <div className="h-1.5 w-full bg-ink-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-500 rounded-full"
+                  style={{ width: `${Math.min(100, Math.max(5, pctProof))}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-amber-700 mt-1 block font-medium">
+                {pctProof}% checkout kirim struk
+              </span>
+            </div>
+          </div>
+
+          {/* Step 4: Lunas Terverifikasi */}
+          <div className="relative rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between text-2xs font-semibold text-emerald-800 mb-1">
+                <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-emerald-600" /> 4. Lunas Terverifikasi</span>
+                <span className="font-mono font-bold text-emerald-700">{pctPaid}%</span>
+              </div>
+              <p className="font-mono text-xl font-bold text-emerald-900">{funnelPaid} <span className="text-xs font-normal text-emerald-700">lunas</span></p>
+              <p className="text-2xs text-emerald-700 mt-0.5">Mutasi bank cocok &amp; diverifikasi</p>
+            </div>
+            <div className="mt-3">
+              <div className="h-1.5 w-full bg-emerald-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-600 rounded-full"
+                  style={{ width: `${Math.min(100, Math.max(5, pctPaid))}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-emerald-800 mt-1 block font-semibold">
+                {conversionOverall}% total conversion rate
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Tata Letak Inti 2 Kolom: Operasional & Interaksi Pelanggan */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

@@ -12,6 +12,7 @@ const broadcastSchema = z.object({
   message: z.string().min(5).max(1000),
   segment: z.enum(["all", "unpaid", "inquiry"]).default("all"),
   test_phone: z.string().optional(),
+  image_url: z.string().url().optional().or(z.literal("")),
 });
 
 /**
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     return fail("Parameter broadcast tidak valid", 422, parsed.error.issues);
   }
 
-  const { message, segment, test_phone } = parsed.data;
+  const { message, segment, test_phone, image_url } = parsed.data;
 
   // Resolve connected WhatsApp instance
   const instance = await prisma.waInstance.findFirst({
@@ -49,12 +50,21 @@ export async function POST(req: NextRequest) {
   if (test_phone && test_phone.trim()) {
     const formattedTest = test_phone.trim();
     const testMsg = `${message}\n\n_Balas STOP untuk berhenti menerima info ini._`;
-    const res = await waDaemon.sendText({
-      instanceKey: instance.instance_key,
-      to: formattedTest,
-      message: testMsg,
-      simulateTyping: true,
-    });
+    const res = image_url
+      ? await waDaemon.sendMedia({
+          instanceKey: instance.instance_key,
+          to: formattedTest,
+          url: image_url,
+          caption: testMsg,
+          kind: "image",
+          simulateTyping: true,
+        })
+      : await waDaemon.sendText({
+          instanceKey: instance.instance_key,
+          to: formattedTest,
+          message: testMsg,
+          simulateTyping: true,
+        });
     if (!res.ok) {
       return fail(`Gagal mengirim pesan uji coba: ${res.error}`, 500);
     }
@@ -62,6 +72,7 @@ export async function POST(req: NextRequest) {
       success: true,
       test_mode: true,
       sent_to: formattedTest,
+      has_image: Boolean(image_url),
       note: "Pesan uji coba berhasil terkirim ke nomor Anda.",
     });
   }
@@ -106,12 +117,21 @@ export async function POST(req: NextRequest) {
 
   for (const conv of conversations) {
     try {
-      const res = await waDaemon.sendText({
-        instanceKey: instance.instance_key,
-        to: conv.buyer_jid,
-        message: finalMsg,
-        simulateTyping: true,
-      });
+      const res = image_url
+        ? await waDaemon.sendMedia({
+            instanceKey: instance.instance_key,
+            to: conv.buyer_jid,
+            url: image_url,
+            caption: finalMsg,
+            kind: "image",
+            simulateTyping: true,
+          })
+        : await waDaemon.sendText({
+            instanceKey: instance.instance_key,
+            to: conv.buyer_jid,
+            message: finalMsg,
+            simulateTyping: true,
+          });
 
       if (res.ok) {
         sentCount++;
