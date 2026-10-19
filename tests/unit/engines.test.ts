@@ -490,6 +490,13 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     const pku = estimateBaseTariff("Pekanbaru", 1.0);
     const dps = estimateBaseTariff("Denpasar Bali", 1.0);
     const papua = estimateBaseTariff("Jayapura Papua", 1.0);
+    const lombok = estimateBaseTariff("Lombok Barat, NTB", 1.0);
+    const kupang = estimateBaseTariff("Kupang, NTT", 1.0);
+    const mks = estimateBaseTariff("Makassar, Sulawesi Selatan", 1.0);
+    const bpn = estimateBaseTariff("Balikpapan, Kalimantan Timur", 1.0);
+    const ambon = estimateBaseTariff("Ambon, Maluku", 1.0);
+    const sorong = estimateBaseTariff("Sorong, Papua Barat Daya", 1.0);
+    const batam = estimateBaseTariff("Batam, Kepulauan Riau", 1.0);
 
     assert.strictEqual(jkt, 9000);
     assert.strictEqual(bdg, 11000);
@@ -497,6 +504,13 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(pku, 28000);
     assert.strictEqual(dps, 32000);
     assert.strictEqual(papua, 55000);
+    assert.strictEqual(lombok, 32000);
+    assert.strictEqual(kupang, 32000);
+    assert.strictEqual(mks, 32000);
+    assert.strictEqual(bpn, 26000);
+    assert.strictEqual(ambon, 48000);
+    assert.strictEqual(sorong, 55000);
+    assert.strictEqual(batam, 28000);
   });
 
   await test("calculateShippingRates: returns standard Indonesian couriers (JNT, SICEPAT, JNE)", async () => {

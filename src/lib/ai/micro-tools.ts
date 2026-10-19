@@ -354,6 +354,7 @@ export async function toolAturNudge(
       price: row.price,
       qty,
       line_total: row.price * qty,
+      weight_grams: row.weight_grams ?? null,
     });
     stockSnapshot[row.sku] = row.stock;
   }

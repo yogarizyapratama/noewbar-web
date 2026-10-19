@@ -63,6 +63,7 @@ export type CartLine = {
   price: number;
   qty: number;
   line_total: number;
+  weight_grams?: number | null;
 };
 
 /** Aturan Promo Bundling per tenant: [{ min_qty: 2, discount_percent: 5, promo_name: "Diskon 2 pcs" }] */

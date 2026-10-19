@@ -65,17 +65,63 @@ const COURIERS: Array<{
  * fallback (chapter 12). Never random: the same origin/destination always yields
  * the same number, so invoices never drift between two identical chats.
  */
-export function estimateBaseTariff(destination: string, courierMultiplier: number): number {
-  const d = destination.toLowerCase();
+export function estimateBaseTariff(destination: string, courierMultiplier: number, origin?: string): number {
+  const d = destination.toLowerCase().trim();
+  const o = (origin || "").toLowerCase().trim();
 
-  let raw = 12000; // within island / Jabodetabek default
-  if (/(jakarta|tangerang|bekasi|depok|bogor)/.test(d)) raw = 9000;
-  else if (/(bandung|cimahi|cirebon|jawa barat|garut|tasik)/.test(d)) raw = 11000;
-  else if (/(semarang|solo|surakarta|yogya|jogja|surabaya|malang|jawa tengah|jawa timur)/.test(d)) raw = 17000;
-  else if (/(medan|padang|palembang|pekanbaru|banda lampung|sumatera|aceh|jambi|bengkulu)/.test(d)) raw = 28000;
-  else if (/(makassar|bali|denpasar|manado|kendari|palu)/.test(d)) raw = 32000;
-  else if (/(papua|jayapura|ambon|ternate|merauke)/.test(d)) raw = 55000;
-  else if (/(kalimantan|balikpapan|samarinda|banjarmasin|pontianak)/.test(d)) raw = 26000;
+  // Local/intra-city delivery discount if origin and destination are the same locality
+  if (o && d) {
+    const isSameCity =
+      (o.includes("jakarta") && /(jakarta|kepulauan seribu)/.test(d)) ||
+      (o.includes("bandung") && d.includes("bandung")) ||
+      (o.includes("surabaya") && d.includes("surabaya")) ||
+      (o.includes("semarang") && d.includes("semarang")) ||
+      (o.includes("medan") && d.includes("medan")) ||
+      (o.includes("makassar") && d.includes("makassar")) ||
+      (o.includes("denpasar") && (d.includes("denpasar") || d.includes("badung")));
+    if (isSameCity) {
+      return Math.round((8000 * courierMultiplier) / 100) * 100;
+    }
+  }
+
+  let raw = 18000; // default inter-island / unmapped destination
+
+  // 1. Jabodetabek & Banten
+  if (/(jakarta|tangerang|bekasi|depok|bogor|jabodetabek|banten|tangsel|serang|cilegon|lebak|pandeglang)/.test(d)) {
+    raw = 9000;
+  }
+  // 2. Jawa Barat
+  else if (/(bandung|cimahi|cirebon|jawa barat|jabar|garut|tasik|tasikmalaya|sukabumi|cianjur|subang|purwakarta|karawang|indramayu|majalengka|kuningan|sumedang|ciamis|pangandaran|banjar)/.test(d)) {
+    raw = 11000;
+  }
+  // 3. Jawa Tengah, DI Yogyakarta, & Jawa Timur
+  else if (/(semarang|solo|surakarta|yogya|jogja|yogyakarta|diy|surabaya|malang|jawa tengah|jawa timur|jateng|jatim|banyumas|purwokerto|tegal|pekalongan|kudus|magelang|salatiga|sidoarjo|gresik|jember|banyuwangi|kediri|blitar|madiun|probolinggo|pasuruan|mojokerto|tuban|lamongan|bojonegoro|ngawi|ponorogo|pacitan|tulungagung|nganjuk|jombang|lumajang|bondowoso|situbondo|madura|bangkalan|sampang|pamekasan|sumenep|brebes|cilacap|kebumen|klaten|sukoharjo|wonogiri|sragen|boyolali|pati|jepara|demak|pemalang|batang|kendal|temanggung|wonosobo|purworejo)/.test(d)) {
+    raw = 17000;
+  }
+  // 4. Sumatera
+  else if (/(medan|padang|palembang|pekanbaru|lampung|banda lampung|sumatera|sumut|sumbar|sumsel|aceh|jambi|bengkulu|riau|kepri|batam|tanjung pinang|bangka|belitung|pangkal pinang|dumai|bukittinggi|siantar|binjai|lhokseumawe)/.test(d)) {
+    raw = 28000;
+  }
+  // 5. Kalimantan
+  else if (/(kalimantan|kalbar|kalsel|kaltim|kalteng|kaltara|balikpapan|samarinda|banjarmasin|pontianak|palangkaraya|palangka raya|tarakan|banjarbaru|singkawang|bontang)/.test(d)) {
+    raw = 26000;
+  }
+  // 6. Bali & Nusa Tenggara (NTB & NTT)
+  else if (/(bali|denpasar|badung|gianyar|singaraja|tabanan|ubud|kuta|lombok|mataram|ntb|ntt|kupang|nusa tenggara|flores|sumbawa|bima|ende|labuan bajo|alor|roti)/.test(d)) {
+    raw = 32000;
+  }
+  // 7. Sulawesi
+  else if (/(sulawesi|sulsel|sulteng|sulut|sultra|sulbar|makassar|manado|kendari|palu|gorontalo|mamuju|bitung|palopo|parepare|baubau|kotamobagu|poso|toli-toli)/.test(d)) {
+    raw = 32000;
+  }
+  // 8. Maluku & Maluku Utara
+  else if (/(maluku|ambon|ternate|tidore|tual|seram|banggai|buru|halmahera)/.test(d)) {
+    raw = 48000;
+  }
+  // 9. Papua (All regions)
+  else if (/(papua|jayapura|merauke|sorong|timika|manokwari|biak|nabire|mimika|wamena|fakfak|kaimana|raja ampat)/.test(d)) {
+    raw = 55000;
+  }
 
   return Math.round((raw * courierMultiplier) / 100) * 100;
 }
@@ -402,7 +448,7 @@ export async function calculateShippingRates(params: {
     }
 
     // 3. Documented fallback: deterministic zone matrix, explicitly labelled.
-    const base = estimateBaseTariff(destination, c.multiplier);
+    const base = estimateBaseTariff(destination, c.multiplier, origin);
 
     try {
       if (!cached) {

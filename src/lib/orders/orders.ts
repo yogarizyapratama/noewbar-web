@@ -108,8 +108,12 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     return { ok: false, error: "Cart is empty", code: "EMPTY_CART" };
   }
 
-  // 1. Shipping tariff for the chosen courier (calculate first so latency does not delay reservation).
   const subtotal = input.lines.reduce((sum, l) => sum + l.line_total, 0);
+  const totalWeightGrams = input.lines.reduce(
+    (sum, l) => sum + (typeof l.weight_grams === "number" && l.weight_grams > 0 ? l.weight_grams : 250) * l.qty,
+    0
+  );
+  const weightKg = Math.max(0.1, totalWeightGrams / 1000);
 
   let shipping;
   try {
@@ -117,6 +121,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       originSubdistrict: input.originSubdistrict,
       destinationSubdistrict: input.destinationSubdistrict,
       orderTotalAmount: subtotal,
+      weightKg,
       courierFilter: input.courier,
     });
   } catch (err) {
