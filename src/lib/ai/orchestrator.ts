@@ -378,7 +378,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
       const rawContent = msg.content ?? "";
       const isDangling =
         round < 2 &&
-        /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)\s*(?:dulu|sebentar|stok|ongkir)?|(?:tunggu|mohon tunggu|sebentar|bentar)\s*(?:sebentar|dulu|ya\s+kak|kak)|sedang\s+(?:kami|saya)\s+(?:cek|hitung))/i.test(
+        /(?:(?:saya|kami)\s+(?:bantu\s+)?(?:cekkan|cek|lihat|periksa|hitung|carikan)\s*(?:dulu|sebentar|stok|ongkir)?|(?:tunggu|mohon tunggu|sebentar|bentar)\s*(?:sebentar|dulu|ya\s+kak|kak)|sedang\s+(?:kami|saya)\s+(?:cek|hitung)|nanti\s+\w+\s+(?:bantu\s+)?(?:tanyakan|sampaikan|konfirmasi(?:kan)?)\s+(?:ke|langsung)?\s*admin|nanti\s+(?:saya|kami|aku)\s+(?:tanyakan|sampaikan|konfirmasikan)\s+(?:ke|dulu)?\s*admin)/i.test(
           rawContent
         ) &&
         !rawContent.includes("Rp");
@@ -391,14 +391,20 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
         const wantsCheckout = /(?:ongkir|kirim|tujuan|kecamatan|kabupaten|kota|total|rekening|checkout|bungkus|bayar)/i.test(
           input.incomingText
         );
+        const wantsPanduan = /(?:retur|garansi|tukar|ukuran|size chart|bahan|sop|kebijakan|panduan|syarat|ketentuan)/i.test(
+          input.incomingText
+        );
         messages.push({
           role: "user",
-          content: wantsCheckout
+          content: wantsPanduan
+            ? "Jangan berjanji akan tanyakan ke admin tanpa benar-benar melakukan sesuatu. Tolong langsung panggil tool_baca_panduan_toko untuk mencari informasi yang pembeli butuhkan. Jika tidak ditemukan, panggil tool_oper_manusia."
+            : wantsCheckout
             ? "Jangan menunda atau membalas menggantung. Tolong langsung panggil tool_cek_ongkir dan/atau tool_cari_produk sekarang juga dan berikan rincian harga, ongkir, serta total yang harus dibayar kepada pembeli."
             : "Jangan menunda atau membalas menggantung. Jawab langsung pertanyaan pembeli secara ramah dan to the point tanpa kalimat penundaan.",
         });
         continue;
       }
+
 
       messages.push({
         role: "assistant",
