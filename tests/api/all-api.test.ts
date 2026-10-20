@@ -186,6 +186,21 @@ export async function runApiTests(): Promise<{ total: number; passed: number; fa
     assert.ok(res.status === 400 || res.status === 401 || res.status === 422);
   });
 
+  // 15b. /api/billing/sync
+  await test("API 15b [NEGATIVE]: /api/billing/sync GET (Requires authentication)", async () => {
+    const res = await api("/api/billing/sync");
+    assert.strictEqual(res.status, 401);
+  });
+
+  await test("API 15c [NEGATIVE]: /api/billing/sync POST (Requires authentication)", async () => {
+    const res = await api("/api/billing/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order_id: "NOEWBAR-M-fake-123" }),
+    });
+    assert.strictEqual(res.status, 401);
+  });
+
   // 16. /api/superadmin
   await test("API 16 [NEGATIVE]: /api/superadmin (Requires superadmin session)", async () => {
     const res = await api("/api/superadmin");

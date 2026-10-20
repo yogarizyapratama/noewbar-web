@@ -66,10 +66,15 @@ export type CreateOrderResult =
  * Counts stock already reserved by live orders for one SKU in this tenant.
  * Reserved = orders holding a reservation that has not expired and not been released.
  */
-async function reservedQtyForSku(tenantId: string, sku: string): Promise<number> {
+async function reservedQtyForSku(
+  tenantId: string,
+  sku: string,
+  tx?: Prisma.TransactionClient
+): Promise<number> {
   if (tenantId === "00000000-0000-0000-0000-000000000000") return 0;
+  const client = tx ?? prisma;
   try {
-    const rows = await prisma.$queryRaw<{ reserved: number | null }[]>`
+    const rows = await client.$queryRaw<{ reserved: number | null }[]>`
       SELECT COALESCE(SUM((item->>'qty')::int), 0)::int AS reserved
       FROM "orders" o
       CROSS JOIN LATERAL jsonb_array_elements(o."items") AS item
@@ -150,32 +155,29 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     wanted.set(line.sku, (wanted.get(line.sku) ?? 0) + line.qty);
   }
 
-  for (const [sku, qty] of wanted) {
-    const catalogStock = input.stockSnapshot[sku];
-    if (catalogStock === undefined) {
-      return {
-        ok: false,
-        error: `SKU ${sku} is not in the active catalog snapshot`,
-        code: "STOCK_UNAVAILABLE",
-      };
-    }
-    const reserved = await reservedQtyForSku(input.tenantId, sku);
-    const sellable = catalogStock - reserved;
-    if (qty > sellable) {
-      return {
-        ok: false,
-        error: `Insufficient stock for ${sku}: requested ${qty}, sellable ${Math.max(0, sellable)}`,
-        code: "STOCK_UNAVAILABLE",
-      };
-    }
-  }
-
   const shippingTariff = chosen.total_tariff;
   const uniqueCode = generateUniqueCode();
   const totalAmount = subtotal + shippingTariff + uniqueCode;
   const reservationExpiresAt = new Date(Date.now() + RESERVATION_TTL_MINUTES * 60 * 1000);
 
   if (input.tenantId === "00000000-0000-0000-0000-000000000000") {
+    for (const [sku, qty] of wanted) {
+      const catalogStock = input.stockSnapshot[sku];
+      if (catalogStock === undefined) {
+        return {
+          ok: false,
+          error: `SKU ${sku} is not in the active catalog snapshot`,
+          code: "STOCK_UNAVAILABLE",
+        };
+      }
+      if (qty > catalogStock) {
+        return {
+          ok: false,
+          error: `Insufficient stock for ${sku}: requested ${qty}, sellable ${catalogStock}`,
+          code: "STOCK_UNAVAILABLE",
+        };
+      }
+    }
     const orderNumber = buildOrderNumber();
     return {
       ok: true,
@@ -193,28 +195,69 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
     };
   }
 
-  const order = await prisma.order.create({
-    data: {
-      tenant_id: input.tenantId,
-      conversation_id: input.conversationId,
-      buyer_jid: input.buyerJid,
-      buyer_name: input.buyerName,
-      order_number: buildOrderNumber(),
-      order_status: "PENDING_PAYMENT",
-      payment_status: "UNPAID",
-      items: input.lines as unknown as Prisma.InputJsonValue,
-      subtotal: new Prisma.Decimal(subtotal),
-      shipping_tariff: new Prisma.Decimal(shippingTariff),
-      unique_code: uniqueCode,
-      total_amount: new Prisma.Decimal(totalAmount),
+  return await prisma.$transaction(async (tx) => {
+    for (const [sku, qty] of wanted) {
+      const catalogStock = input.stockSnapshot[sku];
+      if (catalogStock === undefined) {
+        return {
+          ok: false,
+          error: `SKU ${sku} is not in the active catalog snapshot`,
+          code: "STOCK_UNAVAILABLE",
+        };
+      }
+
+      // Concurrency lock: serialize check-and-reserve for this tenant+SKU
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.tenantId + ":" + sku}))`;
+
+      const reserved = await reservedQtyForSku(input.tenantId, sku, tx);
+      const sellable = catalogStock - reserved;
+      if (qty > sellable) {
+        return {
+          ok: false,
+          error: `Insufficient stock for ${sku}: requested ${qty}, sellable ${Math.max(0, sellable)}`,
+          code: "STOCK_UNAVAILABLE",
+        };
+      }
+    }
+
+    const order = await tx.order.create({
+      data: {
+        tenant_id: input.tenantId,
+        conversation_id: input.conversationId,
+        buyer_jid: input.buyerJid,
+        buyer_name: input.buyerName,
+        order_number: buildOrderNumber(),
+        order_status: "PENDING_PAYMENT",
+        payment_status: "UNPAID",
+        items: input.lines as unknown as Prisma.InputJsonValue,
+        subtotal: new Prisma.Decimal(subtotal),
+        shipping_tariff: new Prisma.Decimal(shippingTariff),
+        unique_code: uniqueCode,
+        total_amount: new Prisma.Decimal(totalAmount),
+        courier: chosen.courier,
+        courier_service: chosen.service_type,
+        destination_subdistrict: input.destinationSubdistrict,
+        shipping_is_estimate: chosen.is_estimate,
+        stock_reserved: true,
+        reservation_expires_at: reservationExpiresAt,
+        stock_released: false,
+      },
+    });
+
+    return {
+      ok: true,
+      orderId: order.id,
+      orderNumber: order.order_number,
+      subtotal,
+      shippingTariff,
+      uniqueCode,
+      totalAmount,
       courier: chosen.courier,
-      courier_service: chosen.service_type,
-      destination_subdistrict: input.destinationSubdistrict,
-      shipping_is_estimate: chosen.is_estimate,
-      stock_reserved: true,
-      reservation_expires_at: reservationExpiresAt,
-      stock_released: false,
-    },
+      courierService: chosen.service_type,
+      shippingIsEstimate: chosen.is_estimate,
+      reservationExpiresAt: reservationExpiresAt.toISOString(),
+      lines: input.lines,
+    };
   });
 
   return {

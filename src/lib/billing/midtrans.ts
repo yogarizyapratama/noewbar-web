@@ -312,6 +312,8 @@ export async function fetchMidtransStatus(orderId: string): Promise<{
   transactionStatus?: string;
   fraudStatus?: string;
   grossAmount?: string;
+  paymentType?: string;
+  transactionId?: string;
   error?: string;
 }> {
   const auth = Buffer.from(`${env.MIDTRANS_SERVER_KEY}:`).toString("base64");
@@ -331,6 +333,8 @@ export async function fetchMidtransStatus(orderId: string): Promise<{
       transaction_status?: string;
       fraud_status?: string;
       gross_amount?: string;
+      payment_type?: string;
+      transaction_id?: string;
       status_message?: string;
     } | null;
 
@@ -342,6 +346,8 @@ export async function fetchMidtransStatus(orderId: string): Promise<{
       transactionStatus: json?.transaction_status,
       fraudStatus: json?.fraud_status,
       grossAmount: json?.gross_amount,
+      paymentType: json?.payment_type,
+      transactionId: json?.transaction_id,
     };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "unknown error" };
@@ -457,6 +463,186 @@ export async function reconcileSubscriptions(): Promise<{
   }
 
   return { checked: lapsed.length + pending.length, activated, grace, suspended, errors };
+}
+
+/**
+ * On-demand sync for a tenant's latest subscription or specific order.
+ * Queries Midtrans Status API directly to settle payments even when
+ * webhooks are blocked, delayed, or running in local development.
+ */
+export async function syncTenantSubscription(
+  tenantId: string,
+  targetOrderId?: string
+): Promise<{
+  synced: boolean;
+  activated: boolean;
+  orderId: string | null;
+  status: string;
+  planName?: string;
+  expiresAt?: string;
+  message: string;
+}> {
+  const whereClause = targetOrderId
+    ? { tenant_id: tenantId, midtrans_order_id: targetOrderId }
+    : { tenant_id: tenantId, midtrans_order_id: { not: null } };
+
+  const subs = await prisma.subscription.findMany({
+    where: whereClause,
+    orderBy: { created_at: "desc" },
+    take: 5,
+  });
+
+  if (!subs.length) {
+    return {
+      synced: false,
+      activated: false,
+      orderId: null,
+      status: "NOT_FOUND",
+      message: "Tidak ditemukan transaksi pembayaran untuk toko Anda.",
+    };
+  }
+
+  // Find the first pending or trial subscription, or fallback to the latest
+  const candidate =
+    subs.find((s) => s.status === "TRIAL" || s.status === "GRACE_PERIOD" || s.status === "EXPIRED") ??
+    subs[0];
+
+  if (!candidate.midtrans_order_id) {
+    return {
+      synced: false,
+      activated: false,
+      orderId: null,
+      status: "NOT_FOUND",
+      message: "ID Pesanan Midtrans tidak valid.",
+    };
+  }
+
+  const orderId = candidate.midtrans_order_id;
+  const status = await fetchMidtransStatus(orderId);
+
+  if (!status.ok) {
+    // If already active in database, report active
+    if (candidate.status === "ACTIVE" && candidate.expires_at > new Date()) {
+      return {
+        synced: true,
+        activated: true,
+        orderId,
+        status: "ACTIVE",
+        planName: candidate.plan_name,
+        expiresAt: candidate.expires_at.toISOString(),
+        message: "Paket langganan Pro Anda saat ini sudah aktif.",
+      };
+    }
+    return {
+      synced: false,
+      activated: false,
+      orderId,
+      status: "GATEWAY_ERROR",
+      message: status.error ?? "Gagal menghubungi server Midtrans.",
+    };
+  }
+
+  const isSettled =
+    status.transactionStatus === "settlement" ||
+    (status.transactionStatus === "capture" && status.fraudStatus === "accept");
+
+  if (isSettled) {
+    const paidAmount = Number(status.grossAmount);
+    const expectedAmount = Number(candidate.amount);
+
+    if (
+      status.grossAmount !== undefined &&
+      Number.isFinite(paidAmount) &&
+      paidAmount !== expectedAmount
+    ) {
+      return {
+        synced: false,
+        activated: false,
+        orderId,
+        status: "AMOUNT_MISMATCH",
+        message: `Jumlah pembayaran (${status.grossAmount}) tidak sesuai dengan tagihan (${expectedAmount}).`,
+      };
+    }
+
+    const now = new Date();
+    const baseTime =
+      candidate.status === "ACTIVE" && candidate.expires_at > now
+        ? candidate.expires_at.getTime()
+        : now.getTime();
+    const addedDays = candidate.plan_name === "PRO_ANNUAL" ? 365 : 30;
+    const newExpiresAt = new Date(baseTime + addedDays * 86_400_000);
+
+    await prisma.$transaction([
+      prisma.subscription.update({
+        where: { id: candidate.id },
+        data: {
+          status: "ACTIVE",
+          payment_type: status.paymentType ?? "midtrans_verified",
+          midtrans_transaction_id: status.transactionId ?? null,
+          expires_at: newExpiresAt,
+        },
+      }),
+      prisma.tenant.update({
+        where: { id: candidate.tenant_id },
+        data: { status: "ACTIVE" },
+      }),
+      prisma.webhookEvent.upsert({
+        where: { event_key: `midtrans:${orderId}:${status.transactionStatus}` },
+        update: { processed: true },
+        create: {
+          provider: "MIDTRANS",
+          event_key: `midtrans:${orderId}:${status.transactionStatus}`,
+          event_type: status.transactionStatus ?? "settlement",
+          payload: status as unknown as Prisma.InputJsonValue,
+          processed: true,
+        },
+      }),
+    ]);
+
+    return {
+      synced: true,
+      activated: true,
+      orderId,
+      status: "ACTIVE",
+      planName: candidate.plan_name,
+      expiresAt: newExpiresAt.toISOString(),
+      message: "Pembayaran berhasil diverifikasi. Paket Noewbar Pro Anda kini aktif!",
+    };
+  }
+
+  if (status.transactionStatus === "pending") {
+    return {
+      synced: true,
+      activated: false,
+      orderId,
+      status: "PENDING",
+      message: "Pesanan menunggu penyelesaian pembayaran di Midtrans.",
+    };
+  }
+
+  if (status.transactionStatus === "expire" || status.transactionStatus === "cancel") {
+    await prisma.subscription.update({
+      where: { id: candidate.id },
+      data: { status: "EXPIRED" },
+    });
+    return {
+      synced: true,
+      activated: false,
+      orderId,
+      status: "EXPIRED",
+      message: "Transaksi pembayaran telah kedaluwarsa atau dibatalkan.",
+    };
+  }
+
+  return {
+    synced: true,
+    activated: candidate.status === "ACTIVE",
+    orderId,
+    status: status.transactionStatus ?? candidate.status,
+    planName: candidate.plan_name,
+    expiresAt: candidate.expires_at.toISOString(),
+    message: `Status transaksi saat ini: ${status.transactionStatus ?? candidate.status}.`,
+  };
 }
 
 /** Subscription snapshot for the dashboard billing card. */

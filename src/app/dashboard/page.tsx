@@ -317,8 +317,8 @@ export default function DashboardPage() {
     if (!health?.subscription) return;
     const sub = health.subscription;
     if (sub.is_expired) {
-      // Lock all other tabs
-      if (tab !== "billing") setTab("billing");
+      // Lock all other feature tabs except billing and helpdesk
+      if (tab !== "billing" && tab !== "helpdesk") setTab("billing");
       if (!expiryDismissed) setShowExpiryModal(true);
     } else if (sub.is_expiring_soon && !expiryDismissed) {
       setShowExpiryModal(true);
@@ -447,6 +447,39 @@ export default function DashboardPage() {
     );
   }
 
+  const handleSyncBilling = useCallback(async (): Promise<{ ok: boolean; message: string; activated?: boolean }> => {
+    try {
+      const res = await fetch("/api/billing/sync", { method: "POST" });
+      const json = await res.json();
+      if (json.ok && json.activated) {
+        await loadHealth();
+        await loadBilling();
+        setLive("billing");
+        return { ok: true, message: json.message ?? "Pembayaran berhasil diverifikasi. Paket Pro Anda aktif!", activated: true };
+      } else if (json.ok) {
+        await loadBilling();
+        return { ok: true, message: json.message ?? "Status pembayaran diperbarui.", activated: false };
+      } else {
+        return { ok: false, message: json.error ?? "Gagal memeriksa status pembayaran." };
+      }
+    } catch {
+      return { ok: false, message: "Koneksi ke server terputus saat sinkronisasi." };
+    }
+  }, [loadHealth, loadBilling]);
+
+  // Handle return from Midtrans finish URL (/dashboard?billing=finish)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("billing") === "finish") {
+      window.history.replaceState({}, "", window.location.pathname);
+      setTab("billing");
+      setExpiryDismissed(true);
+      setShowExpiryModal(false);
+      handleSyncBilling();
+    }
+  }, [handleSyncBilling]);
+
   /* ---------------------------------------------------------- render gates */
 
   const intent = useMemo(() => {
@@ -508,7 +541,18 @@ export default function DashboardPage() {
           aria-modal="true"
           aria-labelledby="expiry-modal-title"
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-overlay border border-ink-200">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-overlay border border-ink-200">
+            <button
+              type="button"
+              aria-label="Tutup"
+              onClick={() => {
+                setShowExpiryModal(false);
+                setExpiryDismissed(true);
+              }}
+              className="absolute top-4 right-4 text-ink-400 hover:text-ink-700 p-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
             <div
               className={cn(
                 "mb-4 flex h-12 w-12 items-center justify-center rounded-xl border",
@@ -523,7 +567,7 @@ export default function DashboardPage() {
                 <AlertTriangle className="h-6 w-6 text-warn" aria-hidden="true" />
               )}
             </div>
-            <h2 id="expiry-modal-title" className="mb-2 text-lg font-bold text-ink-900">
+            <h2 id="expiry-modal-title" className="mb-2 text-lg font-bold text-ink-900 pr-8">
               {isExpired
                 ? isTrial
                   ? "Masa Uji Coba Gratis Berakhir"
@@ -541,29 +585,39 @@ export default function DashboardPage() {
                   ? `Masa uji coba toko Anda tersisa ${daysLeft} hari lagi. Pilih paket Pro sekarang agar interaksi pelanggan tidak terputus.`
                   : `Langganan Anda berakhir dalam ${daysLeft} hari. Perbarui sekarang agar layanan bot tidak terganggu.`}
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-2.5 sm:flex-row">
               <Button
                 variant="primary"
                 className="flex-1"
                 onClick={() => {
                   setShowExpiryModal(false);
+                  setExpiryDismissed(true);
                   setTab("billing");
                   loadBilling();
                 }}
               >
                 {isExpired ? "Aktifkan Sekarang" : "Upgrade Paket"}
               </Button>
-              {!isExpired && (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setShowExpiryModal(false);
-                    setExpiryDismissed(true);
-                  }}
-                >
-                  Nanti
-                </Button>
-              )}
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  setShowExpiryModal(false);
+                  setExpiryDismissed(true);
+                  setTab("billing");
+                  await handleSyncBilling();
+                }}
+              >
+                Cek Pembayaran
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowExpiryModal(false);
+                  setExpiryDismissed(true);
+                }}
+              >
+                Tutup
+              </Button>
             </div>
           </div>
         </div>
@@ -818,6 +872,7 @@ export default function DashboardPage() {
           hasError={billingError}
           onCheckout={checkout}
           onRefresh={loadBilling}
+          onSync={handleSyncBilling}
         />
       )}
 
