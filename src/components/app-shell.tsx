@@ -145,7 +145,7 @@ export function AppShell<T extends string>({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex shrink-0 transform flex-col border-r border-slate-800/90 bg-[#0B0F19] transition-[transform,width] duration-200 w-72 lg:w-auto lg:static lg:translate-x-0 shadow-xl lg:shadow-none",
+          "fixed inset-y-0 left-0 z-40 flex shrink-0 transform flex-col border-r border-slate-800/90 bg-[#0B0F19] transition-[transform,width] duration-200 w-72 lg:w-auto lg:sticky lg:top-0 lg:h-screen lg:shrink-0 lg:translate-x-0 shadow-xl lg:shadow-none",
           collapsed ? "lg:w-[68px]" : "lg:w-[256px]",
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         )}

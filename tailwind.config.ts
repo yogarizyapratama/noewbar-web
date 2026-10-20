@@ -85,6 +85,8 @@ const config: Config = {
         xl: "18px",
       },
       boxShadow: {
+        "2xs": "0 1px 2px 0 rgba(15, 23, 42, 0.03)",
+        xs: "0 1px 3px 0 rgba(15, 23, 42, 0.05)",
         // Three levels, each with exactly one job.
         flat: "0 1px 2px 0 rgba(15, 23, 42, 0.04)",
         raised: "0 4px 12px -2px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.04)",
