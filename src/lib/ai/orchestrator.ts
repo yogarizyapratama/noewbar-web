@@ -522,6 +522,15 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
   (input.ctx.catalog ?? []).forEach((item) => {
     if (item.price > 0) catalogAndHistoryPrices.push(item.price);
   });
+  if (input.ctx.freeShipping?.minAmount && input.ctx.freeShipping.minAmount > 0) {
+    catalogAndHistoryPrices.push(input.ctx.freeShipping.minAmount);
+  }
+  if (input.ctx.shippingSchedule?.free_shipping_min_amount && input.ctx.shippingSchedule.free_shipping_min_amount > 0) {
+    catalogAndHistoryPrices.push(input.ctx.shippingSchedule.free_shipping_min_amount);
+  }
+  (input.ctx.voucherRules ?? []).forEach((v) => {
+    if (v.discount_amount && v.discount_amount > 0) catalogAndHistoryPrices.push(v.discount_amount);
+  });
 
   const unbacked = findUnbackedPrices(replyText, toolOutcomes, catalogAndHistoryPrices);
   if (unbacked.length > 0) {

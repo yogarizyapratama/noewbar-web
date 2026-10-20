@@ -428,6 +428,54 @@ export async function runAIEngineSimulationTests(): Promise<{ total: number; pas
     assert.ok(mentionsBCA || mentionsTotal, "AI harus menyajikan total pembayaran atau informasi rekening resmi toko");
   });
 
+  await test("Skenario 10.5: Real Field Case - Bahasa Slang & Singkatan WhatsApp ('P min wrna sage ready ga? tb 160 bb 48 cocok sizenya apa yaa')", async () => {
+    const result = await runAgent({
+      businessName: "NOEWBAR APPAREL & GEAR",
+      incomingText: "P min wrna sage ready ga? tb 160 bb 48 cocok sizenya apa yaa",
+      history: [],
+      ctx,
+      catalogSource: "sheet",
+    });
+
+    assert.ok(result.replyText);
+    const textLower = result.replyText.toLowerCase();
+    const mentionsSage = textLower.includes("sage") || textLower.includes("kaos");
+    const mentionsSize = textLower.includes("size") || textLower.includes("ukuran") || textLower.includes("s") || textLower.includes("l");
+    assert.ok(mentionsSage, "AI wajib memahami pertanyaan varian warna sage");
+    assert.ok(mentionsSize, "AI wajib memberikan panduan rekomendasi ukuran");
+  });
+
+  await test("Skenario 10.6: Real Field Case - Pertanyaan COD ('Bisa bayar COD pas kurir nyampe ga min?')", async () => {
+    const result = await runAgent({
+      businessName: "NOEWBAR APPAREL & GEAR",
+      incomingText: "Bisa bayar COD pas kurir nyampe ga min?",
+      history: [],
+      ctx,
+      catalogSource: "sheet",
+    });
+
+    assert.ok(result.replyText);
+    const textLower = result.replyText.toLowerCase();
+    const handlesCod = textLower.includes("cod") || textLower.includes("transfer") || textLower.includes("qris") || textLower.includes("belum");
+    assert.ok(handlesCod, "AI wajib menjelaskan kebijakan pembayaran transfer/QRIS toko terhadap pertanyaan COD");
+  });
+
+  await test("Skenario 10.7: Real Field Case - Pembelian Bundling 2 Pcs & Otomatis Gratis Ongkir ke Gambir Jakarta Pusat", async () => {
+    const result = await runAgent({
+      businessName: "NOEWBAR APPAREL & GEAR",
+      incomingText: "Kak saya mau order 2 pcs hoodie hitam size L kirim ke Gambir Jakarta Pusat. Totalnya jadi berapa?",
+      history: [],
+      ctx,
+      catalogSource: "sheet",
+    });
+
+    assert.ok(result.replyText);
+    assert.strictEqual(result.degraded, false, "Kalkulasi bundling dan gratis ongkir wajib lolos tanpa degraded");
+    const textLower = result.replyText.toLowerCase();
+    const mentionsDiscountOrFree = textLower.includes("gratis") || textLower.includes("diskon") || textLower.includes("hemat") || textLower.includes("370.500") || textLower.includes("370500");
+    assert.ok(mentionsDiscountOrFree, "AI wajib mengaplikasikan diskon bundling 5% dan/atau Gratis Ongkir");
+  });
+
   return { total: passed + failed, passed, failed };
 }
 
