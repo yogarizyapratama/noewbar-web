@@ -13,6 +13,15 @@ import {
 } from "../../src/lib/ai/orchestrator";
 import { executeTool } from "../../src/lib/ai/micro-tools";
 import type { ProductRow, ToolContext, ToolExecutionResult } from "../../src/lib/ai/types";
+import { transcribeVoiceNote } from "../../src/lib/ai/whisper";
+import { analyzeProofMedia } from "../../src/lib/ai/vision-ocr";
+import { analyzeProductInquiryMedia } from "../../src/lib/ai/vision-product";
+import { createOrder } from "../../src/lib/orders/orders";
+import {
+  assertPaymentTransition,
+  assertOrderTransition,
+  assertFulfilmentAllowed,
+} from "../../src/lib/orders/state";
 
 /**
  * ============================================================================
@@ -474,6 +483,131 @@ export async function runAIEngineSimulationTests(): Promise<{ total: number; pas
     const textLower = result.replyText.toLowerCase();
     const mentionsDiscountOrFree = textLower.includes("gratis") || textLower.includes("diskon") || textLower.includes("hemat") || textLower.includes("370.500") || textLower.includes("370500");
     assert.ok(mentionsDiscountOrFree, "AI wajib mengaplikasikan diskon bundling 5% dan/atau Gratis Ongkir");
+  });
+
+  console.log("\n=== BAGIAN 3: SIMULASI MULTIMODAL (GAMBAR & VOICE NOTE) & ALUR PEMBAYARAN ===");
+
+  // Skenario 11: Voice Note (Audio WhatsApp) Ingestion & Conversational Response
+  await test("Skenario 11.1: Voice Note - Validasi proteksi error audio bytes kosong", async () => {
+    const res = await transcribeVoiceNote({ bytes: new Uint8Array(0) });
+    assert.strictEqual(res.ok, false);
+    assert.strictEqual(res.error, "Audio bytes empty");
+  });
+
+  await test("Skenario 11.2: Voice Note - Buyer mengirim pesan suara (transkripsi audio WhatsApp) -> AI merespons secara akurat", async () => {
+    // Simulasi hasil transkripsi audio voice note pembeli WhatsApp
+    const transcribedAudioText = "Halo min, mau nanya dong kaos oversize yang warna sage green masih ada ga, trus kalau kirim ke Bandung kena ongkir berapa ya";
+    const result = await runAgent({
+      businessName: "NOEWBAR APPAREL & GEAR",
+      incomingText: transcribedAudioText,
+      history: [],
+      ctx,
+      catalogSource: "sheet",
+    });
+
+    assert.ok(result.replyText);
+    assert.strictEqual(result.degraded, false);
+    const textLower = result.replyText.toLowerCase();
+    assert.ok(textLower.includes("sage") || textLower.includes("kaos"), "AI wajib merespons produk kaos sage");
+    assert.ok(textLower.includes("ongkir") || textLower.includes("bandung") || textLower.includes("rp"), "AI wajib menyajikan info ongkir/pengiriman ke Bandung");
+  });
+
+  // Skenario 12: Inbound Foto Produk dari Pembeli (AI Vision Product Inquiry)
+  await test("Skenario 12.1: Vision Product - Analisis media non-produk mengembalikan isProduct: false secara jujur", async () => {
+    const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const res = await analyzeProductInquiryMedia(tinyPng);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.isProduct, false);
+    assert.strictEqual(res.productType, null);
+  });
+
+  await test("Skenario 12.2: Vision Product - Buyer kirim foto produk dengan visual context -> AI mencari katalog & menyajikan stok", async () => {
+    // Skenario ketika webhook mendeteksi foto produk pembeli dan menyuntikkan visual context
+    const inboundWithImage = "produk kaya gini ada ga kak?\n[Konteks Gambar Produk dari Pembeli: Kaos polos oversize warna hitam katun combed (Kata kunci pencarian katalog yang disarankan: \"kaos oversize hitam\")]";
+    const result = await runAgent({
+      businessName: "NOEWBAR APPAREL & GEAR",
+      incomingText: inboundWithImage,
+      history: [],
+      ctx,
+      catalogSource: "sheet",
+    });
+
+    assert.ok(result.replyText);
+    assert.strictEqual(result.degraded, false);
+    const textLower = result.replyText.toLowerCase();
+    assert.ok(textLower.includes("kaos") || textLower.includes("oversize") || textLower.includes("hitam"), "AI wajib mencocokkan gambar kaos hitam ke katalog");
+    assert.ok(textLower.includes("95.000") || textLower.includes("95000") || textLower.includes("ready"), "AI wajib menyajikan harga resmi dan ketersediaan stok");
+  });
+
+  // Skenario 13: Inbound Bukti Transfer (Vision OCR)
+  await test("Skenario 13.1: Vision OCR - Gambar non-bukti transfer mengembalikan null tanpa halusinasi", async () => {
+    const tinyPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const res = await analyzeProofMedia(tinyPng);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.amount, null);
+    assert.strictEqual(res.bank, null);
+    assert.strictEqual(res.confidence, 0);
+  });
+
+  // Skenario 14: Alur Pembayaran Zero-Custody, Bukti Transfer & Anti-Fraud Gate
+  await test("Skenario 14.1: Alur Pembayaran - Pembuatan invoice pesanan zero-custody dengan kode unik 3 digit", async () => {
+    const orderRes = await createOrder({
+      tenantId: ctx.tenantId,
+      conversationId: ctx.conversationId,
+      buyerJid: ctx.buyerJid,
+      buyerName: ctx.buyerName,
+      lines: [
+        {
+          sku: "TSH-OVR-BLK",
+          name: "Kaos Oversize Cotton Combed 24s",
+          variant: "Hitam (Size L)",
+          price: 95000,
+          qty: 1,
+          line_total: 95000,
+        },
+      ],
+      destinationSubdistrict: "Kebayoran Baru, Jakarta Selatan",
+      originSubdistrict: ctx.originSubdistrict,
+      courier: "JNT",
+      stockSnapshot: { "TSH-OVR-BLK": 50 },
+    });
+
+    assert.strictEqual(orderRes.ok, true);
+    if (!orderRes.ok) return;
+
+    assert.strictEqual(orderRes.subtotal, 95000);
+    assert.ok(orderRes.shippingTariff > 0);
+    assert.ok(orderRes.uniqueCode >= 100 && orderRes.uniqueCode <= 999, "Kode unik wajib 3-digit (100-999)");
+    assert.strictEqual(orderRes.totalAmount, orderRes.subtotal + orderRes.shippingTariff + orderRes.uniqueCode);
+    assert.ok(orderRes.orderNumber.startsWith("NOEW-ORDER-"));
+  });
+
+  await test("Skenario 14.2: Alur Pembayaran - State Machine: Transisi pembayaran UNPAID -> PROOF_SUBMITTED -> VERIFIED", () => {
+    // Status awal pesanan: UNPAID
+    // Pembeli upload bukti transfer -> status transisi ke PROOF_SUBMITTED
+    assert.doesNotThrow(() => assertPaymentTransition("UNPAID", "PROOF_SUBMITTED"));
+    // Owner toko memverifikasi mutasi bank -> status transisi ke VERIFIED
+    assert.doesNotThrow(() => assertPaymentTransition("PROOF_SUBMITTED", "VERIFIED"));
+
+    // State ilegal yang dilarang (misal mundur dari VERIFIED ke UNPAID)
+    assert.throws(() => assertPaymentTransition("VERIFIED", "UNPAID"), /Illegal payment transition/);
+  });
+
+  await test("Skenario 14.3: Alur Pembayaran - Anti-Fraud Gate: Pesanan TIDAK BISA diproses (PROCESSING) jika pembayaran belum VERIFIED", () => {
+    // 1. Jika payment masih UNPAID -> GAGAL masuk PROCESSING
+    assert.throws(
+      () => assertFulfilmentAllowed("PROCESSING", "UNPAID"),
+      /Order cannot enter PROCESSING before the payment is VERIFIED/
+    );
+
+    // 2. Jika payment baru PROOF_SUBMITTED (bukti upload pembeli belum dicek mutasi bank) -> GAGAL masuk PROCESSING
+    assert.throws(
+      () => assertFulfilmentAllowed("PROCESSING", "PROOF_SUBMITTED"),
+      /Order cannot enter PROCESSING before the payment is VERIFIED/
+    );
+
+    // 3. Hanya jika payment SUDAH VERIFIED oleh pemilik toko -> LOLOS masuk PROCESSING
+    assert.doesNotThrow(() => assertFulfilmentAllowed("PROCESSING", "VERIFIED"));
   });
 
   return { total: passed + failed, passed, failed };
