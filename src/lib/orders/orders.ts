@@ -259,21 +259,6 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
       lines: input.lines,
     };
   });
-
-  return {
-    ok: true,
-    orderId: order.id,
-    orderNumber: order.order_number,
-    subtotal,
-    shippingTariff,
-    uniqueCode,
-    totalAmount,
-    courier: chosen.courier,
-    courierService: chosen.service_type,
-    shippingIsEstimate: chosen.is_estimate,
-    reservationExpiresAt: reservationExpiresAt.toISOString(),
-    lines: input.lines,
-  };
 }
 
 /**
