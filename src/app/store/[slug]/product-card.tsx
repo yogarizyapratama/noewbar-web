@@ -14,10 +14,11 @@ interface ProductCardProps {
     description?: string | null;
     images?: unknown;
   };
-  waLink: (text: string) => string;
+  waNumber?: string;
+  waLink?: (text: string) => string;
 }
 
-export function ProductCard({ product, waLink }: ProductCardProps) {
+export function ProductCard({ product, waNumber, waLink }: ProductCardProps) {
   const [activeIdx, setActiveIdx] = useState(0);
 
   const price = Number(product.price);
@@ -111,9 +112,17 @@ export function ProductCard({ product, waLink }: ProductCardProps) {
 
       <div className="mt-5 pt-3 border-t border-slate-100">
         <a
-          href={waLink(
-            `Halo kak, saya mau pesan produk ${product.name} (SKU: ${product.sku}) seharga Rp ${(disc ?? price).toLocaleString("id-ID")}. Apakah masih ready?`
-          )}
+          href={
+            waLink
+              ? waLink(
+                  `Halo kak, saya mau pesan produk ${product.name} (SKU: ${product.sku}) seharga Rp ${(disc ?? price).toLocaleString("id-ID")}. Apakah masih ready?`
+                )
+              : waNumber
+              ? `https://wa.me/${waNumber}?text=${encodeURIComponent(
+                  `Halo kak, saya mau pesan produk ${product.name} (SKU: ${product.sku}) seharga Rp ${(disc ?? price).toLocaleString("id-ID")}. Apakah masih ready?`
+                )}`
+              : "#kontak-toko"
+          }
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-600 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
