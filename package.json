@@ -19,6 +19,7 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/run-all-tests.ts",
     "test:ai": "tsx tests/unit/ai-engine-simulation.test.ts",
+    "test:resilience": "tsx tests/unit/advanced-resilience.test.ts",
     "admin:hash": "tsx scripts/admin-hash.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
