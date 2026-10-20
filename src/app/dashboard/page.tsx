@@ -288,6 +288,7 @@ export default function DashboardPage() {
       const json = await res.json();
       setBilling({
         subscription: json.subscription,
+        history: json.history ?? [],
         clientKey: json.client_key,
         isProduction: json.is_production,
         plans: json.plans ?? undefined,

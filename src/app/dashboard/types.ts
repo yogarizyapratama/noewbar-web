@@ -139,6 +139,21 @@ export type BillingPlan = {
   savings?: number;
 };
 
+export type SubscriptionHistoryItem = {
+  id: string;
+  order_id: string | null;
+  transaction_id: string | null;
+  plan_name: string;
+  amount: number;
+  status: string;
+  payment_type: string | null;
+  payment_gateway: string;
+  invoice_reference: string;
+  starts_at: string;
+  expires_at: string;
+  created_at: string;
+};
+
 export type Billing = {
   subscription: {
     planName: string | null;
@@ -149,6 +164,7 @@ export type Billing = {
     midtransOrderId?: string | null;
     invoiceReference?: string | null;
   };
+  history?: SubscriptionHistoryItem[];
   clientKey?: string;
   isProduction?: boolean;
   plans?: BillingPlan[];

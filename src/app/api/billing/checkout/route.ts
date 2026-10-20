@@ -152,10 +152,40 @@ export async function GET() {
   const session = await requireTenant();
   if (!session) return fail("Unauthorized", 401);
 
-  const snapshot = await subscriptionSnapshot(session.sub);
+  const [snapshot, tenant] = await Promise.all([
+    subscriptionSnapshot(session.sub),
+    prisma.tenant.findUnique({
+      where: { id: session.sub },
+      include: {
+        subscriptions: {
+          orderBy: { created_at: "desc" },
+          take: 20,
+        },
+      },
+    }),
+  ]);
+
+  const history =
+    tenant?.subscriptions.map((s) => ({
+      id: s.id,
+      order_id: s.midtrans_order_id,
+      transaction_id: s.midtrans_transaction_id,
+      plan_name: s.plan_name,
+      amount: Number(s.amount),
+      status: s.status,
+      payment_type: s.payment_type,
+      payment_gateway: s.payment_gateway,
+      invoice_reference:
+        s.invoice_reference ??
+        `INV/${s.starts_at.getFullYear()}/${s.midtrans_order_id ?? s.id.slice(0, 8)}`,
+      starts_at: s.starts_at.toISOString(),
+      expires_at: s.expires_at.toISOString(),
+      created_at: s.created_at.toISOString(),
+    })) ?? [];
 
   return ok({
     subscription: snapshot,
+    history,
     client_key: env.MIDTRANS_CLIENT_KEY,
     is_production: env.MIDTRANS_IS_PRODUCTION,
     plans: [

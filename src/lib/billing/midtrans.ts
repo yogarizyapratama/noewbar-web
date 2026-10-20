@@ -502,10 +502,25 @@ export async function syncTenantSubscription(
     };
   }
 
-  // Find the first pending or trial subscription, or fallback to the latest
-  const candidate =
-    subs.find((s) => s.status === "TRIAL" || s.status === "GRACE_PERIOD" || s.status === "EXPIRED") ??
-    subs[0];
+  // Pick the relevant candidate:
+  // 1. If targetOrderId is specified, match it.
+  // 2. Otherwise, check the newest subscription (subs[0]).
+  const candidate = targetOrderId
+    ? (subs.find((s) => s.midtrans_order_id === targetOrderId) ?? subs[0])
+    : subs[0];
+
+  // If already verified and active in database, report active immediately
+  if (candidate.status === "ACTIVE" && candidate.expires_at > new Date()) {
+    return {
+      synced: true,
+      activated: true,
+      orderId: candidate.midtrans_order_id,
+      status: "ACTIVE",
+      planName: candidate.plan_name,
+      expiresAt: candidate.expires_at.toISOString(),
+      message: "Paket langganan Noewbar Pro Anda sudah aktif dan terverifikasi.",
+    };
+  }
 
   if (!candidate.midtrans_order_id) {
     return {
@@ -521,18 +536,6 @@ export async function syncTenantSubscription(
   const status = await fetchMidtransStatus(orderId);
 
   if (!status.ok) {
-    // If already active in database, report active
-    if (candidate.status === "ACTIVE" && candidate.expires_at > new Date()) {
-      return {
-        synced: true,
-        activated: true,
-        orderId,
-        status: "ACTIVE",
-        planName: candidate.plan_name,
-        expiresAt: candidate.expires_at.toISOString(),
-        message: "Paket langganan Pro Anda saat ini sudah aktif.",
-      };
-    }
     return {
       synced: false,
       activated: false,
