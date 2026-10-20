@@ -93,111 +93,110 @@
 
 @layer components {
   /* ---------------------------------------------------------------- buttons */
-  /* Solid rectangular, 8px radius. No pill shapes anywhere, CTAs included. */
   .btn {
-    @apply inline-flex min-h-[44px] select-none items-center justify-center gap-2 rounded-lg border
-           border-transparent px-4 text-sm font-semibold transition-all duration-150
+    @apply inline-flex min-h-[44px] select-none items-center justify-center gap-2 rounded-xl border
+           border-transparent px-4 text-sm font-semibold transition-all duration-200 ease-out
            disabled:cursor-not-allowed disabled:opacity-45;
   }
 
   .btn:not(:disabled):active {
-    transform: scale(0.985);
+    transform: scale(0.975);
   }
 
   .btn-primary {
-    @apply btn bg-ink text-white shadow-raised hover:bg-ink-800;
+    @apply btn bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-md shadow-slate-900/10 hover:shadow-lg hover:from-slate-800 hover:to-slate-700 hover:-translate-y-0.5 border border-white/10;
   }
 
   .btn-accent {
-    @apply btn bg-signal-strong text-white shadow-raised hover:bg-signal;
+    @apply btn bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20 hover:shadow-lg hover:shadow-emerald-500/30 hover:from-emerald-500 hover:to-teal-500 hover:-translate-y-0.5 border border-emerald-400/20;
   }
 
   .btn-secondary {
-    @apply btn border-ink-200 bg-white text-ink shadow-flat hover:border-ink-300 hover:bg-ink-50;
+    @apply btn border-slate-200/90 bg-white/90 backdrop-blur-sm text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 hover:-translate-y-0.5;
   }
 
   .btn-ghost {
-    @apply btn px-3 text-ink-600 hover:bg-ink-100 hover:text-ink;
+    @apply btn px-3 text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-xl;
   }
 
   .btn-danger {
-    @apply btn bg-danger text-white shadow-raised hover:bg-danger-strong;
+    @apply btn bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-600/20 hover:from-rose-500 hover:to-red-500 hover:-translate-y-0.5;
   }
 
   /* 40px floor: the previous 36px controls were the smallest tap targets
      measured in the running console. */
   .btn-sm {
-    @apply min-h-[44px] sm:min-h-[36px] px-3 text-sm rounded-md;
+    @apply min-h-[40px] sm:min-h-[36px] px-3.5 text-xs rounded-lg;
   }
 
   /* Icon-only controls. 44px hit area on touch, visual density preserved by
      the negative margin so it does not inflate the row. */
   .icon-btn {
-    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-500
-           transition-colors hover:bg-ink-100 hover:text-ink
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500
+           transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 hover:scale-105
            max-sm:-my-1 max-sm:h-11 max-sm:w-11;
   }
 
   /* ------------------------------------------------------------------ cards */
   .card {
-    @apply rounded-xl border border-ink-200 bg-white shadow-raised transition-all;
+    @apply rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300;
   }
 
   /* A card that sits inside another card: flatter, no double shadow. */
   .card-flat {
-    @apply rounded-lg border border-ink-200 bg-white;
+    @apply rounded-xl border border-slate-200/80 bg-white hover:border-slate-300 transition-colors;
   }
 
   .card-sunken {
-    @apply rounded-xl border border-ink-200 bg-ink-50/70;
+    @apply rounded-2xl border border-slate-200/70 bg-slate-50/80 backdrop-blur-sm;
   }
 
   /* The one surface allowed to genuinely float: modals, command palette. */
   .card-overlay {
-    @apply rounded-2xl border border-ink-200 bg-white shadow-overlay;
+    @apply rounded-3xl border border-slate-200/90 bg-white/95 backdrop-blur-md shadow-2xl;
   }
 
   /* ------------------------------------------------------------------ forms */
   .field {
-    @apply block w-full min-h-[44px] rounded-lg border border-ink-300 bg-white px-3.5 py-2.5 text-base text-ink
-           shadow-flat outline-none transition-colors
-           placeholder:text-ink-500
-           focus:border-signal focus:ring-2 focus:ring-signal/20
-           disabled:bg-ink-50 disabled:text-ink-500 sm:text-sm;
+    @apply block w-full min-h-[44px] rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-base text-slate-900
+           shadow-sm outline-none transition-all duration-200
+           placeholder:text-slate-400
+           focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10
+           disabled:bg-slate-50 disabled:text-slate-400 sm:text-sm;
   }
 
   .field-sm {
-    @apply py-1.5 text-sm rounded-md;
+    @apply py-1.5 text-sm rounded-lg;
   }
 
   .label {
-    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-ink-600;
+    @apply mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600;
   }
 
   .hint {
-    @apply mt-1 text-xs leading-relaxed text-ink-500;
+    @apply mt-1 text-xs leading-relaxed text-slate-500;
   }
 
   /* ----------------------------------------------------------------- badges */
   .badge {
-    @apply inline-flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-xs font-semibold
-           whitespace-nowrap;
+    @apply inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold
+           whitespace-nowrap transition-colors;
   }
 
   .badge-neutral {
-    @apply badge border-ink-200 bg-ink-50 text-ink-700;
+    @apply badge border-slate-200 bg-slate-50 text-slate-700 shadow-sm;
   }
 
   .badge-signal {
-    @apply badge border-signal/20 bg-signal-wash text-signal-strong;
+    @apply badge border-emerald-500/20 bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-500/10;
   }
 
   .badge-warn {
-    @apply badge border-warn/25 bg-warn-wash text-warn-strong;
+    @apply badge border-amber-500/25 bg-amber-50 text-amber-700 shadow-sm shadow-amber-500/10;
   }
 
   .badge-danger {
-    @apply badge border-danger/25 bg-danger-wash text-danger-strong;
+    @apply badge border-rose-500/25 bg-rose-50 text-rose-700 shadow-sm shadow-rose-500/10;
   }
 
   /* ------------------------------------------------------------------- tabs */

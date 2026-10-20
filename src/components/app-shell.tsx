@@ -31,7 +31,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { Badge, IconButton, Kbd, Portal, StatusDot, cn } from "@/components/ui";
+import { Kbd, Portal, StatusDot, cn } from "@/components/ui";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { NetworkStatus } from "@/components/network-status";
 
@@ -145,47 +145,50 @@ export function AppShell<T extends string>({
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex shrink-0 transform flex-col border-r border-ink-200 bg-white transition-[transform,width] duration-200 w-72 lg:w-auto lg:static lg:translate-x-0",
-          collapsed ? "lg:w-[68px]" : "lg:w-[248px]",
+          "fixed inset-y-0 left-0 z-40 flex shrink-0 transform flex-col border-r border-slate-800/90 bg-[#0B0F19] transition-[transform,width] duration-200 w-72 lg:w-auto lg:static lg:translate-x-0 shadow-xl lg:shadow-none",
+          collapsed ? "lg:w-[68px]" : "lg:w-[256px]",
           drawerOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* brand */}
         <div
           className={cn(
-            "flex h-14 shrink-0 items-center gap-2.5 border-b border-ink-200",
+            "flex h-16 shrink-0 items-center gap-3 border-b border-slate-800/80",
             collapsed ? "justify-center px-0" : "px-4"
           )}
         >
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink font-mono text-xs font-bold text-white shadow-raised">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 font-mono text-sm font-extrabold text-white shadow-md shadow-emerald-500/25">
             N
           </span>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate font-mono text-sm font-bold leading-tight text-ink">{brand}</p>
+              <p className="truncate font-sans text-sm font-bold tracking-tight text-white">{brand}</p>
               {brandNote && (
-                <p className="truncate text-xs leading-tight text-ink-500">{brandNote}</p>
+                <p className="truncate text-xs font-mono text-emerald-400/90">{brandNote}</p>
               )}
             </div>
           )}
-          <IconButton
-            label="Tutup menu"
-            className="lg:hidden"
+          <button
+            type="button"
+            aria-label="Tutup menu"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden"
             onClick={() => setDrawerOpen(false)}
           >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </IconButton>
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
 
         {/* nav */}
-        <nav className="flex-1 overflow-y-auto p-2" aria-label="Navigasi utama">
+        <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4" aria-label="Navigasi utama">
           {groups.map((group, gi) => (
-            <div key={group.name || `g${gi}`} className={cn(gi > 0 && "mt-4")}>
+            <div key={group.name || `g${gi}`}>
               {group.name && !collapsed && (
-                <p className="eyebrow px-3 pb-1.5 pt-1 text-ink-400">{group.name}</p>
+                <p className="px-3 pb-1.5 pt-1 text-[10px] font-extrabold uppercase tracking-widest text-slate-400/80">
+                  {group.name}
+                </p>
               )}
-              {group.name && collapsed && <div className="mx-2 mb-2 border-t border-ink-200" />}
-              <ul className="space-y-0.5">
+              {group.name && collapsed && <div className="mx-2 my-2 border-t border-slate-800/80" />}
+              <ul className="space-y-1">
                 {group.items.map((item) => {
                   const isActive = item.id === active;
                   const isDisabled = item.disabled ?? false;
@@ -198,38 +201,40 @@ export function AppShell<T extends string>({
                         aria-disabled={isDisabled || undefined}
                         title={collapsed ? item.label : isDisabled ? "Tidak tersedia: langganan tidak aktif" : undefined}
                         className={cn(
-                          "group relative flex w-full min-h-[44px] items-center gap-2.5 rounded-lg px-3 text-sm transition-all",
+                          "group relative flex w-full min-h-[42px] items-center gap-3 rounded-xl px-3 text-xs sm:text-sm font-medium transition-all duration-150",
                           collapsed && "justify-center px-0",
                           isDisabled
-                            ? "cursor-not-allowed opacity-40"
+                            ? "cursor-not-allowed opacity-30 text-slate-500"
                             : isActive
-                              ? "bg-ink-100 font-semibold text-ink shadow-flat"
-                              : "font-medium text-ink-600 hover:bg-ink-50 hover:text-ink"
+                              ? "bg-gradient-to-r from-emerald-500/20 via-emerald-500/10 to-transparent text-emerald-300 font-semibold border border-emerald-500/30 shadow-sm shadow-emerald-500/10"
+                              : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
                         )}
                       >
                         <span
                           className={cn(
-                            "shrink-0 transition-colors",
-                            isActive ? "text-ink" : "text-ink-400 group-hover:text-ink-600"
+                            "grid h-7 w-7 shrink-0 place-items-center rounded-lg transition-colors",
+                            isActive
+                              ? "bg-emerald-500/20 text-emerald-400 shadow-2xs shadow-emerald-500/30"
+                              : "text-slate-400 group-hover:text-slate-200 group-hover:bg-white/[0.04]"
                           )}
                         >
                           {item.icon}
                         </span>
                         {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>}
                         {!collapsed && typeof item.badge === "number" && item.badge > 0 && (
-                          <span className="rounded bg-warn-wash px-1.5 py-0.5 font-mono text-[10px] font-bold text-warn-strong border border-warn/20">
+                          <span className="rounded-full bg-amber-500/20 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300 border border-amber-500/30 shadow-2xs">
                             {item.badge}
                           </span>
                         )}
                         {isActive && !collapsed && (
                           <span
-                            className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-signal-strong"
+                            className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-emerald-400 shadow-xs shadow-emerald-400/50"
                             aria-hidden="true"
                           />
                         )}
                         {collapsed && typeof item.badge === "number" && item.badge > 0 && (
                           <span
-                            className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-warn"
+                            className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-[#0B0F19]"
                             aria-hidden="true"
                           />
                         )}
@@ -243,7 +248,7 @@ export function AppShell<T extends string>({
         </nav>
 
         {/* footer */}
-        <div className="shrink-0 border-t border-ink-200 p-2">
+        <div className="shrink-0 border-t border-slate-800/80 p-2.5 bg-black/20">
           {!collapsed && (
             <div className="mb-2 px-1">
               <PwaInstallPrompt variant="compact" className="w-full justify-center" />
@@ -254,7 +259,7 @@ export function AppShell<T extends string>({
             type="button"
             onClick={toggleCollapsed}
             className={cn(
-              "hidden w-full min-h-[44px] items-center gap-2 rounded px-3 text-sm font-medium text-ink-500 transition-colors hover:bg-ink-50 hover:text-ink lg:flex",
+              "hidden w-full min-h-[40px] items-center gap-2 rounded-xl px-3 text-xs font-semibold text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white lg:flex",
               collapsed && "justify-center px-0"
             )}
             aria-label={collapsed ? "Lebarkan menu" : "Kecilkan menu"}
@@ -264,34 +269,35 @@ export function AppShell<T extends string>({
             ) : (
               <>
                 <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
-                Kecilkan
+                <span>Kecilkan Menu</span>
               </>
             )}
           </button>
         </div>
       </aside>
 
-      <div className="flex min-h-screen flex-col lg:min-w-0 lg:flex-1">
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-ink-200 bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
+      <div className="flex min-h-screen flex-col lg:min-w-0 lg:flex-1 bg-gradient-to-br from-slate-50 via-slate-50 to-emerald-50/20">
+        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/80 px-4 backdrop-blur-md sm:px-6 lg:px-8 shadow-2xs">
           <div className="flex flex-1 items-center gap-3 min-w-0">
-            <IconButton
-              label="Buka menu"
-              className="lg:hidden"
+            <button
+              type="button"
+              aria-label="Buka menu"
+              className="lg:hidden rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
               onClick={() => setDrawerOpen(true)}
             >
-              <Menu className="h-4 w-4" aria-hidden="true" />
-            </IconButton>
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            </button>
 
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="flex min-h-[40px] w-full max-w-xs items-center gap-2 rounded-lg border border-ink-200 bg-ink-50 px-3 text-left text-sm text-ink-400 transition-colors hover:border-ink-300 hover:bg-white"
+              className="flex min-h-[40px] w-full max-w-sm items-center gap-2.5 rounded-xl border border-slate-200/90 bg-slate-50/80 px-3.5 text-left text-xs sm:text-sm text-slate-500 transition-all duration-200 hover:border-slate-300 hover:bg-white hover:shadow-xs"
             >
-              <Search className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="flex-1 truncate">Cari atau jalankan perintah</span>
-              <span className="hidden shrink-0 items-center gap-0.5 sm:flex">
-                <Kbd>⌘</Kbd>
-                <Kbd>K</Kbd>
+              <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+              <span className="flex-1 truncate font-medium">Cari atau jalankan perintah...</span>
+              <span className="hidden shrink-0 items-center gap-1 sm:flex font-mono text-[10px] font-bold text-slate-400 bg-white border border-slate-200/80 px-1.5 py-0.5 rounded-md shadow-2xs">
+                <span>⌘</span>
+                <span>K</span>
               </span>
             </button>
           </div>
@@ -300,10 +306,17 @@ export function AppShell<T extends string>({
             <PwaInstallPrompt variant="compact" className="hidden md:flex" />
             {headerActions}
             {status && (
-              <Badge tone={status.ok ? "signal" : "danger"} className="hidden sm:inline-flex">
+              <span
+                className={cn(
+                  "hidden sm:inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border shadow-2xs",
+                  status.ok
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200/70 shadow-emerald-500/10"
+                    : "bg-rose-50 text-rose-700 border-rose-200/70 shadow-rose-500/10"
+                )}
+              >
                 <StatusDot ok={status.ok} />
-                {status.label}
-              </Badge>
+                <span>{status.label}</span>
+              </span>
             )}
           </div>
         </header>

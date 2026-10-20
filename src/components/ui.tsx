@@ -199,17 +199,25 @@ export function Badge({
   );
 }
 
-/** A green dot means a probe confirmed the state. Never decorative (R-38). */
+/** A green dot means a probe confirmed the state. Pulsates with modern radar ping. */
 export function StatusDot({ ok, pulse = true }: { ok: boolean; pulse?: boolean }) {
   return (
-    <span
-      className={cn(
-        "inline-block h-2 w-2 shrink-0 rounded-full",
-        ok ? "bg-signal" : "bg-danger",
-        ok && pulse && "animate-dot-pulse"
+    <span className="relative flex h-2 w-2 shrink-0 items-center justify-center">
+      {pulse && (
+        <span
+          className={cn(
+            "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+            ok ? "bg-emerald-400" : "bg-rose-400"
+          )}
+        />
       )}
-      aria-hidden="true"
-    />
+      <span
+        className={cn(
+          "relative inline-flex h-2 w-2 rounded-full",
+          ok ? "bg-emerald-500 shadow-2xs shadow-emerald-500/50" : "bg-rose-500 shadow-2xs shadow-rose-500/50"
+        )}
+      />
+    </span>
   );
 }
 
@@ -230,20 +238,24 @@ export function Stat({
 }) {
   const valueTone =
     tone === "signal"
-      ? "text-signal-strong"
+      ? "text-emerald-600"
       : tone === "danger"
-        ? "text-danger"
+        ? "text-rose-600"
         : tone === "warn"
-          ? "text-warn"
-          : "text-ink";
+          ? "text-amber-600"
+          : "text-slate-900";
   return (
-    <Card className="p-4">
+    <Card className="p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-2xs font-semibold uppercase tracking-wide text-ink-500">{label}</p>
-        {icon && <span className="text-ink-400">{icon}</span>}
+        <p className="text-2xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
+        {icon && (
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100/80 text-slate-600">
+            {icon}
+          </span>
+        )}
       </div>
-      <p className={cn("mt-2 font-mono text-xl font-bold tnum", valueTone)}>{value}</p>
-      {hint && <p className="mt-1 text-xs leading-relaxed text-ink-500">{hint}</p>}
+      <p className={cn("mt-2 font-mono text-2xl font-extrabold tracking-tight tnum", valueTone)}>{value}</p>
+      {hint && <p className="mt-1 text-xs leading-relaxed text-slate-500">{hint}</p>}
     </Card>
   );
 }
@@ -264,20 +276,22 @@ export function PageHeader({
   icon?: ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4">
+    <header className="flex flex-wrap items-end justify-between gap-4 pb-2 border-b border-slate-200/60">
       <div className="min-w-0">
         {(eyebrow || icon) && (
-          <div className="mb-2 flex items-center gap-2 text-ink-500">
-            {icon}
-            {eyebrow && <span className="eyebrow">{eyebrow}</span>}
+          <div className="mb-2 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50/90 px-3 py-0.5 text-2xs font-bold uppercase tracking-wider text-emerald-700 border border-emerald-200/60 shadow-2xs">
+              {icon && <span className="text-emerald-600">{icon}</span>}
+              {eyebrow}
+            </span>
           </div>
         )}
-        <h1 className="text-2xl font-bold leading-tight text-ink sm:text-[1.75rem]">{title}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">{title}</h1>
         {description && (
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-500">{description}</p>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-500">{description}</p>
         )}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2.5">{actions}</div>}
     </header>
   );
 }
