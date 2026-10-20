@@ -21,6 +21,7 @@
     "test:ai": "tsx tests/unit/ai-engine-simulation.test.ts",
     "test:resilience": "tsx tests/unit/advanced-resilience.test.ts",
     "test:fe": "tsx tests/e2e/frontend-all-features.test.ts",
+    "test:neg": "tsx tests/e2e/negative-scenarios.test.ts",
     "admin:hash": "tsx scripts/admin-hash.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
