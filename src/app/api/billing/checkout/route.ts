@@ -126,6 +126,7 @@ export async function POST(req: NextRequest) {
       plan_name: order.planName,
       amount: order.amount,
       client_key: order.clientKey,
+      is_production: env.MIDTRANS_IS_PRODUCTION,
       snap_token: json.token,
       redirect_url: json.redirect_url ?? `${pageBase}/${json.token}`,
     });
@@ -155,6 +156,8 @@ export async function GET() {
 
   return ok({
     subscription: snapshot,
+    client_key: env.MIDTRANS_CLIENT_KEY,
+    is_production: env.MIDTRANS_IS_PRODUCTION,
     plans: [
       {
         id: PRICING_PLANS.PRO_MONTHLY.id,

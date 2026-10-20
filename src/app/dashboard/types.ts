@@ -146,6 +146,10 @@ export type Billing = {
     expiresAt: string | null;
     daysRemaining: number | null;
     amount: number | null;
+    midtransOrderId?: string | null;
+    invoiceReference?: string | null;
   };
+  clientKey?: string;
+  isProduction?: boolean;
   plans?: BillingPlan[];
 };

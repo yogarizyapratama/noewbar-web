@@ -44,6 +44,7 @@ import { PanelBilling } from "./panel-billing";
 import { PanelHelpdesk } from "./panel-helpdesk";
 import { NotificationBell } from "@/components/notification-bell";
 import { SupportLiveChatWidget } from "@/components/support-live-chat-widget";
+import { triggerSnapPopup, loadSnapScript } from "@/lib/billing/snap-client";
 import type { Billing, ConversationRow, Health, MessageRow, OrderRow } from "./types";
 
 type TabId =
@@ -285,7 +286,15 @@ export default function DashboardPage() {
         return;
       }
       const json = await res.json();
-      setBilling({ subscription: json.subscription, plans: json.plans ?? undefined });
+      setBilling({
+        subscription: json.subscription,
+        clientKey: json.client_key,
+        isProduction: json.is_production,
+        plans: json.plans ?? undefined,
+      });
+      if (json.client_key) {
+        loadSnapScript(json.client_key, json.is_production).catch(() => {});
+      }
       setBillingError(false);
     } catch {
       setBillingError(true);
@@ -438,8 +447,27 @@ export default function DashboardPage() {
       const snapUrl =
         json.redirect_url ??
         `https://app.sandbox.midtrans.com/snap/v2/vtweb/${json.snap_token}`;
-      window.open(snapUrl, "_blank", "noopener");
-      return `Pesanan ${json.order_id} dibuat. Lanjutkan pembayaran di tab baru, lalu kembali ke sini.`;
+
+      await triggerSnapPopup({
+        snapToken: json.snap_token,
+        clientKey: json.client_key,
+        isProduction: json.is_production,
+        redirectUrl: snapUrl,
+        onSuccess: async () => {
+          await handleSyncBilling();
+        },
+        onPending: async () => {
+          await handleSyncBilling();
+        },
+        onError: () => {
+          loadBilling();
+        },
+        onClose: () => {
+          handleSyncBilling();
+        },
+      });
+
+      return `Modal pembayaran Midtrans telah dibuka. Silakan selesaikan transaksi pada jendela popup di atas.`;
     }
 
     return (
