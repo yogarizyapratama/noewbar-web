@@ -16,8 +16,42 @@ import {
   User,
   ExternalLink,
   ChevronRight,
+  Headphones,
+  CheckCheck,
 } from "lucide-react";
 import { Badge, Button, StatusDot, cn } from "@/components/ui";
+
+export interface LiveChatSessionSummary {
+  id: string;
+  status: string;
+  tenant: {
+    id: string;
+    business_name: string;
+    email: string;
+    owner_name: string;
+    owner_whatsapp: string;
+    status: string;
+  };
+  unread_count: number;
+  last_message_at: string;
+  last_message: {
+    id: string;
+    sender_type: string;
+    sender_name: string;
+    message: string;
+    created_at: string;
+  } | null;
+}
+
+export interface LiveChatMessageItem {
+  id: string;
+  sender_type: "TENANT" | "SUPERADMIN" | "SYSTEM";
+  sender_name: string;
+  message: string;
+  read_by_superadmin: boolean;
+  read_by_tenant: boolean;
+  created_at: string;
+}
 
 export interface SuperadminTicket {
   id: string;
@@ -79,11 +113,88 @@ export function SectionHelpdesk() {
   const [activeTicket, setActiveTicket] = useState<SuperadminTicketDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  // Mode tab: Tickets vs Live Chat
+  const [activeTab, setActiveTab] = useState<"tickets" | "livechat">("tickets");
+
+  // Live Chat state
+  const [liveSessions, setLiveSessions] = useState<LiveChatSessionSummary[]>([]);
+  const [liveTotalUnread, setLiveTotalUnread] = useState(0);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<{
+    session: LiveChatSessionSummary;
+    messages: LiveChatMessageItem[];
+  } | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [liveReplyText, setLiveReplyText] = useState("");
+  const [liveSending, setLiveSending] = useState(false);
+
   // Reply state
   const [replyText, setReplyText] = useState("");
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [sending, setSending] = useState(false);
   const [actionMsg, setActionMsg] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+
+  async function loadLiveSessions(silent = false) {
+    if (!silent) setLiveLoading(true);
+    try {
+      const res = await fetch("/api/superadmin/livechat");
+      const json = await res.json();
+      if (json.ok) {
+        setLiveSessions(json.sessions || []);
+        setLiveTotalUnread(json.total_unread || 0);
+        if (!selectedSessionId && json.sessions && json.sessions.length > 0) {
+          setSelectedSessionId(json.sessions[0].id);
+        }
+      }
+    } catch {
+      // Ignore
+    } finally {
+      if (!silent) setLiveLoading(false);
+    }
+  }
+
+  async function loadSessionDetail(sessionId: string) {
+    setSessionLoading(true);
+    try {
+      const res = await fetch(`/api/superadmin/livechat/${sessionId}`);
+      const json = await res.json();
+      if (json.ok) {
+        setActiveSession({ session: json.session, messages: json.messages || [] });
+        loadLiveSessions(true);
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setSessionLoading(false);
+    }
+  }
+
+  async function handleSendLiveReply(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!selectedSessionId || !liveReplyText.trim() || liveSending) return;
+    setLiveSending(true);
+    const text = liveReplyText.trim();
+    setLiveReplyText("");
+    try {
+      const res = await fetch(`/api/superadmin/livechat/${selectedSessionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      const json = await res.json();
+      if (json.ok && json.message) {
+        setActiveSession((prev) =>
+          prev ? { ...prev, messages: [...prev.messages, json.message] } : null
+        );
+        loadLiveSessions(true);
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setLiveSending(false);
+    }
+  }
 
   async function loadTickets() {
     setLoading(true);
@@ -132,6 +243,45 @@ export function SectionHelpdesk() {
       setActiveTicket(null);
     }
   }, [selectedTicketId]);
+
+  useEffect(() => {
+    loadLiveSessions(true);
+
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource("/api/realtime?scope=admin");
+      eventSource.onmessage = (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.type === "support_chat" || payload.type === "ticket" || payload.type === "reload") {
+            loadLiveSessions(true);
+            if (selectedSessionId) {
+              loadSessionDetail(selectedSessionId);
+            }
+            if (activeTab === "tickets") {
+              loadTickets();
+            }
+          }
+        } catch {
+          // Ignore
+        }
+      };
+    } catch {
+      // Fallback
+    }
+
+    return () => {
+      eventSource?.close();
+    };
+  }, [selectedSessionId, activeTab]);
+
+  useEffect(() => {
+    if (selectedSessionId) {
+      loadSessionDetail(selectedSessionId);
+    } else {
+      setActiveSession(null);
+    }
+  }, [selectedSessionId]);
 
   async function handleSendReply(e: React.FormEvent) {
     e.preventDefault();
@@ -236,7 +386,67 @@ export function SectionHelpdesk() {
 
   return (
     <div className="space-y-5">
-      {/* Top Overview KPI */}
+      {/* Top Header Mode Switcher: Tiket vs Live Chat */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-200 pb-3.5">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("tickets")}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all min-h-[40px]",
+              activeTab === "tickets"
+                ? "bg-ink-900 text-white shadow-sm"
+                : "bg-surface-sunken text-ink-600 hover:text-ink-900 hover:bg-ink-100"
+            )}
+          >
+            <LifeBuoy className="h-4 w-4" />
+            <span>Tiket Bantuan & Antrean SLA</span>
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-ink-800 text-ink-200">
+              {stats.open + stats.in_progress}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("livechat")}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all min-h-[40px] relative",
+              activeTab === "livechat"
+                ? "bg-emerald-700 text-white shadow-sm"
+                : "bg-surface-sunken text-ink-600 hover:text-ink-900 hover:bg-ink-100"
+            )}
+          >
+            <Headphones className="h-4 w-4" />
+            <span>Live Chat Support (Real-Time)</span>
+            {liveTotalUnread > 0 ? (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-400 text-slate-950 animate-pulse">
+                {liveTotalUnread} Baru
+              </span>
+            ) : (
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            )}
+          </button>
+        </div>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            if (activeTab === "tickets") loadTickets();
+            else loadLiveSessions();
+          }}
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", (loading || liveLoading) && "animate-spin")} />
+          Segarkan
+        </Button>
+      </div>
+
+      {activeTab === "tickets" && (
+        <>
+          {/* Top Overview KPI */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
         <div className="rounded-xl border border-ink-200 bg-white p-4 shadow-sm">
           <span className="text-2xs font-semibold uppercase tracking-wider text-ink-500">Total Tiket</span>
@@ -609,6 +819,237 @@ export function SectionHelpdesk() {
           )}
         </div>
       </div>
+      </>
+      )}
+
+      {/* Live Chat Support Workspace */}
+      {activeTab === "livechat" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[620px]">
+          {/* Left Column: Sesi Chat Toko */}
+          <div className="lg:col-span-4 rounded-2xl border border-ink-200 bg-white flex flex-col shadow-sm overflow-hidden h-[620px]">
+            <div className="p-3.5 border-b border-ink-100 bg-surface-sunken/40 flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-bold text-ink-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Headphones className="h-3.5 w-3.5 text-emerald-600" />
+                  Sesi Chat Toko
+                </h3>
+                <p className="text-[11px] text-ink-500">
+                  {liveSessions.length} toko terhubung
+                </p>
+              </div>
+              {liveTotalUnread > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                  {liveTotalUnread} belum dibaca
+                </span>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto divide-y divide-ink-100">
+              {liveLoading && liveSessions.length === 0 ? (
+                <div className="p-8 text-center text-xs text-ink-400">
+                  Memuat sesi obrolan...
+                </div>
+              ) : liveSessions.length === 0 ? (
+                <div className="p-8 text-center text-xs text-ink-400">
+                  Belum ada sesi live chat dari merchant.
+                </div>
+              ) : (
+                liveSessions.map((s) => {
+                  const isSelected = selectedSessionId === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setSelectedSessionId(s.id)}
+                      className={cn(
+                        "w-full text-left p-3.5 transition-colors flex items-start gap-3",
+                        isSelected
+                          ? "bg-emerald-50/70 border-l-4 border-l-emerald-600"
+                          : "hover:bg-surface-sunken"
+                      )}
+                    >
+                      <div className="h-9 w-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        {s.tenant.business_name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-semibold text-xs text-ink-900 truncate">
+                            {s.tenant.business_name}
+                          </span>
+                          <span className="text-[10px] text-ink-400 whitespace-nowrap">
+                            {new Date(s.last_message_at).toLocaleTimeString("id-ID", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-ink-500 truncate mt-0.5">
+                          {s.last_message?.message || "Sesi dimulai..."}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <span className="text-[10px] text-ink-400 truncate">
+                            {s.tenant.owner_name}
+                          </span>
+                          {s.unread_count > 0 && (
+                            <span className="ml-auto inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold bg-amber-500 text-slate-950 rounded-full shrink-0">
+                              {s.unread_count} baru
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Chat Stream & Reply Box */}
+          <div className="lg:col-span-8 rounded-2xl border border-ink-200 bg-white flex flex-col shadow-sm overflow-hidden h-[620px]">
+            {activeSession ? (
+              <>
+                {/* Header info */}
+                <div className="p-4 border-b border-ink-200 bg-surface-sunken/40 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-sm">
+                      {activeSession.session.tenant.business_name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-sm text-ink-900">
+                          {activeSession.session.tenant.business_name}
+                        </h3>
+                        <Badge tone="signal"><StatusDot ok /> Live</Badge>
+                      </div>
+                      <p className="text-xs text-ink-500">
+                        Owner: {activeSession.session.tenant.owner_name} • {activeSession.session.tenant.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {activeSession.session.tenant.owner_whatsapp && (
+                    <a
+                      href={`https://wa.me/${activeSession.session.tenant.owner_whatsapp.replace(/[^0-9]/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                    >
+                      <Phone className="h-3.5 w-3.5 text-emerald-600" />
+                      Chat WhatsApp Toko
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+
+                {/* Message list */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50 text-xs">
+                  {sessionLoading ? (
+                    <div className="flex items-center justify-center h-full text-ink-400">
+                      Memuat pesan...
+                    </div>
+                  ) : (
+                    activeSession.messages.map((m) => {
+                      const isStaff = m.sender_type === "SUPERADMIN";
+                      const isSystem = m.sender_type === "SYSTEM";
+
+                      if (isSystem) {
+                        return (
+                          <div key={m.id} className="text-center my-2">
+                            <span className="inline-block px-3 py-1 bg-slate-200/80 text-slate-700 text-[11px] rounded-full border border-slate-300/60 max-w-[85%]">
+                              {m.message}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={m.id}
+                          className={cn("flex flex-col", isStaff ? "items-end" : "items-start")}
+                        >
+                          <span className="text-[10px] text-ink-400 mb-0.5 px-1 font-medium">
+                            {isStaff ? "Anda (Tim Support Noewbar)" : m.sender_name}
+                          </span>
+                          <div
+                            className={cn(
+                              "max-w-[80%] px-3.5 py-2.5 rounded-2xl text-xs leading-relaxed break-words shadow-sm",
+                              isStaff
+                                ? "bg-slate-900 text-white rounded-tr-none"
+                                : "bg-white text-slate-900 border border-slate-200 rounded-tl-none"
+                            )}
+                          >
+                            {m.message}
+                          </div>
+                          <span className="text-[10px] text-ink-400 mt-1 px-1 flex items-center gap-1">
+                            {new Date(m.created_at).toLocaleTimeString("id-ID", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                            {isStaff && (
+                              <CheckCheck
+                                className={cn(
+                                  "h-3 w-3",
+                                  m.read_by_tenant ? "text-emerald-600" : "text-ink-400"
+                                )}
+                              />
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Reply Form */}
+                <form
+                  onSubmit={handleSendLiveReply}
+                  className="p-3 border-t border-ink-200 bg-white"
+                >
+                  <div className="flex items-end gap-2">
+                    <textarea
+                      rows={2}
+                      value={liveReplyText}
+                      onChange={(e) => setLiveReplyText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendLiveReply();
+                        }
+                      }}
+                      placeholder="Balas chat merchant ini secara langsung... (Enter untuk kirim)"
+                      className="flex-1 p-2.5 text-xs border border-ink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none bg-slate-50 focus:bg-white"
+                      disabled={liveSending}
+                    />
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      disabled={!liveReplyText.trim() || liveSending}
+                      className="h-10 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs"
+                    >
+                      <Send className="h-4 w-4 mr-1" />
+                      {liveSending ? "Kirim..." : "Kirim"}
+                    </Button>
+                  </div>
+                  <div className="text-[11px] text-ink-400 mt-1.5 flex items-center justify-between px-1">
+                    <span>Shift+Enter untuk baris baru</span>
+                    <span className="text-emerald-700 font-medium flex items-center gap-1">
+                      <StatusDot ok /> Pesan terkirim instan via SSE ke widget toko
+                    </span>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full p-8 text-center text-ink-400">
+                <Headphones className="h-12 w-12 text-ink-300 mb-3" />
+                <h4 className="font-bold text-sm text-ink-700">Pilih Percakapan Toko</h4>
+                <p className="text-xs text-ink-500 max-w-sm mt-1">
+                  Pilih salah satu sesi obrolan merchant di kolom kiri untuk melihat riwayat dan membalas chat secara langsung.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

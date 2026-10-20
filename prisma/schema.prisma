@@ -36,6 +36,7 @@ model Tenant {
   products         Product[]
   websites         Website[]
   support_tickets  SupportTicket[]
+  support_chat_sessions SupportChatSession[]
 
   @@map("tenants")
 }
@@ -393,5 +394,39 @@ model SupportTicketMessage {
 
   @@index([ticket_id, created_at])
   @@map("support_ticket_messages")
+}
+
+model SupportChatSession {
+  id              String               @id @default(uuid()) @db.Uuid
+  tenant_id       String               @db.Uuid
+  /// OPEN | CLOSED
+  status          String               @default("OPEN")
+  last_message_at DateTime             @default(now())
+  created_at      DateTime             @default(now())
+  updated_at      DateTime             @updatedAt
+
+  tenant   Tenant               @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  messages SupportChatMessage[]
+
+  @@index([tenant_id, status])
+  @@index([last_message_at])
+  @@map("support_chat_sessions")
+}
+
+model SupportChatMessage {
+  id                 String             @id @default(uuid()) @db.Uuid
+  session_id         String             @db.Uuid
+  /// TENANT | SUPERADMIN | SYSTEM
+  sender_type        String
+  sender_name        String
+  message            String             @db.Text
+  read_by_superadmin Boolean            @default(false)
+  read_by_tenant     Boolean            @default(false)
+  created_at         DateTime           @default(now())
+
+  session SupportChatSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id, created_at])
+  @@map("support_chat_messages")
 }
 

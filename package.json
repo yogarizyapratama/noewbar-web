@@ -23,6 +23,7 @@
     "test:fe": "tsx tests/e2e/frontend-all-features.test.ts",
     "test:neg": "tsx tests/e2e/negative-scenarios.test.ts",
     "test:hd": "tsx tests/e2e/helpdesk.test.ts",
+    "test:livechat": "tsx tests/e2e/support-livechat.test.ts",
     "admin:hash": "tsx scripts/admin-hash.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",

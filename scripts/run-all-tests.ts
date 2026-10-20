@@ -5,6 +5,7 @@ import { runE2ETests } from "../tests/e2e/user-flows.test";
 import { runFrontendAllFeaturesTests } from "../tests/e2e/frontend-all-features.test";
 import { runNegativeScenariosTests } from "../tests/e2e/negative-scenarios.test";
 import { runHelpdeskTests } from "../tests/e2e/helpdesk.test";
+import { runSupportLiveChatTests } from "../tests/e2e/support-livechat.test";
 
 async function main() {
   console.log("==================================================");
@@ -33,6 +34,9 @@ async function main() {
   // 7. Helpdesk & Ticketing E2E (Zendesk-Grade)
   const helpdeskResults = await runHelpdeskTests();
 
+  // 8. Native Support Live Chat E2E (Real-Time SSE)
+  const liveChatResults = await runSupportLiveChatTests();
+
   const totalPassed =
     unitResults.passed +
     resilienceResults.passed +
@@ -40,7 +44,8 @@ async function main() {
     e2eResults.passed +
     feResults.passed +
     negResults.passed +
-    helpdeskResults.passed;
+    helpdeskResults.passed +
+    liveChatResults.passed;
   const totalFailed =
     unitResults.failed +
     resilienceResults.failed +
@@ -48,7 +53,8 @@ async function main() {
     e2eResults.failed +
     feResults.failed +
     negResults.failed +
-    helpdeskResults.failed;
+    helpdeskResults.failed +
+    liveChatResults.failed;
   const grandTotal =
     unitResults.total +
     resilienceResults.total +
@@ -56,7 +62,8 @@ async function main() {
     e2eResults.total +
     feResults.total +
     negResults.total +
-    helpdeskResults.total;
+    helpdeskResults.total +
+    liveChatResults.total;
   const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
 
   console.log("\n==================================================");
@@ -69,6 +76,7 @@ async function main() {
   console.log(`  Frontend Features (User & Superadmin) : ${feResults.passed}/${feResults.total} [${feResults.failed === 0 ? "PASS" : "FAIL"}]`);
   console.log(`  Negative & Adversarial Scenarios      : ${negResults.passed}/${negResults.total} [${negResults.failed === 0 ? "PASS" : "FAIL"}]`);
   console.log(`  Helpdesk & Ticketing System (Zendesk) : ${helpdeskResults.passed}/${helpdeskResults.total} [${helpdeskResults.failed === 0 ? "PASS" : "FAIL"}]`);
+  console.log(`  Support Live Chat Desk (Real-Time SSE): ${liveChatResults.passed}/${liveChatResults.total} [${liveChatResults.failed === 0 ? "PASS" : "FAIL"}]`);
   console.log("--------------------------------------------------");
   console.log(`  Grand Total                      : ${totalPassed}/${grandTotal} passed in ${durationSec}s`);
   console.log("==================================================\n");

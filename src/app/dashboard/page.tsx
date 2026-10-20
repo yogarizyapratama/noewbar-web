@@ -43,6 +43,7 @@ import { PanelChat } from "./panel-chat";
 import { PanelBilling } from "./panel-billing";
 import { PanelHelpdesk } from "./panel-helpdesk";
 import { NotificationBell } from "@/components/notification-bell";
+import { SupportLiveChatWidget } from "@/components/support-live-chat-widget";
 import type { Billing, ConversationRow, Health, MessageRow, OrderRow } from "./types";
 
 type TabId =
@@ -843,6 +844,7 @@ export default function DashboardPage() {
         </div>
       )}
     </AppShell>
+    <SupportLiveChatWidget />
     </>
   );
 }

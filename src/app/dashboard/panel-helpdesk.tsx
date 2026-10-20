@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ArrowLeft,
   Sparkles,
+  Headphones,
 } from "lucide-react";
 import { Badge, Button, StatusDot, cn } from "@/components/ui";
 
@@ -287,7 +288,15 @@ export function PanelHelpdesk() {
             Kirimkan pertanyaan atau kendala operasional toko Anda langsung ke Tim Rekayasa & Dukungan Noewbar.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-support-livechat"))}
+            className="border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+          >
+            <Headphones className="h-4 w-4 mr-1.5 text-emerald-600" />
+            Buka Live Chat
+          </Button>
           <Button
             variant="secondary"
             onClick={loadTickets}

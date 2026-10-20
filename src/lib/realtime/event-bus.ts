@@ -22,6 +22,7 @@ export type RealtimeEvent =
   | { type: "fleet"; detail?: string }
   | { type: "alert"; detail?: string }
   | { type: "ticket"; detail?: string }
+  | { type: "support_chat"; detail?: string }
   | { type: "reload"; detail?: string };
 
 type Listener = (event: RealtimeEvent) => void;
