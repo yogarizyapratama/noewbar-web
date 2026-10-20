@@ -25,18 +25,26 @@ import {
  */
 
 export async function GET() {
-  const session = await requireTenant();
-  if (!session) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await requireTenant();
+    if (!session) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+    const tenantId = session.sub;
+
+    const websites = await prisma.website.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { updated_at: "desc" },
+    });
+
+    return NextResponse.json({ ok: true, websites, templates: TEMPLATES });
+  } catch (err: any) {
+    console.error("[api/websites] GET error:", err?.message || err);
+    return NextResponse.json(
+      { ok: false, error: "Gagal memuat daftar website, server database sedang sibuk. Silakan coba lagi." },
+      { status: 500 }
+    );
   }
-  const tenantId = session.sub;
-
-  const websites = await prisma.website.findMany({
-    where: { tenant_id: tenantId },
-    orderBy: { updated_at: "desc" },
-  });
-
-  return NextResponse.json({ ok: true, websites, templates: TEMPLATES });
 }
 
 export async function POST(req: Request) {

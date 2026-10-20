@@ -41,8 +41,9 @@ const bodySchema = z.discriminatedUnion('action', [
 ]);
 
 export async function POST(req: NextRequest) {
-  const session = await requireTenant();
-  if (!session) return fail('Unauthorized', 401);
+  try {
+    const session = await requireTenant();
+    if (!session) return fail('Unauthorized', 401);
 
   const subInfo = await getTenantSubscriptionInfo(session.sub);
   if (subInfo.isExpired) {
@@ -151,11 +152,20 @@ export async function POST(req: NextRequest) {
   }
 
   return fail('Aksi tidak dikenal', 400);
+  } catch (err: any) {
+    console.error('[api/knowledge] POST error:', err?.message || err);
+    return fail('Gagal memproses knowledge base, server database sedang sibuk. Silakan coba lagi.', 500);
+  }
 }
 
 export async function GET(_req: NextRequest) {
-  const session = await requireTenant();
-  if (!session) return fail('Unauthorized', 401);
-  const docs = await listKnowledgeDocs(session.sub);
-  return ok({ docs });
+  try {
+    const session = await requireTenant();
+    if (!session) return fail('Unauthorized', 401);
+    const docs = await listKnowledgeDocs(session.sub);
+    return ok({ docs });
+  } catch (err: any) {
+    console.error('[api/knowledge] GET error:', err?.message || err);
+    return fail('Gagal memuat knowledge base, server database sedang sibuk. Silakan coba lagi.', 500);
+  }
 }

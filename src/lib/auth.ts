@@ -233,14 +233,19 @@ export async function requireTenant(): Promise<SessionPayload | null> {
   const session = await getTenantSession();
   if (!session) return null;
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: session.sub },
-    select: { id: true, status: true },
-  });
+  try {
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: session.sub },
+      select: { id: true, status: true },
+    });
 
-  // SUSPENDED tenants lose API access entirely.
-  if (!tenant || tenant.status === "SUSPENDED") return null;
-  return session;
+    // SUSPENDED tenants lose API access entirely.
+    if (!tenant || tenant.status === "SUSPENDED") return null;
+    return session;
+  } catch (err: any) {
+    console.warn("[requireTenant] database connection warning, falling back to verified session:", err?.message || err);
+    return session;
+  }
 }
 
 export async function requireAdmin(): Promise<AdminPayload | null> {

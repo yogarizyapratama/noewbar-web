@@ -6,6 +6,7 @@ import { runFrontendAllFeaturesTests } from "../tests/e2e/frontend-all-features.
 import { runNegativeScenariosTests } from "../tests/e2e/negative-scenarios.test";
 import { runHelpdeskTests } from "../tests/e2e/helpdesk.test";
 import { runSupportLiveChatTests } from "../tests/e2e/support-livechat.test";
+import { prisma } from "../src/lib/prisma";
 
 async function main() {
   console.log("==================================================");
@@ -81,6 +82,7 @@ async function main() {
   console.log(`  Grand Total                      : ${totalPassed}/${grandTotal} passed in ${durationSec}s`);
   console.log("==================================================\n");
 
+  await prisma.$disconnect().catch(() => {});
   if (totalFailed > 0) {
     console.error(`FAILED: ${totalFailed} tests failed.`);
     process.exit(1);
@@ -90,7 +92,8 @@ async function main() {
   }
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
+  await prisma.$disconnect().catch(() => {});
   console.error("Master test runner crashed:", err);
   process.exit(1);
 });

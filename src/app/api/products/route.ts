@@ -16,74 +16,82 @@ import { getTenantSubscriptionInfo } from "@/lib/billing/subscription-guard";
  */
 
 export async function GET(req: Request) {
-  const session = await requireTenant();
-  if (!session) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-  const tenantId = session.sub;
+  try {
+    const session = await requireTenant();
+    if (!session) {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+    const tenantId = session.sub;
 
-  const { searchParams } = new URL(req.url);
-  const search = searchParams.get("search")?.trim() || "";
-  const category = searchParams.get("category")?.trim() || "";
-  const status = searchParams.get("status")?.trim() || "";
-  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
-  const skip = (page - 1) * limit;
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search")?.trim() || "";
+    const category = searchParams.get("category")?.trim() || "";
+    const status = searchParams.get("status")?.trim() || "";
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
+    const skip = (page - 1) * limit;
 
-  const where: any = { tenant_id: tenantId };
-  if (status && status !== "ALL") {
-    where.status = status;
-  }
-  if (category && category !== "ALL") {
-    where.category = category;
-  }
-  const stock = searchParams.get("stock")?.trim() || "";
-  if (stock === "OUT") {
-    where.stock = 0;
-  } else if (stock === "LOW") {
-    where.stock = { lte: 5, gt: 0 };
-  }
-  if (search) {
-    where.OR = [
-      { name: { contains: search, mode: "insensitive" } },
-      { sku: { contains: search, mode: "insensitive" } },
-      { description: { contains: search, mode: "insensitive" } },
-    ];
-  }
+    const where: any = { tenant_id: tenantId };
+    if (status && status !== "ALL") {
+      where.status = status;
+    }
+    if (category && category !== "ALL") {
+      where.category = category;
+    }
+    const stock = searchParams.get("stock")?.trim() || "";
+    if (stock === "OUT") {
+      where.stock = 0;
+    } else if (stock === "LOW") {
+      where.stock = { lte: 5, gt: 0 };
+    }
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { sku: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
 
-  const [total, products, categories, outOfStockCount, lowStockCount] = await Promise.all([
-    prisma.product.count({ where }),
-    prisma.product.findMany({
-      where,
-      orderBy: { created_at: "desc" },
-      skip,
-      take: limit,
-    }),
-    prisma.product.findMany({
-      where: { tenant_id: tenantId },
-      select: { category: true },
-      distinct: ["category"],
-    }),
-    prisma.product.count({
-      where: { tenant_id: tenantId, stock: 0, status: "ACTIVE" },
-    }),
-    prisma.product.count({
-      where: { tenant_id: tenantId, stock: { gt: 0, lte: 3 }, status: "ACTIVE" },
-    }),
-  ]);
+    const [total, products, categories, outOfStockCount, lowStockCount] = await Promise.all([
+      prisma.product.count({ where }),
+      prisma.product.findMany({
+        where,
+        orderBy: { created_at: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.product.findMany({
+        where: { tenant_id: tenantId },
+        select: { category: true },
+        distinct: ["category"],
+      }),
+      prisma.product.count({
+        where: { tenant_id: tenantId, stock: 0, status: "ACTIVE" },
+      }),
+      prisma.product.count({
+        where: { tenant_id: tenantId, stock: { gt: 0, lte: 3 }, status: "ACTIVE" },
+      }),
+    ]);
 
-  return NextResponse.json({
-    ok: true,
-    total,
-    page,
-    limit,
-    products,
-    categories: categories.map((c) => c.category).filter(Boolean),
-    inventorySummary: {
-      outOfStock: outOfStockCount,
-      lowStock: lowStockCount,
-    },
-  });
+    return NextResponse.json({
+      ok: true,
+      total,
+      page,
+      limit,
+      products,
+      categories: categories.map((c) => c.category).filter(Boolean),
+      inventorySummary: {
+        outOfStock: outOfStockCount,
+        lowStock: lowStockCount,
+      },
+    });
+  } catch (err: any) {
+    console.error("[api/products] GET error:", err?.message || err);
+    return NextResponse.json(
+      { ok: false, error: "Gagal memuat produk, server database sedang sibuk. Silakan coba lagi." },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: Request) {
