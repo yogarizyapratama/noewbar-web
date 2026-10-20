@@ -6,9 +6,9 @@ try {
 
 import assert from "node:assert";
 import prisma from "../../src/lib/prisma";
-import { createToken, type SessionPayload, type AdminPayload } from "../../src/lib/crypto";
+import { createToken, type SessionPayload } from "../../src/lib/crypto";
 import { env } from "../../src/lib/env";
-import { TENANT_COOKIE, ADMIN_COOKIE } from "../../src/lib/auth";
+import { TENANT_COOKIE } from "../../src/lib/auth";
 import { shipOrder, verifyPayment } from "../../src/lib/orders/orders";
 
 const BASE_URL = process.env.TEST_BASE_URL || "http://127.0.0.1:3001";
@@ -113,7 +113,7 @@ export async function runNegativeScenariosTests(): Promise<{ total: number; pass
   });
 
   // Buat Tenant Beta (Aktif)
-  const tenantBeta = await prisma.tenant.create({
+  await prisma.tenant.create({
     data: {
       id: TENANT_BETA_ID,
       email: "beta-neg@noewbar.com",
@@ -146,12 +146,6 @@ export async function runNegativeScenariosTests(): Promise<{ total: number; pass
     env.NEXTAUTH_SECRET
   );
   const cookieAlpha = { Cookie: `${TENANT_COOKIE}=${tokenAlpha}` };
-
-  const tokenBeta = createToken<SessionPayload>(
-    { sub: tenantBeta.id, email: tenantBeta.email, role: "TENANT", exp: Math.floor(Date.now() / 1000) + 86400 },
-    env.NEXTAUTH_SECRET
-  );
-  const cookieBeta = { Cookie: `${TENANT_COOKIE}=${tokenBeta}` };
 
   const tokenExpired = createToken<SessionPayload>(
     { sub: tenantExpired.id, email: tenantExpired.email, role: "TENANT", exp: Math.floor(Date.now() / 1000) + 86400 },

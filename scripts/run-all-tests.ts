@@ -4,6 +4,7 @@ import { runApiTests } from "../tests/api/all-api.test";
 import { runE2ETests } from "../tests/e2e/user-flows.test";
 import { runFrontendAllFeaturesTests } from "../tests/e2e/frontend-all-features.test";
 import { runNegativeScenariosTests } from "../tests/e2e/negative-scenarios.test";
+import { runHelpdeskTests } from "../tests/e2e/helpdesk.test";
 
 async function main() {
   console.log("==================================================");
@@ -29,27 +30,33 @@ async function main() {
   // 6. Negative & Adversarial Scenarios
   const negResults = await runNegativeScenariosTests();
 
+  // 7. Helpdesk & Ticketing E2E (Zendesk-Grade)
+  const helpdeskResults = await runHelpdeskTests();
+
   const totalPassed =
     unitResults.passed +
     resilienceResults.passed +
     apiResults.passed +
     e2eResults.passed +
     feResults.passed +
-    negResults.passed;
+    negResults.passed +
+    helpdeskResults.passed;
   const totalFailed =
     unitResults.failed +
     resilienceResults.failed +
     apiResults.failed +
     e2eResults.failed +
     feResults.failed +
-    negResults.failed;
+    negResults.failed +
+    helpdeskResults.failed;
   const grandTotal =
     unitResults.total +
     resilienceResults.total +
     apiResults.total +
     e2eResults.total +
     feResults.total +
-    negResults.total;
+    negResults.total +
+    helpdeskResults.total;
   const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
 
   console.log("\n==================================================");
@@ -61,6 +68,7 @@ async function main() {
   console.log(`  E2E User Flows (Full Lifecycles)      : ${e2eResults.passed}/${e2eResults.total} [${e2eResults.failed === 0 ? "PASS" : "FAIL"}]`);
   console.log(`  Frontend Features (User & Superadmin) : ${feResults.passed}/${feResults.total} [${feResults.failed === 0 ? "PASS" : "FAIL"}]`);
   console.log(`  Negative & Adversarial Scenarios      : ${negResults.passed}/${negResults.total} [${negResults.failed === 0 ? "PASS" : "FAIL"}]`);
+  console.log(`  Helpdesk & Ticketing System (Zendesk) : ${helpdeskResults.passed}/${helpdeskResults.total} [${helpdeskResults.failed === 0 ? "PASS" : "FAIL"}]`);
   console.log("--------------------------------------------------");
   console.log(`  Grand Total                      : ${totalPassed}/${grandTotal} passed in ${durationSec}s`);
   console.log("==================================================\n");

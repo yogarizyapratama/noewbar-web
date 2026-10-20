@@ -48,12 +48,14 @@ import {
   Users,
   X,
   Zap,
+  LifeBuoy,
 } from "lucide-react";
 import { Badge, Button, Modal,
   ConfirmModal, StatusDot, cn, rupiah, timeAgo } from "@/components/ui";
 import { NotificationBell } from "@/components/notification-bell";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { AdminLogin } from "./admin-login";
+import { SectionHelpdesk } from "./section-helpdesk";
 
 export type ConsoleData = {
   kill_switch: { disabled: boolean; disabledAt: string | null; disabledBy: string | null };
@@ -160,7 +162,8 @@ type NavigationSection =
   | "superadmin_wa"
   | "broadcast"
   | "fleet"
-  | "killswitch";
+  | "killswitch"
+  | "helpdesk";
 
 type TenantFilter = "all" | "ACTIVE" | "TRIAL" | "SUSPENDED";
 
@@ -224,6 +227,7 @@ const VALID_SECTIONS: NavigationSection[] = [
   "broadcast",
   "fleet",
   "killswitch",
+  "helpdesk",
 ];
 
 export default function SuperadminPage() {
@@ -720,6 +724,16 @@ export default function SuperadminPage() {
       ],
     },
     {
+      group: "LAYANAN & DUKUNGAN",
+      items: [
+        {
+          id: "helpdesk",
+          label: "Pusat Bantuan & Tiket",
+          icon: <LifeBuoy className="h-4 w-4" />,
+        },
+      ],
+    },
+    {
       group: "KEAMANAN APLIKASI",
       items: [
         {
@@ -1024,6 +1038,8 @@ export default function SuperadminPage() {
                     ? "Siaran Pesan"
                     : activeSection === "killswitch"
                     ? "Kontrol Darurat"
+                    : activeSection === "helpdesk"
+                    ? "Helpdesk & Tiket"
                     : activeSection.replace("_", " ")}
                 </span>
               </div>
@@ -1036,6 +1052,7 @@ export default function SuperadminPage() {
                 {activeSection === "broadcast" && "Siaran Pesan WhatsApp ke Tenant"}
                 {activeSection === "killswitch" && "Protokol Keamanan & Emergency Kill Switch"}
                 {activeSection === "infrastructure" && "Pusat Kesehatan & Operasi Sistem"}
+                {activeSection === "helpdesk" && "Pusat Bantuan & Manajemen Tiket Platform"}
               </h1>
             </div>
 
@@ -2494,6 +2511,10 @@ export default function SuperadminPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {activeSection === "helpdesk" && (
+            <SectionHelpdesk />
           )}
         </main>
       </div>

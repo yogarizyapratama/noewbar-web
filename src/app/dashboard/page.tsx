@@ -17,6 +17,7 @@ import {
   CreditCard,
   Globe,
   LayoutDashboard,
+  LifeBuoy,
   LogOut,
   MessageSquare,
   Package,
@@ -40,6 +41,7 @@ import { PanelSimulator } from "./panel-simulator";
 import { PanelPesanan } from "./panel-pesanan";
 import { PanelChat } from "./panel-chat";
 import { PanelBilling } from "./panel-billing";
+import { PanelHelpdesk } from "./panel-helpdesk";
 import { NotificationBell } from "@/components/notification-bell";
 import type { Billing, ConversationRow, Health, MessageRow, OrderRow } from "./types";
 
@@ -53,7 +55,8 @@ type TabId =
   | "katalog"
   | "pesanan"
   | "chat"
-  | "billing";
+  | "billing"
+  | "helpdesk";
 
 const NAV: NavItem<TabId>[] = [
   {
@@ -126,6 +129,13 @@ const NAV: NavItem<TabId>[] = [
     icon: <CreditCard className="h-4 w-4" aria-hidden="true" />,
     keywords: "paket bayar tagihan midtrans",
   },
+  {
+    id: "helpdesk",
+    label: "Pusat Bantuan & Tiket",
+    group: "Bantuan",
+    icon: <LifeBuoy className="h-4 w-4" aria-hidden="true" />,
+    keywords: "bantuan tiket support helpdesk zendesk kendala crm komplain",
+  },
 ];
 
 const VALID_TABS: TabId[] = [
@@ -139,6 +149,7 @@ const VALID_TABS: TabId[] = [
   "chat",
   "whatsapp",
   "billing",
+  "helpdesk",
 ];
 
 export default function DashboardPage() {
@@ -809,8 +820,10 @@ export default function DashboardPage() {
         />
       )}
 
+      {tab === "helpdesk" && <PanelHelpdesk />}
+
       {/* Expired state: show informational overlay inside AppShell content area */}
-      {isExpired && tab !== "billing" && (
+      {isExpired && tab !== "billing" && tab !== "helpdesk" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-danger/25 bg-danger-wash text-danger-strong">
             <svg className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden="true">

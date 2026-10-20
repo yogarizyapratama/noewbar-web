@@ -35,6 +35,7 @@ model Tenant {
   knowledge_docs   KnowledgeDocument[]
   products         Product[]
   websites         Website[]
+  support_tickets  SupportTicket[]
 
   @@map("tenants")
 }
@@ -350,5 +351,47 @@ model Website {
 
   @@index([tenant_id, status])
   @@map("websites")
+}
+
+model SupportTicket {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenant_id     String    @db.Uuid
+  ticket_number String    @unique
+  subject       String
+  /// GENERAL | BILLING | TECHNICAL | WHATSAPP | FEATURE_REQUEST
+  category      String    @default("GENERAL")
+  /// LOW | MEDIUM | HIGH | URGENT
+  priority      String    @default("MEDIUM")
+  /// OPEN | IN_PROGRESS | WAITING_TENANT | RESOLVED | CLOSED
+  status        String    @default("OPEN")
+  assigned_to   String?
+  resolved_at   DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  tenant   Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  messages SupportTicketMessage[]
+
+  @@index([tenant_id, status])
+  @@index([status, priority])
+  @@map("support_tickets")
+}
+
+model SupportTicketMessage {
+  id          String   @id @default(uuid()) @db.Uuid
+  ticket_id   String   @db.Uuid
+  /// TENANT | SUPERADMIN | SYSTEM
+  sender_type String
+  sender_name String
+  message     String   @db.Text
+  attachments Json     @default("[]")
+  /// Internal note only visible to superadmin
+  is_internal Boolean  @default(false)
+  created_at  DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+
+  @@index([ticket_id, created_at])
+  @@map("support_ticket_messages")
 }
 

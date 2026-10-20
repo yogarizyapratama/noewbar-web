@@ -9,15 +9,13 @@ import prisma from "../../src/lib/prisma";
 import {
   createOrder,
   expireStaleReservations,
-  releaseReservation,
 } from "../../src/lib/orders/orders";
 import { reverseGeocode } from "../../src/lib/geo/geocode";
 import { calculateShippingRates } from "../../src/lib/logistics/shipping-engine";
-import { cancelPendingNudges, scheduleNudge } from "../../src/lib/queue/nudge-queue";
+import { cancelPendingNudges } from "../../src/lib/queue/nudge-queue";
 import { handleInboundMessage, runAgent } from "../../src/lib/ai/orchestrator";
 import { modelChain } from "../../src/lib/ai/gateway";
-import { SAFE_FALLBACK_REPLY } from "../../src/lib/ai/prompts";
-import type { CartLine, ProductRow, ToolContext } from "../../src/lib/ai/types";
+import type { CartLine, ToolContext } from "../../src/lib/ai/types";
 
 /**
  * ============================================================================

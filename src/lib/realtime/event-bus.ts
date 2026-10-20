@@ -21,6 +21,7 @@ export type RealtimeEvent =
   | { type: "killswitch"; detail?: string }
   | { type: "fleet"; detail?: string }
   | { type: "alert"; detail?: string }
+  | { type: "ticket"; detail?: string }
   | { type: "reload"; detail?: string };
 
 type Listener = (event: RealtimeEvent) => void;

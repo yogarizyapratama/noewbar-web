@@ -19,7 +19,6 @@ import { analyzeProductInquiryMedia } from "../../src/lib/ai/vision-product";
 import { createOrder } from "../../src/lib/orders/orders";
 import {
   assertPaymentTransition,
-  assertOrderTransition,
   assertFulfilmentAllowed,
 } from "../../src/lib/orders/state";
 
@@ -624,6 +623,7 @@ export async function runAIEngineSimulationTests(): Promise<{ total: number; pas
         {
           sku: "JOG-TCH-GRY", // Jogger Techwear stok 0
           name: "Celana Jogger Cargo Techwear",
+          variant: "Abu-Abu Size L",
           price: 165000,
           qty: 1,
           line_total: 165000,
