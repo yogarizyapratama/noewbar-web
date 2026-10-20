@@ -17,7 +17,7 @@ import {
   Headphones,
   Search,
 } from "lucide-react";
-import { Badge, Button, StatusDot, cn } from "@/components/ui";
+import { Badge, Button, StatusDot, Modal, ConfirmModal, cn } from "@/components/ui";
 
 export type TicketCategory = "GENERAL" | "BILLING" | "TECHNICAL" | "WHATSAPP" | "FEATURE_REQUEST";
 export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
@@ -101,6 +101,9 @@ export function PanelHelpdesk() {
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
+
+  // Confirm dialog
+  const [resolveConfirmOpen, setResolveConfirmOpen] = useState(false);
 
   async function loadTickets() {
     setLoading(true);
@@ -216,7 +219,7 @@ export function PanelHelpdesk() {
 
   async function handleResolveTicket() {
     if (!activeTicket) return;
-    if (!confirm("Tandai tiket ini sebagai selesai? Tiket dapat dibuka kembali kapan saja bila Anda membalasnya.")) return;
+    setResolveConfirmOpen(false);
     try {
       const res = await fetch(`/api/support/tickets/${activeTicket.id}`, {
         method: "PATCH",
@@ -279,7 +282,7 @@ export function PanelHelpdesk() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page space-y-6">
       {/* Header Banner */}
       <div className="rounded-2xl border border-ink-200/90 bg-white p-6 shadow-xs transition-shadow">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -454,7 +457,7 @@ export function PanelHelpdesk() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={handleResolveTicket}
+                  onClick={() => setResolveConfirmOpen(true)}
                   className="border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                 >
                   <CheckCircle2 className="h-4 w-4 mr-1.5 text-emerald-600" />
@@ -775,122 +778,131 @@ export function PanelHelpdesk() {
         </div>
       )}
 
-      {/* New Ticket Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-6 shadow-xl animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3.5 border-b border-ink-100">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink-900 text-white">
-                  <LifeBuoy className="h-4 w-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-ink-900">Buat Tiket Bantuan Baru</h3>
-                  <p className="text-2xs text-ink-500">Jelaskan kendala Anda agar tim teknisi dapat segera membantu</p>
-                </div>
+      {/* New Ticket Modal (Portaled directly to document.body, full viewport coverage up to top) */}
+      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
+        <div className="w-full max-w-lg rounded-2xl border border-ink-200 bg-white p-6 shadow-2xl animate-fade-up">
+          <div className="flex items-center justify-between pb-3.5 border-b border-ink-100">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink-900 text-white">
+                <LifeBuoy className="h-4 w-4" />
               </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="rounded-lg p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"
-                aria-label="Tutup"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div>
+                <h3 className="text-base font-bold text-ink-900">Buat Tiket Bantuan Baru</h3>
+                <p className="text-2xs text-ink-500">Jelaskan kendala Anda agar tim teknisi dapat segera membantu</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(false)}
+              className="rounded-lg p-1.5 text-ink-400 hover:text-ink-700 hover:bg-ink-100 transition-colors"
+              aria-label="Tutup"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {createError && (
+            <div className="mt-3.5 rounded-lg bg-red-50 p-2.5 text-xs text-red-700 flex items-center gap-1.5 border border-red-200">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {createError}
+            </div>
+          )}
+
+          <form onSubmit={handleCreateTicket} className="mt-4 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-ink-800 mb-1">
+                Subjek Kendala <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Contoh: QR Code WhatsApp tidak muncul saat dipindai"
+                value={newSubject}
+                onChange={(e) => setNewSubject(e.target.value)}
+                className="w-full rounded-xl border border-ink-200 p-2.5 text-sm focus:border-ink-900 focus:ring-1 focus:ring-ink-900 focus:outline-none"
+              />
             </div>
 
-            {createError && (
-              <div className="mt-3.5 rounded-lg bg-red-50 p-2.5 text-xs text-red-700 flex items-center gap-1.5 border border-red-200">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {createError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateTicket} className="mt-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1">
-                  Subjek Kendala <span className="text-red-500">*</span>
+                  Kategori
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: QR Code WhatsApp tidak muncul saat dipindai"
-                  value={newSubject}
-                  onChange={(e) => setNewSubject(e.target.value)}
-                  className="w-full rounded-xl border border-ink-200 p-2.5 text-sm focus:border-ink-900 focus:ring-1 focus:ring-ink-900 focus:outline-none"
-                />
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value as TicketCategory)}
+                  className="w-full rounded-xl border border-ink-200 p-2.5 text-sm focus:border-ink-900 focus:ring-1 focus:ring-ink-900 focus:outline-none bg-white"
+                >
+                  <option value="TECHNICAL">Kendala Teknis / Bug</option>
+                  <option value="WHATSAPP">Integrasi WhatsApp</option>
+                  <option value="BILLING">Pembayaran & Paket</option>
+                  <option value="FEATURE_REQUEST">Permintaan Fitur</option>
+                  <option value="GENERAL">Bantuan Umum</option>
+                </select>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-ink-800 mb-1">
-                    Kategori
-                  </label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as TicketCategory)}
-                    className="w-full rounded-xl border border-ink-200 p-2.5 text-sm focus:border-ink-900 focus:ring-1 focus:ring-ink-900 focus:outline-none bg-white"
-                  >
-                    <option value="TECHNICAL">Kendala Teknis / Bug</option>
-                    <option value="WHATSAPP">Integrasi WhatsApp</option>
-                    <option value="BILLING">Pembayaran & Paket</option>
-                    <option value="FEATURE_REQUEST">Permintaan Fitur</option>
-                    <option value="GENERAL">Bantuan Umum</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-ink-800 mb-1">
-                    Prioritas
-                  </label>
-                  <select
-                    value={newPriority}
-                    onChange={(e) => setNewPriority(e.target.value as TicketPriority)}
-                    className="w-full rounded-xl border border-ink-200 p-2.5 text-sm focus:border-ink-900 focus:ring-1 focus:ring-ink-900 focus:outline-none bg-white"
-                  >
-                    <option value="LOW">Rendah (Pertanyaan umum)</option>
-                    <option value="MEDIUM">Sedang (Kendala standar)</option>
-                    <option value="HIGH">Tinggi (Mengganggu jualan)</option>
-                    <option value="URGENT">Mendesak (Toko berhenti total)</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1">
-                  Deskripsi Kendala Secara Rinci <span className="text-red-500">*</span>
+                  Prioritas
                 </label>
-                <textarea
-                  required
-                  rows={4}
-                  placeholder="Jelaskan apa yang terjadi, langkah yang sudah Anda coba, serta pesan error bila ada..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="w-full rounded-xl border border-ink-200 p-2.5 text-sm focus:border-ink-900 focus:ring-1 focus:ring-ink-900 focus:outline-none resize-none"
-                />
+                <select
+                  value={newPriority}
+                  onChange={(e) => setNewPriority(e.target.value as TicketPriority)}
+                  className="w-full rounded-xl border border-ink-200 p-2.5 text-sm focus:border-ink-900 focus:ring-1 focus:ring-ink-900 focus:outline-none bg-white"
+                >
+                  <option value="LOW">Rendah (Pertanyaan umum)</option>
+                  <option value="MEDIUM">Sedang (Kendala standar)</option>
+                  <option value="HIGH">Tinggi (Mengganggu jualan)</option>
+                  <option value="URGENT">Mendesak (Toko berhenti total)</option>
+                </select>
               </div>
+            </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-ink-100">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={creating}
-                  loading={creating}
-                  className="font-semibold shadow-xs"
-                >
-                  {creating ? "Mengirim..." : "Kirim Tiket"}
-                </Button>
-              </div>
-            </form>
-          </div>
+            <div>
+              <label className="block text-xs font-semibold text-ink-800 mb-1">
+                Deskripsi Kendala Secara Rinci <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                required
+                rows={4}
+                placeholder="Jelaskan apa yang terjadi, langkah yang sudah Anda coba, serta pesan error bila ada..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                className="w-full rounded-xl border border-ink-200 p-2.5 text-sm focus:border-ink-900 focus:ring-1 focus:ring-ink-900 focus:outline-none resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-ink-100">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={creating}
+                loading={creating}
+                className="font-semibold shadow-xs"
+              >
+                {creating ? "Mengirim..." : "Kirim Tiket"}
+              </Button>
+            </div>
+          </form>
         </div>
-      )}
+      </Modal>
+
+      {/* Confirmation Modal for Resolving Ticket */}
+      <ConfirmModal
+        open={resolveConfirmOpen}
+        title="Tandai Tiket Selesai"
+        description="Apakah Anda yakin ingin menandai tiket bantuan ini sebagai selesai? Tiket dapat dibuka kembali otomatis jika Anda mengirimkan balasan baru."
+        confirmLabel="Ya, Tandai Selesai"
+        cancelLabel="Batal"
+        onConfirm={handleResolveTicket}
+        onClose={() => setResolveConfirmOpen(false)}
+      />
     </div>
   );
 }

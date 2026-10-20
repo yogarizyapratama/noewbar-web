@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "2151019ac9a1bf4f8b2a871236acea3e6669f2c1",
-    "indexed_at": "2026-10-20T04:55:23Z",
+    "commit": "06bfef25e425e48391c5efb6ff95bbcb4f39c75a",
+    "indexed_at": "2026-10-20T05:05:04Z",
     "project": "Users-mac-Documents-YOGA-YOGA-GOKS-noewbar",
-    "nodes": 3242,
-    "edges": 7064,
-    "original_size": 50855936,
-    "compressed_size": 2444509,
+    "nodes": 3247,
+    "edges": 7074,
+    "original_size": 50921472,
+    "compressed_size": 2448585,
     "compression_level": 3
 }
