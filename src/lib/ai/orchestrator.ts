@@ -292,6 +292,7 @@ export async function runAgent(input: OrchestratorInput): Promise<OrchestratorRe
         voucherRules: input.ctx.voucherRules,
         shippingSchedule: input.ctx.shippingSchedule,
         freeShipping: input.ctx.freeShipping,
+        isFirstMessage: (input.history?.length ?? 0) === 0,
       }),
     },
     // History is already windowed by the query in handleInboundMessage

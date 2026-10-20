@@ -104,6 +104,8 @@ export type PromptVars = {
     enabled: boolean;
     minAmount: number;
   };
+  /** true = pesan pertama percakapan ini (boleh salam pembuka). false = percakapan sudah berjalan (dilarang ulangi salam). */
+  isFirstMessage?: boolean;
 };
 
 export function buildSystemPrompt(vars: PromptVars): string {
@@ -122,14 +124,29 @@ export function buildSystemPrompt(vars: PromptVars): string {
   }
 
   const tone = (vars.botTone ?? "RAMAH").toUpperCase();
+  const isFirst = vars.isFirstMessage !== false; // default true agar backward-compat
+
   if (tone === "FORMAL") {
     prompt += `\n- Gaya Bahasa: Profesional, formal, kalimat rapi dan tertata, sapa pembeli dengan "Bapak/Ibu" atau "Kakak", hindari singkatan gaul.`;
+    if (isFirst) {
+      prompt += ` Pada pesan pertama, sapa dengan sopan dan formal.`;
+    }
   } else if (tone === "ISLAMI") {
-    prompt += `\n- Gaya Bahasa: Bernuansa islami/syar'i, awali dengan salam "Assalamu'alaikum", sapa dengan "Ukhti/Akhi" atau "Kakak", sertakan ungkapan santun seperti "Bismillah", "Alhamdulillah", "Jazakallahu khairan".`;
+    prompt += `\n- Gaya Bahasa: Bernuansa islami/syar'i, sapa dengan "Ukhti/Akhi" atau "Kakak", sertakan ungkapan santun seperti "Bismillah", "Alhamdulillah", "Jazakallahu khairan".`;
+    if (isFirst) {
+      prompt += ` Pada pesan PERTAMA saja: boleh awali dengan salam "Assalamu'alaikum".`;
+    }
   } else if (tone === "SANTAI") {
     prompt += `\n- Gaya Bahasa: Santai, luwes, akrab dan responsif, sapa dengan "Kak", tetap sopan dan berorientasi membantu.`;
   } else {
     prompt += `\n- Gaya Bahasa: Ramah, hangat, menyapa dengan "Kak / Kakak", gunakan emoji secukupnya (😊, 🙏).`;
+  }
+
+  // Guardrail percakapan berlanjut — injected SETIAP sesi, semakin tegas jika bukan pesan pertama
+  if (!isFirst) {
+    prompt += `\n\n## ATURAN SAPAAN & PERCAKAPAN BERLANJUT (WAJIB DIPATUHI — PRIORITAS TERTINGGI)\n- Percakapan ini SUDAH BERJALAN. Ada riwayat pesan sebelumnya dari pembeli.\n- DILARANG KERAS mengulang sapaan pembuka atau salam di awal jawaban! JANGAN mulai dengan "Assalamu'alaikum", "Halo Kak", "Halo!", "Selamat datang di toko", "Selamat pagi/siang/malam", atau salam pembuka sejenis dalam bentuk apapun.\n- Langsung jawab pertanyaan atau kebutuhan pembeli secara lugas, ramah, dan mengalir.\n- Boleh mulai dengan frasa natural seperti: "Baik Kak,", "Tentu Kak,", "Untuk ongkir ke...", "Siap Kak!", atau langsung ke inti jawaban.\n- Pelanggaran aturan ini berarti GAGAL TOTAL. Ikuti aturan ini tanpa pengecualian.`;
+  } else {
+    prompt += `\n\n## ATURAN SAPAAN\n- Ini adalah pesan pertama percakapan. Boleh menggunakan sapaan pembuka yang sesuai gaya bahasa toko.\n- Untuk percakapan berikutnya setelah ada riwayat: JANGAN ulangi sapaan pembuka di setiap balasan.`;
   }
 
   if (vars.catalogSource === "cache" && vars.catalogWarning) {

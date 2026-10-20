@@ -4,6 +4,7 @@ import {
   findUnbackedPrices,
   findUnbackedAccountNumbers,
 } from "../../src/lib/ai/orchestrator";
+import { buildSystemPrompt } from "../../src/lib/ai/prompts";
 import {
   toolCariProduk,
   toolAmbilFotoVideo,
@@ -260,7 +261,60 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(unbacked.length, 0);
   });
 
+  // --- buildSystemPrompt greeting guardrail tests ---
+  test("buildSystemPrompt isFirstMessage=false: injects anti-repeat greeting guardrail", () => {
+    const prompt = buildSystemPrompt({
+      businessName: "Toko Test",
+      originSubdistrict: "Jakarta Selatan",
+      catalogSource: "cache",
+      botTone: "ISLAMI",
+      isFirstMessage: false,
+    });
+    assert.ok(
+      prompt.includes("DILARANG KERAS mengulang sapaan pembuka"),
+      "Guardrail anti-repeat greeting harus ada saat isFirstMessage=false"
+    );
+    assert.ok(
+      !prompt.includes("Pada pesan PERTAMA saja: boleh awali dengan salam"),
+      "Teks 'boleh awali salam' tidak boleh ada saat isFirstMessage=false"
+    );
+  });
+
+  test("buildSystemPrompt isFirstMessage=true (ISLAMI): allows salam pembuka hanya di pesan pertama", () => {
+    const prompt = buildSystemPrompt({
+      businessName: "Toko Test",
+      originSubdistrict: "Jakarta Selatan",
+      catalogSource: "cache",
+      botTone: "ISLAMI",
+      isFirstMessage: true,
+    });
+    assert.ok(
+      prompt.includes("Pada pesan PERTAMA saja: boleh awali dengan salam"),
+      "Izin salam pertama harus ada saat isFirstMessage=true"
+    );
+    assert.ok(
+      !prompt.includes("DILARANG KERAS mengulang sapaan pembuka"),
+      "Guardrail keras tidak boleh ada di pesan pertama"
+    );
+  });
+
+  test("buildSystemPrompt isFirstMessage=undefined: backward-compat defaults to first-message mode", () => {
+    const prompt = buildSystemPrompt({
+      businessName: "Toko Test",
+      originSubdistrict: "Jakarta Selatan",
+      catalogSource: "cache",
+      botTone: "RAMAH",
+      // isFirstMessage not set
+    });
+    // Should default to first-message mode (no harsh guardrail)
+    assert.ok(
+      !prompt.includes("DILARANG KERAS mengulang sapaan pembuka"),
+      "Default tanpa isFirstMessage tidak boleh inject guardrail keras"
+    );
+  });
+
   console.log("\n=== 2. UNIT TEST: Micro Tools & Product Catalog ===");
+
 
   await test("toolCariProduk: finds products by keyword tokens and size", async () => {
     const res = await toolCariProduk(mockContext, { query: "kaos hitam XL" });
