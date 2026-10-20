@@ -252,6 +252,35 @@ export async function runFrontendAllFeaturesTests(): Promise<{ total: number; pa
     assert.strictEqual(updated.stock, 25);
   });
 
+  await test("FE 4.4 [NEGATIVE]: Panel Produk - Menolak tambah produk dengan SKU atau nama kosong (HTTP 400)", async () => {
+    const res = await fetch(`${BASE_URL}/api/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...tenantCookieHeader },
+      body: JSON.stringify({
+        action: "create",
+        name: "",
+        sku: "",
+        price: 10000,
+      }),
+    });
+    assert.strictEqual(res.status, 400);
+    const data = await res.json();
+    assert.strictEqual(data.ok, false);
+  });
+
+  await test("FE 4.5 [NEGATIVE]: Panel Produk - Menolak update pada produk yang tidak ada (HTTP 404)", async () => {
+    const res = await fetch(`${BASE_URL}/api/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...tenantCookieHeader },
+      body: JSON.stringify({
+        action: "update",
+        id: "00000000-0000-0000-0000-000000000000",
+        price: 50000,
+      }),
+    });
+    assert.strictEqual(res.status, 404);
+  });
+
   // 5. Fitur AI Website Builder & Storefront Publik
   const testStoreSlug = "toko-noewbar-fe-test";
   let publishedSlug = testStoreSlug;
@@ -291,6 +320,18 @@ export async function runFrontendAllFeaturesTests(): Promise<{ total: number; pa
     assert.strictEqual(res.status, 200);
     const html = await res.text();
     assert.ok(html.toLowerCase().includes("noewbar") || html.toLowerCase().includes("official"));
+  });
+
+  await test("FE 5.3 [NEGATIVE]: Panel Website Builder - Menolak publish website dengan ID tidak ditemukan (HTTP 404)", async () => {
+    const res = await fetch(`${BASE_URL}/api/websites`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...tenantCookieHeader },
+      body: JSON.stringify({
+        action: "publish",
+        id: "00000000-0000-0000-0000-000000000000",
+      }),
+    });
+    assert.strictEqual(res.status, 404);
   });
 
   // 6. Fitur AI Persona & Simulator Dashboard
@@ -367,6 +408,20 @@ export async function runFrontendAllFeaturesTests(): Promise<{ total: number; pa
     assert.ok(data.id);
   });
 
+  await test("FE 8.2 [NEGATIVE]: Panel Basis Dokumen - Menolak dokumen dengan doc_type ilegal (HTTP 422)", async () => {
+    const res = await fetch(`${BASE_URL}/api/knowledge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...tenantCookieHeader },
+      body: JSON.stringify({
+        action: "save",
+        title: "Dokumen Ilegal",
+        doc_type: "INVALID_DOC_TYPE",
+        content_text: "Konten dokumen",
+      }),
+    });
+    assert.strictEqual(res.status, 422);
+  });
+
   // 9. Fitur Pesanan & Verifikasi Bukti Bayar
   let testOrderId = "";
   await test("FE 9.1: Panel Pesanan - Menampilkan daftar pesanan masuk", async () => {
@@ -425,6 +480,19 @@ export async function runFrontendAllFeaturesTests(): Promise<{ total: number; pa
     assert.strictEqual(data.order_status, "PROCESSING");
   });
 
+  await test("FE 9.3 [NEGATIVE]: Panel Pesanan - Menolak verifikasi pada order ID yang tidak ada (HTTP 404)", async () => {
+    const res = await fetch(`${BASE_URL}/api/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...tenantCookieHeader },
+      body: JSON.stringify({
+        action: "verify",
+        order_id: "00000000-0000-0000-0000-000000000000",
+        approve: true,
+      }),
+    });
+    assert.strictEqual(res.status, 404);
+  });
+
   // 10. Fitur Live Chat & Human Takeover
   await test("FE 10.1: Panel Chat - Owner toko mengambil alih percakapan (Human Takeover ON/OFF)", async () => {
     const conv = await prisma.conversation.findFirst({ where: { tenant_id: FE_TENANT_ID } });
@@ -459,6 +527,19 @@ export async function runFrontendAllFeaturesTests(): Promise<{ total: number; pa
     const dataOff = await resOff.json();
     assert.strictEqual(dataOff.ok, true);
     assert.strictEqual(dataOff.conversation.is_human_takeover, false);
+  });
+
+  await test("FE 10.2 [NEGATIVE]: Panel Chat - Menolak takeover pada conversation ID yang tidak ada (HTTP 404)", async () => {
+    const res = await fetch(`${BASE_URL}/api/conversations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...tenantCookieHeader },
+      body: JSON.stringify({
+        action: "takeover",
+        conversation_id: "00000000-0000-0000-0000-000000000000",
+        enabled: true,
+      }),
+    });
+    assert.strictEqual(res.status, 404);
   });
 
   // 11. Fitur Koneksi WhatsApp & Billing
@@ -565,6 +646,24 @@ export async function runFrontendAllFeaturesTests(): Promise<{ total: number; pa
     await prisma.waInstance.deleteMany({ where: { tenant_id: data.tenant_id } });
     await prisma.catalogSetting.deleteMany({ where: { tenant_id: data.tenant_id } });
     await prisma.tenant.deleteMany({ where: { id: data.tenant_id } });
+  });
+
+  await test("FE 15.2 [NEGATIVE]: Superadmin - Menolak onboarding tenant baru jika email invalid (HTTP 400/422)", async () => {
+    const res = await fetch(`${BASE_URL}/api/superadmin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...adminCookieHeader },
+      body: JSON.stringify({
+        action: "create_tenant",
+        business_name: "Toko Gagal Onboard",
+        owner_name: "Owner",
+        email: "email-rusak-tanpa-domain",
+        password: "PasswordSuperKuat2026!",
+        owner_whatsapp: "081299887766",
+        status: "ACTIVE",
+        trial_days: 30,
+      }),
+    });
+    assert.ok(res.status === 400 || res.status === 422);
   });
 
   // 16. Financials & Revenue Analytics

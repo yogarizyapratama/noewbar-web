@@ -53,7 +53,7 @@ export async function runApiTests(): Promise<{ total: number; passed: number; fa
     assert.strictEqual(typeof res.body?.authenticated, "boolean");
   });
 
-  await test("API 1b: /api/auth (Login validation requires email & password)", async () => {
+  await test("API 1b [NEGATIVE]: /api/auth (Login validation requires email & password)", async () => {
     const res = await api("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -71,7 +71,7 @@ export async function runApiTests(): Promise<{ total: number; passed: number; fa
     assert.ok(Array.isArray(res.body?.preview));
   });
 
-  await test("API 2b: /api/playground (POST chat simulation schema validation)", async () => {
+  await test("API 2b [NEGATIVE]: /api/playground (POST chat simulation schema validation)", async () => {
     const res = await api("/api/playground", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -81,67 +81,67 @@ export async function runApiTests(): Promise<{ total: number; passed: number; fa
   });
 
   // 3. /api/maintenance
-  await test("API 3: /api/maintenance (Requires authentication)", async () => {
+  await test("API 3 [NEGATIVE]: /api/maintenance (Requires authentication)", async () => {
     const res = await api("/api/maintenance");
     assert.strictEqual(res.status, 401);
   });
 
   // 4. /api/products
-  await test("API 4: /api/products (Requires authentication)", async () => {
+  await test("API 4 [NEGATIVE]: /api/products (Requires authentication)", async () => {
     const res = await api("/api/products");
     assert.strictEqual(res.status, 401);
   });
 
   // 5. /api/products/upload
-  await test("API 5: /api/products/upload (Requires authentication)", async () => {
+  await test("API 5 [NEGATIVE]: /api/products/upload (Requires authentication)", async () => {
     const res = await api("/api/products/upload", { method: "POST" });
     assert.strictEqual(res.status, 401);
   });
 
   // 6. /api/orders
-  await test("API 6: /api/orders (Requires authentication)", async () => {
+  await test("API 6 [NEGATIVE]: /api/orders (Requires authentication)", async () => {
     const res = await api("/api/orders");
     assert.strictEqual(res.status, 401);
   });
 
   // 7. /api/conversations
-  await test("API 7: /api/conversations (Requires authentication)", async () => {
+  await test("API 7 [NEGATIVE]: /api/conversations (Requires authentication)", async () => {
     const res = await api("/api/conversations");
     assert.strictEqual(res.status, 401);
   });
 
   // 8. /api/dashboard
-  await test("API 8: /api/dashboard (Requires authentication)", async () => {
+  await test("API 8 [NEGATIVE]: /api/dashboard (Requires authentication)", async () => {
     const res = await api("/api/dashboard");
     assert.strictEqual(res.status, 401);
   });
 
   // 9. /api/simulator
-  await test("API 9: /api/simulator (Requires authentication)", async () => {
+  await test("API 9 [NEGATIVE]: /api/simulator (Requires authentication)", async () => {
     const res = await api("/api/simulator", { method: "POST" });
     assert.strictEqual(res.status, 401);
   });
 
   // 10. /api/knowledge
-  await test("API 10: /api/knowledge (Requires authentication)", async () => {
+  await test("API 10 [NEGATIVE]: /api/knowledge (Requires authentication)", async () => {
     const res = await api("/api/knowledge");
     assert.strictEqual(res.status, 401);
   });
 
   // 11. /api/websites
-  await test("API 11: /api/websites (Requires authentication)", async () => {
+  await test("API 11 [NEGATIVE]: /api/websites (Requires authentication)", async () => {
     const res = await api("/api/websites");
     assert.strictEqual(res.status, 401);
   });
 
   // 12. /api/wa/qr
-  await test("API 12: /api/wa/qr (Requires authentication)", async () => {
+  await test("API 12 [NEGATIVE]: /api/wa/qr (Requires authentication)", async () => {
     const res = await api("/api/wa/qr");
     assert.strictEqual(res.status, 401);
   });
 
   // 13. /api/wa-webhook
-  await test("API 13a: /api/wa-webhook (Rejects request without secret)", async () => {
+  await test("API 13a [NEGATIVE]: /api/wa-webhook (Rejects request without secret)", async () => {
     const res = await api("/api/wa-webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -158,7 +158,7 @@ export async function runApiTests(): Promise<{ total: number; passed: number; fa
     assert.strictEqual(res.status, 200);
   });
 
-  await test("API 13c: /api/wa-webhook (POST rejects empty body payload)", async () => {
+  await test("API 13c [NEGATIVE]: /api/wa-webhook (POST rejects empty body payload)", async () => {
     const res = await api("/api/wa-webhook", {
       method: "POST",
       headers: {
@@ -171,13 +171,13 @@ export async function runApiTests(): Promise<{ total: number; passed: number; fa
   });
 
   // 14. /api/billing/checkout
-  await test("API 14: /api/billing/checkout (Requires authentication)", async () => {
+  await test("API 14 [NEGATIVE]: /api/billing/checkout (Requires authentication)", async () => {
     const res = await api("/api/billing/checkout", { method: "POST" });
     assert.strictEqual(res.status, 401);
   });
 
   // 15. /api/billing/webhook
-  await test("API 15: /api/billing/webhook (Rejects invalid signature/payload)", async () => {
+  await test("API 15 [NEGATIVE]: /api/billing/webhook (Rejects invalid signature/payload)", async () => {
     const res = await api("/api/billing/webhook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -187,13 +187,13 @@ export async function runApiTests(): Promise<{ total: number; passed: number; fa
   });
 
   // 16. /api/superadmin
-  await test("API 16: /api/superadmin (Requires superadmin session)", async () => {
+  await test("API 16 [NEGATIVE]: /api/superadmin (Requires superadmin session)", async () => {
     const res = await api("/api/superadmin");
     assert.strictEqual(res.status, 401);
   });
 
   // 17. /api/realtime
-  await test("API 17: /api/realtime (Requires authentication)", async () => {
+  await test("API 17 [NEGATIVE]: /api/realtime (Requires authentication)", async () => {
     const res = await api("/api/realtime");
     assert.strictEqual(res.status, 401);
   });

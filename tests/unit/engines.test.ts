@@ -156,7 +156,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(clean, "Totalnya Rp218.000 ya Kak.");
   });
 
-  test("findUnbackedPrices: blocks fabricated unbacked prices", () => {
+  test("findUnbackedPrices [NEGATIVE]: blocks fabricated unbacked prices", () => {
     const toolOutcomes = [
       {
         tool: "tool_cari_produk" as const,
@@ -247,7 +247,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(unbacked.length, 0);
   });
 
-  test("findUnbackedAccountNumbers: detects foreign invented bank account numbers", () => {
+  test("findUnbackedAccountNumbers [NEGATIVE]: detects foreign invented bank account numbers", () => {
     const reply = "Silakan transfer ke rekening BCA 998877665544 ya Kak.";
     const unbacked = findUnbackedAccountNumbers(reply, [], mockContext.payment);
     assert.strictEqual(unbacked.length, 1);
@@ -275,7 +275,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(res.matches[0].sku, "TSH-OVR-BLK");
   });
 
-  await test("toolCariProduk: returns empty matches for non-existent items without throwing", async () => {
+  await test("toolCariProduk [NEGATIVE]: returns empty matches for non-existent items without throwing", async () => {
     const res = await toolCariProduk(mockContext, { query: "sepatu roda anak" });
     assert.strictEqual(res.matches.length, 0);
   });
@@ -294,7 +294,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(res.result?.media_url, "https://example.com/video-kaos.mp4");
   });
 
-  await test("toolAmbilFotoVideo: gracefully falls back to photo when video is unavailable and handles invalid SKU", async () => {
+  await test("toolAmbilFotoVideo [NEGATIVE]: gracefully falls back to photo when video is unavailable and handles invalid SKU", async () => {
     // HOD-FLC-BLK has photo but video_url is null: tool smartly provides photo as fallback
     const resNoVideo = await toolAmbilFotoVideo(mockContext, { sku: "HOD-FLC-BLK", kind: "video" });
     assert.ok(resNoVideo.result);
@@ -395,7 +395,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(res.final_subtotal, 0);
   });
 
-  await test("toolHitungPromoBundling: rejects unauthorized or fake voucher codes honestly", async () => {
+  await test("toolHitungPromoBundling [NEGATIVE]: rejects unauthorized or fake voucher codes honestly", async () => {
     const res = await toolHitungPromoBundling(mockContext, {
       items: [{ sku: "TSH-OVR-BLK", qty: 1, price: 95000 }],
       voucher_code: "DISKON_PALSU_99",
@@ -629,7 +629,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(canTransitionOrder("DRAFT", "COMPLETED"), false);
   });
 
-  test("state: assertOrderTransition throws on illegal skip", () => {
+  test("state [NEGATIVE]: assertOrderTransition throws on illegal skip", () => {
     assert.throws(
       () => assertOrderTransition("DRAFT", "SHIPPED"),
       /Illegal order transition: DRAFT -> SHIPPED/
@@ -654,7 +654,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     );
   });
 
-  test("state: assertFulfilmentAllowed prevents PROCESSING order when payment is unverified (Anti-Fraud Gate)", () => {
+  test("state [NEGATIVE]: assertFulfilmentAllowed prevents PROCESSING order when payment is unverified (Anti-Fraud Gate)", () => {
     assert.doesNotThrow(() => assertFulfilmentAllowed("PROCESSING", "VERIFIED"));
 
     assert.throws(
@@ -685,7 +685,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     }, /Password must be at least 8 characters/);
   });
 
-  test("crypto: createToken and verifyToken enforce tamper-proof HMAC signatures", () => {
+  test("crypto [NEGATIVE]: verifyToken enforces tamper-proof HMAC signatures and rejects expired tokens", () => {
     const secret = "rahasia-super-kuat-indonesia-2026";
     const payload = { sub: "tenant-123", email: "store@example.com", role: "TENANT" as const, exp: Math.floor(Date.now() / 1000) + 3600 };
     const token = createToken(payload, secret);
@@ -729,7 +729,7 @@ export async function runUnitTests(): Promise<{ total: number; passed: number; f
     assert.strictEqual(parseActive("false"), false);
   });
 
-  test("sheets: verifyStructure validates mandatory columns and flags missing headers", () => {
+  test("sheets [NEGATIVE]: verifyStructure validates mandatory columns and flags missing headers", () => {
     const validHeaders = ["SKU", "Nama Produk", "Harga", "Stok", "Link Foto"];
     const checkValid = verifyStructure(validHeaders);
     assert.strictEqual(checkValid.valid, true);

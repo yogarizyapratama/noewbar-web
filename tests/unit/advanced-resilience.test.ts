@@ -128,7 +128,7 @@ export async function runAdvancedResilienceTests(): Promise<{ total: number; pas
 
   console.log("\n=== 1. CONCURRENCY & REBUTAN STOK (RACE CONDITION) ===");
 
-  await test("Concurrency 1.1: Dua pembeli checkout sisa 1 pcs bersamaan -> Tepat 1 berhasil, 1 ditolak (Zero Overselling)", async () => {
+  await test("Concurrency 1.1 [NEGATIVE / ZERO-OVERSELLING]: Dua pembeli checkout sisa 1 pcs bersamaan -> Tepat 1 berhasil, 1 ditolak", async () => {
     // Jalankan 2 permintaan checkout secara paralel di milidetik yang sama
     const [buyer1Res, buyer2Res] = await Promise.all([
       createOrder({
@@ -238,7 +238,7 @@ export async function runAdvancedResilienceTests(): Promise<{ total: number; pas
     assert.ok(shipping.rates[0].total_tariff > 0, "Tarif ongkir lokal Bandung harus valid");
   });
 
-  await test("GPS 3.3: Koordinat luar negeri / lautan bebas ditangani dengan aman tanpa crash", async () => {
+  await test("GPS 3.3 [NEGATIVE]: Koordinat luar negeri / lautan bebas ditangani dengan aman tanpa crash", async () => {
     // 0, 0 adalah Null Island di Samudra Atlantik
     const geo = await reverseGeocode(0.0, 0.0);
     // Harus mengembalikan respons terstruktur tanpa crash proses
@@ -300,7 +300,7 @@ export async function runAdvancedResilienceTests(): Promise<{ total: number; pas
     assert.ok(savedMsg, "Pesan pembeli wajib tersimpan di database untuk CS manusia");
   });
 
-  await test("Takeover 5.2: Killswitch auto_reply_enabled dimatikan di katalog -> Bot bisu dengan alasan auto_reply_disabled", async () => {
+  await test("Takeover 5.2 [NEGATIVE]: Killswitch auto_reply_enabled dimatikan di katalog -> Bot bisu dengan alasan auto_reply_disabled", async () => {
     // Matikan human takeover tapi matikan toggle auto_reply_enabled di toko
     await prisma.conversation.update({
       where: { id: testConv.id },
@@ -410,6 +410,17 @@ export async function runAdvancedResilienceTests(): Promise<{ total: number; pas
     }
   });
 
+  await test("Multi-Tenant 6.3 [NEGATIVE]: Percobaan manipulasi data order antar-tenant dilarang keras (0 rows updated)", async () => {
+    const updated = await prisma.order.updateMany({
+      where: {
+        id: testConv.id,
+        tenant_id: "00000000-0000-0000-0000-000000000000",
+      },
+      data: { order_status: "SHIPPED" },
+    });
+    assert.strictEqual(updated.count, 0, "Dilarang memodifikasi order tenant lain");
+  });
+
   console.log("\n=== 7. KETAHANAN & FAILOVER AI GATEWAY ===");
 
   await test("Gateway 7.1: Model fallback chain terdaftar secara berurutan dan terduplikasi", () => {
@@ -421,7 +432,7 @@ export async function runAdvancedResilienceTests(): Promise<{ total: number; pas
     assert.strictEqual(unique.size, chain.length, "Model chain tidak boleh memiliki duplikat");
   });
 
-  await test("Gateway 7.2: Gangguan total pada AI tertangani dengan graceful fallback santun tanpa crash", async () => {
+  await test("Gateway 7.2 [NEGATIVE]: Gangguan total pada AI tertangani dengan graceful fallback santun tanpa crash", async () => {
     const brokenCtx: ToolContext = {
       tenantId: "00000000-0000-0000-0000-000000000000",
       conversationId: "00000000-0000-0000-0000-000000000000",

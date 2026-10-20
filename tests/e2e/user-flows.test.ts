@@ -146,6 +146,15 @@ export async function runE2ETests(): Promise<{ total: number; passed: number; fa
     }
   });
 
+  await flow("FLOW 1.5 [NEGATIVE]: Playground chat with empty payload fails schema validation (HTTP 422)", async () => {
+    const res = await fetch(`${BASE_URL}/api/playground`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    assert.strictEqual(res.status, 422);
+  });
+
   // FLOW 2: Out of Context & Prompt Injection Defense Flow
   await flow("FLOW 2.1: Out of context question (resep masakan) politely refused or safe fallback", async () => {
     const agentRes = await runAgent({
@@ -219,6 +228,10 @@ export async function runE2ETests(): Promise<{ total: number; passed: number; fa
     assert.throws(() => assertOrderTransition("SHIPPED", "PENDING_PAYMENT"));
   });
 
+  await flow("FLOW 3.2 [NEGATIVE]: Direct illegal state jump (DRAFT -> SHIPPED) throws error without mutating state", async () => {
+    assert.throws(() => assertOrderTransition("DRAFT", "SHIPPED"), /Illegal order transition/);
+  });
+
   // FLOW 4: Human Fallback & Bot Takeover Flow
   await flow("FLOW 4.1: Human takeover mutes bot and allows manual intervention", async () => {
     const hijackedConversation = {
@@ -247,6 +260,11 @@ export async function runE2ETests(): Promise<{ total: number; passed: number; fa
     assert.strictEqual(res.status, 200);
     const html = await res.text();
     assert.ok(html.includes("operator") || html.includes("superadmin"));
+  });
+
+  await flow("FLOW 5.3 [NEGATIVE]: Non-existent route returns 404 cleanly", async () => {
+    const res = await fetch(`${BASE_URL}/route-palsu-pasti-tidak-ada-404`);
+    assert.strictEqual(res.status, 404);
   });
 
   return { total: passed + failed, passed, failed };
