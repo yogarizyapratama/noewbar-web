@@ -31,7 +31,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { Badge, IconButton, Kbd, StatusDot, cn } from "@/components/ui";
+import { Badge, IconButton, Kbd, Portal, StatusDot, cn } from "@/components/ui";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { NetworkStatus } from "@/components/network-status";
 
@@ -272,7 +272,7 @@ export function AppShell<T extends string>({
       </aside>
 
       <div className="flex min-h-screen flex-col lg:min-w-0 lg:flex-1">
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-ink-200 bg-white/85 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-4 border-b border-ink-200 bg-white/90 px-4 backdrop-blur sm:px-6 lg:px-8">
           <div className="flex flex-1 items-center gap-3 min-w-0">
             <IconButton
               label="Buka menu"
@@ -308,7 +308,7 @@ export function AppShell<T extends string>({
           </div>
         </header>
 
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 pb-12">{children}</main>
       </div>
 
       <NetworkStatus />
@@ -410,72 +410,74 @@ function CommandPalette({
   let lastGroup = "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]">
-      <div
-        className="absolute inset-0 bg-ink/25 backdrop-blur-[2px]"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Palet perintah"
-        className="card-overlay animate-palette-in relative w-full max-w-lg overflow-hidden"
-        onKeyDown={onKeyDown}
-      >
-        <div className="flex items-center gap-2.5 border-b border-ink-200 px-3.5 py-3">
-          <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari halaman atau perintah..."
-            className="w-full border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:text-ink-400"
-            autoComplete="off"
-          />
-          <Kbd>Esc</Kbd>
-        </div>
+    <Portal>
+      <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]">
+        <div
+          className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Palet perintah"
+          className="card-overlay animate-palette-in relative w-full max-w-lg overflow-hidden"
+          onKeyDown={onKeyDown}
+        >
+          <div className="flex items-center gap-2.5 border-b border-ink-200 px-3.5 py-3">
+            <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cari halaman atau perintah..."
+              className="w-full border-0 bg-transparent p-0 text-sm text-ink outline-none placeholder:text-ink-400"
+              autoComplete="off"
+            />
+            <Kbd>Esc</Kbd>
+          </div>
 
-        <ul className="max-h-[52vh] overflow-y-auto p-1.5" role="listbox" aria-label="Hasil">
-          {entries.length === 0 && (
-            <li className="px-3 py-6 text-center text-sm text-ink-500">
-              Tidak ada hasil untuk &ldquo;{query}&rdquo;
-            </li>
-          )}
-          {entries.map((entry, i) => {
-            const showGroup = entry.groupLabel !== lastGroup;
-            lastGroup = entry.groupLabel;
-            const selected = i === cursor;
-            return (
-              <li key={entry.key}>
-                {showGroup && (
-                  <p className="eyebrow px-2.5 pb-1 pt-2.5 text-ink-400">{entry.groupLabel}</p>
-                )}
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  onMouseEnter={() => setCursor(i)}
-                  onClick={() => commit(i)}
-                  className={cn(
-                    "flex w-full min-h-[44px] items-center gap-2.5 rounded px-2.5 text-left text-sm transition-colors",
-                    selected ? "bg-ink-100 text-ink" : "text-ink-600"
-                  )}
-                >
-                  <span className={cn("shrink-0", selected ? "text-ink" : "text-ink-400")}>
-                    {entry.icon}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
-                  <span className="shrink-0 text-xs text-ink-400">{entry.hint}</span>
-                  {selected && (
-                    <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
-                  )}
-                </button>
+          <ul className="max-h-[52vh] overflow-y-auto p-1.5" role="listbox" aria-label="Hasil">
+            {entries.length === 0 && (
+              <li className="px-3 py-6 text-center text-sm text-ink-500">
+                Tidak ada hasil untuk &ldquo;{query}&rdquo;
               </li>
-            );
-          })}
-        </ul>
+            )}
+            {entries.map((entry, i) => {
+              const showGroup = entry.groupLabel !== lastGroup;
+              lastGroup = entry.groupLabel;
+              const selected = i === cursor;
+              return (
+                <li key={entry.key}>
+                  {showGroup && (
+                    <p className="eyebrow px-2.5 pb-1 pt-2.5 text-ink-400">{entry.groupLabel}</p>
+                  )}
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onMouseEnter={() => setCursor(i)}
+                    onClick={() => commit(i)}
+                    className={cn(
+                      "flex w-full min-h-[44px] items-center gap-2.5 rounded px-2.5 text-left text-sm transition-colors",
+                      selected ? "bg-ink-100 text-ink" : "text-ink-600"
+                    )}
+                  >
+                    <span className={cn("shrink-0", selected ? "text-ink" : "text-ink-400")}>
+                      {entry.icon}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
+                    <span className="shrink-0 text-xs text-ink-400">{entry.hint}</span>
+                    {selected && (
+                      <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-ink-400" aria-hidden="true" />
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 }

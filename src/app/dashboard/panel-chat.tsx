@@ -45,6 +45,7 @@ import {
 import {
   Badge,
   Button,
+  Modal,
   StatusDot,
   cn,
   rupiah,
@@ -966,15 +967,10 @@ export function PanelChat({
       </div>
 
       {/* Image Lightbox Modal */}
-      {previewImage && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs"
-          onClick={() => setPreviewImage(null)}
-        >
+      <Modal open={Boolean(previewImage)} onClose={() => setPreviewImage(null)}>
+        {previewImage && (
           <div
-            className="relative flex max-h-[92vh] max-w-[92vw] flex-col overflow-hidden rounded-lg bg-ink-950 p-2 shadow-2xl"
+            className="relative flex max-h-[92vh] max-w-[92vw] flex-col overflow-hidden rounded-xl bg-ink-950 p-2 shadow-overlay"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-2 pb-2 text-white">
@@ -1006,31 +1002,25 @@ export function PanelChat({
               className="max-h-[82vh] max-w-full rounded object-contain"
             />
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Canned Response Management Modal */}
-      {cannedModalOpen && (
+      <Modal open={cannedModalOpen} onClose={() => setCannedModalOpen(false)}>
         <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
-          onClick={() => setCannedModalOpen(false)}
+          className="w-full max-w-md rounded-2xl border border-ink-200 bg-white p-5 shadow-overlay"
+          onClick={(e) => e.stopPropagation()}
         >
-          <div
-            className="w-full max-w-md rounded-lg border border-ink-200 bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-ink-100 pb-3">
-              <h3 className="text-sm font-semibold text-ink">Kelola Balas Cepat</h3>
-              <button
-                type="button"
-                onClick={() => setCannedModalOpen(false)}
-                className="rounded p-1 text-ink-500 hover:text-ink"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+          <div className="flex items-center justify-between border-b border-ink-100 pb-3">
+            <h3 className="text-sm font-semibold text-ink">Kelola Balas Cepat</h3>
+            <button
+              type="button"
+              onClick={() => setCannedModalOpen(false)}
+              className="rounded-lg p-1 text-ink-500 hover:text-ink hover:bg-ink-100 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
 
             <div className="mt-3 max-h-56 space-y-2 overflow-y-auto pr-1">
               {cannedList.map((item) => (
@@ -1084,8 +1074,7 @@ export function PanelChat({
               </div>
             </div>
           </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }

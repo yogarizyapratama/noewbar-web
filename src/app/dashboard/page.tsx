@@ -28,7 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell, type NavItem } from "@/components/app-shell";
-import { Badge, Button, ErrorState, StatusDot, cn } from "@/components/ui";
+import { Badge, Button, ErrorState, Modal, StatusDot, cn } from "@/components/ui";
 import { AuthPanel } from "./auth-panel";
 import { DashboardLoadingScreen } from "./loading-screen";
 import { PanelStatus } from "./panel-status";
@@ -563,94 +563,93 @@ export default function DashboardPage() {
   return (
     <>
       {/* ── Expiry / Warning Modal ── */}
-      {showExpiryModal && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="expiry-modal-title"
-        >
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-overlay border border-ink-200">
-            <button
-              type="button"
-              aria-label="Tutup"
+      <Modal
+        open={showExpiryModal}
+        onClose={() => {
+          setShowExpiryModal(false);
+          setExpiryDismissed(true);
+        }}
+      >
+        <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-overlay border border-ink-200" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            aria-label="Tutup"
+            onClick={() => {
+              setShowExpiryModal(false);
+              setExpiryDismissed(true);
+            }}
+            className="absolute top-4 right-4 text-ink-400 hover:text-ink-700 p-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <div
+            className={cn(
+              "mb-4 flex h-12 w-12 items-center justify-center rounded-xl border",
+              isExpired
+                ? "bg-danger-wash text-danger-strong border-danger/25"
+                : "bg-warn-wash text-warn-strong border-warn/25"
+            )}
+          >
+            {isExpired ? (
+              <AlertCircle className="h-6 w-6 text-danger" aria-hidden="true" />
+            ) : (
+              <AlertTriangle className="h-6 w-6 text-warn" aria-hidden="true" />
+            )}
+          </div>
+          <h2 id="expiry-modal-title" className="mb-2 text-lg font-bold text-ink-900 pr-8">
+            {isExpired
+              ? isTrial
+                ? "Masa Uji Coba Gratis Berakhir"
+                : "Langganan Anda Telah Berakhir"
+              : isTrial
+                ? "Masa Uji Coba Hampir Berakhir"
+                : "Langganan Hampir Habis"}
+          </h2>
+          <p className="mb-5 text-sm text-ink-600 leading-relaxed">
+            {isExpired
+              ? isTrial
+                ? "Masa uji coba gratis 7 hari toko Anda telah selesai. Aktifkan paket langganan untuk menghubungkan kembali WhatsApp dan bot AI toko Anda."
+                : "Masa aktif langganan telah berakhir. Perbarui paket langganan untuk mengaktifkan kembali layanan bot toko Anda."
+              : isTrial
+                ? `Masa uji coba toko Anda tersisa ${daysLeft} hari lagi. Pilih paket Pro sekarang agar interaksi pelanggan tidak terputus.`
+                : `Langganan Anda berakhir dalam ${daysLeft} hari. Perbarui sekarang agar layanan bot tidak terganggu.`}
+          </p>
+          <div className="flex flex-col gap-2.5 sm:flex-row">
+            <Button
+              variant="primary"
+              className="flex-1"
+              onClick={() => {
+                setShowExpiryModal(false);
+                setExpiryDismissed(true);
+                setTab("billing");
+                loadBilling();
+              }}
+            >
+              {isExpired ? "Aktifkan Sekarang" : "Upgrade Paket"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                setShowExpiryModal(false);
+                setExpiryDismissed(true);
+                setTab("billing");
+                await handleSyncBilling();
+              }}
+            >
+              Cek Pembayaran
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => {
                 setShowExpiryModal(false);
                 setExpiryDismissed(true);
               }}
-              className="absolute top-4 right-4 text-ink-400 hover:text-ink-700 p-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
             >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <div
-              className={cn(
-                "mb-4 flex h-12 w-12 items-center justify-center rounded-xl border",
-                isExpired
-                  ? "bg-danger-wash text-danger-strong border-danger/25"
-                  : "bg-warn-wash text-warn-strong border-warn/25"
-              )}
-            >
-              {isExpired ? (
-                <AlertCircle className="h-6 w-6 text-danger" aria-hidden="true" />
-              ) : (
-                <AlertTriangle className="h-6 w-6 text-warn" aria-hidden="true" />
-              )}
-            </div>
-            <h2 id="expiry-modal-title" className="mb-2 text-lg font-bold text-ink-900 pr-8">
-              {isExpired
-                ? isTrial
-                  ? "Masa Uji Coba Gratis Berakhir"
-                  : "Langganan Anda Telah Berakhir"
-                : isTrial
-                  ? "Masa Uji Coba Hampir Berakhir"
-                  : "Langganan Hampir Habis"}
-            </h2>
-            <p className="mb-5 text-sm text-ink-600 leading-relaxed">
-              {isExpired
-                ? isTrial
-                  ? "Masa uji coba gratis 7 hari toko Anda telah selesai. Aktifkan paket langganan untuk menghubungkan kembali WhatsApp dan bot AI toko Anda."
-                  : "Masa aktif langganan telah berakhir. Perbarui paket langganan untuk mengaktifkan kembali layanan bot toko Anda."
-                : isTrial
-                  ? `Masa uji coba toko Anda tersisa ${daysLeft} hari lagi. Pilih paket Pro sekarang agar interaksi pelanggan tidak terputus.`
-                  : `Langganan Anda berakhir dalam ${daysLeft} hari. Perbarui sekarang agar layanan bot tidak terganggu.`}
-            </p>
-            <div className="flex flex-col gap-2.5 sm:flex-row">
-              <Button
-                variant="primary"
-                className="flex-1"
-                onClick={() => {
-                  setShowExpiryModal(false);
-                  setExpiryDismissed(true);
-                  setTab("billing");
-                  loadBilling();
-                }}
-              >
-                {isExpired ? "Aktifkan Sekarang" : "Upgrade Paket"}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={async () => {
-                  setShowExpiryModal(false);
-                  setExpiryDismissed(true);
-                  setTab("billing");
-                  await handleSyncBilling();
-                }}
-              >
-                Cek Pembayaran
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowExpiryModal(false);
-                  setExpiryDismissed(true);
-                }}
-              >
-                Tutup
-              </Button>
-            </div>
+              Tutup
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
 
     <AppShell<TabId>
       brand="NOEWBAR"

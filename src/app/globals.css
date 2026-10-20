@@ -236,7 +236,7 @@
 
   /* Page rhythm inside the console: one scale, used everywhere. */
   .page {
-    @apply space-y-5 p-4 sm:p-6 lg:p-8;
+    @apply mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8;
   }
 
   /* --------------------------------------------------------------- skeleton */

@@ -220,12 +220,16 @@ export function PanelStatus({
 
         <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {/* KPI 1: Total Omzet Terverifikasi */}
-          <Card className="p-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onGoOrders}
+            className="card p-4 flex flex-col justify-between text-left hover:border-ink-300 hover:shadow-flat transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+          >
+            <div className="flex items-center justify-between w-full">
               <span className="text-2xs font-bold uppercase tracking-wider text-ink-500">
                 Omzet Terverifikasi
               </span>
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 group-hover:scale-105 transition-transform">
                 <Receipt className="h-4 w-4" />
               </span>
             </div>
@@ -234,18 +238,22 @@ export function PanelStatus({
                 Rp {rupiah(totalRevenue)}
               </p>
               <p className="mt-1 text-2xs text-ink-500">
-                Dari {verifiedOrders.length} transaksi sukses terverifikasi
+                Dari {verifiedOrders.length} transaksi sukses terverifikasi →
               </p>
             </div>
-          </Card>
+          </button>
 
           {/* KPI 2: Total Pesanan Masuk */}
-          <Card className="p-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onGoOrders}
+            className="card p-4 flex flex-col justify-between text-left hover:border-ink-300 hover:shadow-flat transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+          >
+            <div className="flex items-center justify-between w-full">
               <span className="text-2xs font-bold uppercase tracking-wider text-ink-500">
                 Total Pesanan Masuk
               </span>
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-sky-50 text-sky-700 border border-sky-200/80">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-sky-50 text-sky-700 border border-sky-200/80 group-hover:scale-105 transition-transform">
                 <Package className="h-4 w-4" />
               </span>
             </div>
@@ -259,24 +267,28 @@ export function PanelStatus({
                 <span className="text-amber-700 font-semibold">{unpaidOrdersCount} Menunggu</span>
               </div>
             </div>
-          </Card>
+          </button>
 
           {/* KPI 3: Antrean Bukti Transfer */}
-          <Card
+          <button
+            type="button"
+            onClick={onGoOrders}
             className={cn(
-              "p-4 flex flex-col justify-between transition-colors",
-              hasPendingProof ? "border-amber-300 bg-amber-50/30" : ""
+              "card p-4 flex flex-col justify-between text-left transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal",
+              hasPendingProof
+                ? "border-amber-300 bg-amber-50/40 hover:bg-amber-50/70"
+                : "hover:border-ink-300 hover:shadow-flat"
             )}
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between w-full">
               <span className="text-2xs font-bold uppercase tracking-wider text-ink-500">
                 Verifikasi Bukti Bayar
               </span>
               <span
                 className={cn(
-                  "grid h-8 w-8 place-items-center rounded-lg border",
+                  "grid h-8 w-8 place-items-center rounded-lg border group-hover:scale-105 transition-transform",
                   hasPendingProof
-                    ? "bg-amber-100 text-amber-800 border-amber-300"
+                    ? "bg-amber-100 text-amber-800 border-amber-300 animate-pulse"
                     : "bg-ink-100 text-ink-600 border-ink-200"
                 )}
               >
@@ -294,19 +306,23 @@ export function PanelStatus({
               </p>
               <p className="mt-1 text-2xs text-ink-500">
                 {hasPendingProof
-                  ? "Perlu dicek pemilik toko sekarang"
+                  ? "Perlu dicek pemilik toko sekarang →"
                   : "Semua bukti bayar sudah diperiksa"}
               </p>
             </div>
-          </Card>
+          </button>
 
           {/* KPI 4: Percakapan Chat & Pelanggan */}
-          <Card className="p-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onGoChat}
+            className="card p-4 flex flex-col justify-between text-left hover:border-ink-300 hover:shadow-flat transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal"
+          >
+            <div className="flex items-center justify-between w-full">
               <span className="text-2xs font-bold uppercase tracking-wider text-ink-500">
                 Percakapan WhatsApp
               </span>
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-ink-100 text-ink-700 border border-ink-200">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200/80 group-hover:scale-105 transition-transform">
                 <MessageSquare className="h-4 w-4" />
               </span>
             </div>
@@ -324,7 +340,7 @@ export function PanelStatus({
                 )}
               </div>
             </div>
-          </Card>
+          </button>
         </div>
       </div>
 
